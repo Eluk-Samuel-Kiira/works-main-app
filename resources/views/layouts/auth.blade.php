@@ -49,59 +49,71 @@
     <!-- Toast Container -->
     <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999; max-width: 400px;">
         @if(session('success'))
-            <div class="toast toast-onload align-items-center text-bg-success border-0 w-100" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
-                <div class="toast-body hstack align-items-start gap-6">
-                    <!-- Tabler Icon -->
-                    <i class="ti ti-check-circle fs-6"></i>
-                    <!-- Fallback emoji (will show if icon fails) -->
-                    <span class="d-none">✅</span>
-                    <div style="flex: 1; min-width: 0;">
-                        <h5 class="text-white fs-3 mb-1">Success</h5>
-                        <h6 class="text-white fs-2 mb-0" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ session('success') }}</h6>
+            <div class="toast align-items-center text-white bg-success border-0 w-100" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000" data-bs-animation="true">
+                <div class="d-flex">
+                    <div class="toast-body d-flex align-items-center gap-3">
+                        <span class="d-flex align-items-center" style="width: 24px; height: 24px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </span>
+                        <span class="fs-3">{{ session('success') }}</span>
                     </div>
-                    <button type="button" class="btn-close btn-close-white fs-2 m-0 ms-auto shadow-none flex-shrink-0" data-bs-dismiss="toast" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
                 </div>
             </div>
         @endif
 
         @if(session('error'))
-            <div class="toast toast-onload align-items-center text-bg-danger border-0 w-100" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
-                <div class="toast-body hstack align-items-start gap-6">
-                    <i class="ti ti-alert-circle fs-6"></i>
-                    <span class="d-none">❌</span>
-                    <div style="flex: 1; min-width: 0;">
-                        <h5 class="text-white fs-3 mb-1">Error</h5>
-                        <h6 class="text-white fs-2 mb-0" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ session('error') }}</h6>
+            <div class="toast align-items-center text-white bg-danger border-0 w-100" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000" data-bs-animation="true">
+                <div class="d-flex">
+                    <div class="toast-body d-flex align-items-center gap-3">
+                        <span class="d-flex align-items-center" style="width: 24px; height: 24px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="15" y1="9" x2="9" y2="15"/>
+                                <line x1="9" y1="9" x2="15" y2="15"/>
+                            </svg>
+                        </span>
+                        <span class="fs-3">{{ session('error') }}</span>
                     </div>
-                    <button type="button" class="btn-close btn-close-white fs-2 m-0 ms-auto shadow-none flex-shrink-0" data-bs-dismiss="toast" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
                 </div>
             </div>
         @endif
 
         @if(session('warning'))
-            <div class="toast toast-onload align-items-center text-bg-warning border-0 w-100" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
-                <div class="toast-body hstack align-items-start gap-6">
-                    <i class="ti ti-alert-triangle fs-6"></i>
-                    <span class="d-none">⚠️</span>
-                    <div style="flex: 1; min-width: 0;">
-                        <h5 class="text-white fs-3 mb-1">Warning</h5>
-                        <h6 class="text-white fs-2 mb-0" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ session('warning') }}</h6>
+            <div class="toast align-items-center text-white bg-warning border-0 w-100" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000" data-bs-animation="true">
+                <div class="d-flex">
+                    <div class="toast-body d-flex align-items-center gap-3">
+                        <span class="d-flex align-items-center" style="width: 24px; height: 24px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                                <line x1="12" y1="9" x2="12" y2="13"/>
+                                <line x1="12" y1="17" x2="12.01" y2="17"/>
+                            </svg>
+                        </span>
+                        <span class="fs-3">{{ session('warning') }}</span>
                     </div>
-                    <button type="button" class="btn-close btn-close-white fs-2 m-0 ms-auto shadow-none flex-shrink-0" data-bs-dismiss="toast" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
                 </div>
             </div>
         @endif
 
         @if(session('info'))
-            <div class="toast toast-onload align-items-center text-bg-info border-0 w-100" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
-                <div class="toast-body hstack align-items-start gap-6">
-                    <i class="ti ti-info-circle fs-6"></i>
-                    <span class="d-none">ℹ️</span>
-                    <div style="flex: 1; min-width: 0;">
-                        <h5 class="text-white fs-3 mb-1">Information</h5>
-                        <h6 class="text-white fs-2 mb-0" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ session('info') }}</h6>
+            <div class="toast align-items-center text-white bg-info border-0 w-100" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000" data-bs-animation="true">
+                <div class="d-flex">
+                    <div class="toast-body d-flex align-items-center gap-3">
+                        <span class="d-flex align-items-center" style="width: 24px; height: 24px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="12" y1="8" x2="12" y2="12"/>
+                                <line x1="12" y1="16" x2="12.01" y2="16"/>
+                            </svg>
+                        </span>
+                        <span class="fs-3">{{ session('info') }}</span>
                     </div>
-                    <button type="button" class="btn-close btn-close-white fs-2 m-0 ms-auto shadow-none flex-shrink-0" data-bs-dismiss="toast" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
                 </div>
             </div>
         @endif
@@ -110,24 +122,117 @@
     <!-- Toast Initialization Script -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize Tabler Icons (if they need initialization)
-            // Tabler icons usually work with just CSS
+            // SVG icons per type
+            const ICONS = {
+                success: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><polyline points="20 6 9 17 4 12"/></svg>`,
+                error:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
+                warning: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+                info:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+                slide:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><polyline points="8 18 12 22 16 18"/><polyline points="8 6 12 2 16 6"/><line x1="12" y1="2" x2="12" y2="22"/></svg>`
+            };
             
-            // Initialize Feather Icons if you're using them instead
-            if (typeof feather !== 'undefined') {
-                feather.replace();
-            }
-            
-            // Initialize Bootstrap Toasts
-            var toastElList = [].slice.call(document.querySelectorAll('.toast'))
+            // Initialize Bootstrap Toasts with slide animation
+            var toastElList = [].slice.call(document.querySelectorAll('.toast'));
             var toastList = toastElList.map(function(toastEl) {
                 return new bootstrap.Toast(toastEl, {
                     autohide: true,
-                    delay: 5000
-                })
+                    delay: 5000,
+                    animation: true
+                });
             });
             
+            // Show all toasts
             toastList.forEach(toast => toast.show());
+            
+            // Function to show toast of any type
+            window.showToast = function(type, message) {
+                const bgColors = {
+                    'success': 'bg-success',
+                    'error': 'bg-danger',
+                    'warning': 'bg-warning',
+                    'info': 'bg-info',
+                    'slide': 'bg-primary'
+                };
+                
+                const icon = ICONS[type] || ICONS.info;
+                const bgColor = bgColors[type] || bgColors.info;
+                
+                // Create toast element
+                const toastHtml = `
+                    <div class="toast align-items-center text-white ${bgColor} border-0 w-100" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000" data-bs-animation="true">
+                        <div class="d-flex">
+                            <div class="toast-body d-flex align-items-center gap-3">
+                                <span class="d-flex align-items-center" style="width: 24px; height: 24px;">
+                                    ${icon}
+                                </span>
+                                <span class="fs-3">${message}</span>
+                            </div>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                        </div>
+                    </div>
+                `;
+                
+                // Add to container and show
+                const container = document.querySelector('.toast-container');
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = toastHtml;
+                const toastElement = tempDiv.firstElementChild;
+                container.appendChild(toastElement);
+                
+                const toast = new bootstrap.Toast(toastElement, {
+                    autohide: true,
+                    delay: 5000,
+                    animation: true
+                });
+                toast.show();
+                
+                // Remove after hidden
+                toastElement.addEventListener('hidden.bs.toast', function() {
+                    toastElement.remove();
+                });
+            };
+            
+            // Single button to demonstrate all toast types one by one
+            const slideBtn = document.getElementById('slide-toast');
+            if(slideBtn) {
+                const toastTypes = [
+                    { type: 'success', message: 'Operation completed successfully!', bg: 'bg-success-subtle', text: 'text-success' },
+                    { type: 'info', message: 'New information available.', bg: 'bg-info-subtle', text: 'text-info' },
+                    { type: 'warning', message: 'Please check your settings.', bg: 'bg-warning-subtle', text: 'text-warning' },
+                    { type: 'error', message: 'Something went wrong!', bg: 'bg-danger-subtle', text: 'text-danger' },
+                    { type: 'slide', message: 'Slide animation demo!', bg: 'bg-primary-subtle', text: 'text-primary' }
+                ];
+                
+                let toastIndex = 0;
+                
+                slideBtn.addEventListener('click', function() {
+                    // Show one toast at a time in sequence
+                    if (toastIndex < toastTypes.length) {
+                        const current = toastTypes[toastIndex];
+                        showToast(current.type, current.message);
+                        
+                        // Update button text to show next
+                        if (toastIndex < toastTypes.length - 1) {
+                            const next = toastTypes[toastIndex + 1];
+                            slideBtn.innerHTML = `Next: ${next.type.charAt(0).toUpperCase() + next.type.slice(1)} Toast →`;
+                            slideBtn.className = `btn px-4 fs-4 ${next.bg} ${next.text} fw-medium`;
+                        } else {
+                            slideBtn.innerHTML = '✓ All Toasts Displayed';
+                            slideBtn.className = 'btn px-4 fs-4 bg-success-subtle text-success fw-medium';
+                            slideBtn.disabled = true;
+                        }
+                        
+                        toastIndex++;
+                    }
+                });
+                
+                // Initial button setup
+                if (toastTypes.length > 0) {
+                    const first = toastTypes[0];
+                    slideBtn.innerHTML = `Start: ${first.type.charAt(0).toUpperCase() + first.type.slice(1)} Toast →`;
+                    slideBtn.className = `btn px-4 fs-4 ${first.bg} ${first.text} fw-medium`;
+                }
+            }
         });
     </script>
     

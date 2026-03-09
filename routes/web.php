@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Main\{ DashboardController };
+use App\Http\Controllers\Settings\{ ArtisanCommandController };
 
 
 
@@ -15,13 +16,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'dashboard'])->name('dashboard');
 });
 
-
+Route::middleware(['auth'])->prefix('admin')->group(function () {
+    Route::get('/artisan',       [ArtisanCommandController::class, 'index'])->name('artisan.index');
+    Route::post('/artisan/run',  [ArtisanCommandController::class, 'run'])->name('artisan.run');
+});
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
+
+
 
 
 // Fallback Route (404)
