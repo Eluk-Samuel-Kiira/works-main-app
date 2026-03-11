@@ -606,7 +606,7 @@ class UserSeeder extends Seeder
 
         // Create Another SUPER ADMIN user
         $superAdmin = User::firstOrCreate(
-            ['email' => 'stardenaworks@gmail.com'],
+            ['email' => 'samuelkiiraeluk@gmail.com'],
             [
                 'uuid' => Str::uuid(),
                 'first_name' => 'Stardena',
