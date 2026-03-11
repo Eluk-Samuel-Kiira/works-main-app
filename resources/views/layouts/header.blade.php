@@ -179,21 +179,12 @@
         <div class="d-block d-lg-none">
         <div class="brand-logo d-flex align-items-center justify-content-between">
             <a href="../main/index.html" class="text-nowrap logo-img d-flex align-items-center gap-2">
-            <b class="logo-icon">
-                <!--You can put here icon as well // <i class="wi wi-sunset"></i> //-->
-                <!-- Dark Logo icon -->
-                <img src="{{ asset('assets/images/logos/logo-light-icon.svg') }}" alt="homepage" class="dark-logo" />
-                <!-- Light Logo icon -->
-                <img src="{{ asset('assets/images/logos/logo-light-icon.svg') }}" alt="homepage" class="light-logo" />
-            </b>
-            <!--End Logo icon -->
-            <!-- Logo text -->
-            <span class="logo-text">
-                <!-- dark Logo text -->
-                <img src="{{ asset('assets/images/logos/logo-light-text.svg') }}" alt="homepage" class="dark-logo ps-2" />
-                <!-- Light Logo text -->
-                <img src="{{ asset('assets/images/logos/logo-light-text.svg') }}" class="light-logo ps-2" alt="homepage" />
-            </span>
+                <b class="logo-icon">
+                    <!-- Dark Logo icon -->
+                    <img src="{{ getDarkLogo() }}" alt="homepage" class="dark-logo" style="width: 150px; height: auto;" />
+                    <!-- Light Logo icon -->
+                    <img src="{{ getWhiteLogo() }}" alt="homepage" class="light-logo" style="width: 150px; height: auto;" />
+                </b>
             </a>
         </div>
         </div>
