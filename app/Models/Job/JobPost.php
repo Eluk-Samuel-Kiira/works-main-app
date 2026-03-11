@@ -109,6 +109,7 @@ class JobPost extends Model
 
     protected $casts = [
         'deadline' => 'date',
+        'view_count' => 'integer',
         'salary_amount' => 'decimal:2',
         'base_salary' => 'decimal:2',
         'is_pinged' => 'boolean',
@@ -190,44 +191,48 @@ class JobPost extends Model
     // Relationships
     public function company()
     {
-        return $this->belongsTo(\App\Models\Company::class);
+        return $this->belongsTo(\App\Models\Job\Company::class);
     }
 
 
+    public function getRouteKeyName()
+    {
+        return 'slug';
+    }
 
     public function jobCategory()
     {
-        return $this->belongsTo(\App\Models\JobCategory::class);
+        return $this->belongsTo(\App\Models\Job\JobCategory::class);
     }
 
     public function industry()
     {
-        return $this->belongsTo(\App\Models\Industry::class);
+        return $this->belongsTo(\App\Models\Job\Industry::class);
     }
 
-    public function location()
+    public function jobLocation()
     {
-        return $this->belongsTo(\App\Models\JobLocation::class, 'job_location_id');
+        return $this->belongsTo(\App\Models\Job\JobLocation::class, 'job_location_id');
     }
 
     public function jobType()
     {
-        return $this->belongsTo(\App\Models\JobType::class);
+        return $this->belongsTo(\App\Models\Job\JobType::class);
     }
 
     public function experienceLevel()
     {
-        return $this->belongsTo(\App\Models\ExperienceLevel::class);
+        return $this->belongsTo(\App\Models\Job\ExperienceLevel::class);
     }
 
     public function educationLevel()
     {
-        return $this->belongsTo(\App\Models\EducationLevel::class);
+        return $this->belongsTo(\App\Models\Job\EducationLevel::class);
     }
 
     public function salaryRange()
     {
-        return $this->belongsTo(\App\Models\SalaryRange::class);
+        return $this->belongsTo(\App\Models\Job\SalaryRange::class);
     }
 
     public function poster()
