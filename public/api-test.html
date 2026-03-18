@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Works Main — API Tester v1</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f1117;
+      --surface:   #1a1d27;
+      --border:    #2a2d3e;
+      --accent:    #6366f1;
+      --accent-h:  #818cf8;
+      --green:     #22c55e;
+      --red:       #ef4444;
+      --yellow:    #f59e0b;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --radius:    8px;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    header h1 { font-size: 16px; font-weight: 700; letter-spacing: .02em; }
+    header h1 span { color: var(--accent); }
+
+    .base-url-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+      flex-wrap: wrap;
+    }
+    .base-url-row label { font-size: 12px; color: var(--muted); }
+    .base-url-row input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      width: 260px;
+    }
+    .badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 20px;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+    .badge-get    { background: #0d4f2e; color: var(--green);  }
+    .badge-post   { background: #1c3a5e; color: #60a5fa; }
+    .badge-patch  { background: #3d2f00; color: var(--yellow); }
+    .badge-delete { background: #3d0f0f; color: var(--red);    }
+
+    /* ── Layout ── */
+    .layout {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ── */
+    nav {
+      width: 200px;
+      min-width: 200px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 16px 0;
+      overflow-y: auto;
+    }
+    nav .nav-section {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      padding: 8px 16px 4px;
+    }
+    nav button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: none;
+      border: none;
+      color: var(--muted);
+      padding: 9px 16px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all .15s;
+      border-left: 3px solid transparent;
+    }
+    nav button:hover  { color: var(--text); background: rgba(99,102,241,.08); }
+    nav button.active { color: var(--accent-h); border-left-color: var(--accent); background: rgba(99,102,241,.12); }
+
+    /* ── Main panel ── */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Resource tabs ── */
+    .resource-tabs {
+      display: flex;
+      gap: 4px;
+      padding: 12px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+    }
+    .resource-tabs button {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 6px 14px;
+      border-radius: var(--radius);
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all .15s;
+    }
+    .resource-tabs button:hover  { color: var(--text); border-color: var(--accent); }
+    .resource-tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    /* ── Content area ── */
+    .content {
+      flex: 1;
+      display: flex;
+      gap: 0;
+      overflow: hidden;
+    }
+
+    /* ── Left: operations ── */
+    .ops-panel {
+      width: 420px;
+      min-width: 340px;
+      padding: 20px;
+      overflow-y: auto;
+      border-right: 1px solid var(--border);
+    }
+
+    .op-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .op-card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      user-select: none;
+      border-bottom: 1px solid transparent;
+      transition: background .15s;
+    }
+    .op-card-header:hover { background: rgba(255,255,255,.03); }
+    .op-card-header.open  { border-bottom-color: var(--border); }
+    .op-card-header .op-title { font-size: 13px; font-weight: 600; }
+    .op-card-header .op-url   { font-size: 11px; color: var(--muted); font-family: var(--font-mono); margin-left: auto; }
+    .op-card-header .chevron  { color: var(--muted); font-size: 11px; margin-left: 8px; transition: transform .2s; }
+    .op-card-header.open .chevron { transform: rotate(180deg); }
+
+    .op-card-body {
+      display: none;
+      padding: 14px;
+    }
+    .op-card-body.open { display: block; }
+
+    /* ── Form elements ── */
+    .form-row {
+      margin-bottom: 10px;
+    }
+    .form-row label {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 4px;
+      font-weight: 600;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .form-row label .required { color: var(--red); margin-left: 2px; }
+    .form-row label .optional { color: var(--muted); font-weight: 400; text-transform: none; letter-spacing: 0; }
+    .form-row input,
+    .form-row textarea,
+    .form-row select {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-family: inherit;
+      transition: border-color .15s;
+    }
+    .form-row input:focus,
+    .form-row textarea:focus,
+    .form-row select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .form-row textarea { resize: vertical; min-height: 70px; }
+
+    .form-row-inline {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn:hover { opacity: .85; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-danger  { background: var(--red);    color: #fff; }
+    .btn-ghost   { background: var(--border); color: var(--text); }
+
+    .btn-row { display: flex; gap: 8px; margin-top: 4px; }
+
+    /* ── Right: response ── */
+    .response-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .response-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .response-header .res-title { font-weight: 600; }
+    .status-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 10px;
+      border-radius: 20px;
+    }
+    .status-2xx { background: #0d4f2e; color: var(--green); }
+    .status-4xx { background: #3d0f0f; color: var(--red);   }
+    .status-5xx { background: #3d0f0f; color: var(--red);   }
+    .res-time   { color: var(--muted); font-size: 12px; margin-left: auto; font-family: var(--font-mono); }
+    pre {
+      flex: 1;
+      overflow: auto;
+      padding: 20px;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      line-height: 1.7;
+      background: var(--bg);
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .json-key    { color: #818cf8; }
+    .json-str    { color: #34d399; }
+    .json-num    { color: #f59e0b; }
+    .json-bool   { color: #f472b6; }
+    .json-null   { color: #94a3b8; }
+
+    /* ── Endpoint reference ── */
+    .ref-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .ref-table th {
+      text-align: left;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: .06em;
+    }
+    .ref-table td {
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--border);
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+    }
+    .ref-table tr:last-child td { border-bottom: none; }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--muted);
+      gap: 8px;
+    }
+    .empty-state svg { opacity: .3; }
+    .empty-state p { font-size: 13px; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    @media (max-width: 900px) {
+      nav { display: none; }
+      .ops-panel { width: 100%; min-width: unset; border-right: none; }
+      .content { flex-direction: column; }
+      .response-panel { min-height: 300px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════ HEADER -->
+<header>
+  <h1>Works Main &mdash; <span>API Tester</span> <span style="color:var(--muted);font-weight:400">v1</span></h1>
+  <div class="base-url-row">
+    <label for="baseUrl">Base URL</label>
+    <input id="baseUrl" type="text" value="http://127.0.0.1:8000" />
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- ═══════════════════════════════════════════════ SIDEBAR -->
+  <nav>
+    <div class="nav-section">Auth</div>
+    <button onclick="showResource('users')" id="nav-users">Users</button>
+
+    <div class="nav-section">Jobs</div>
+    <button onclick="showResource('companies')"        id="nav-companies">Companies</button>
+    <button onclick="showResource('industries')"       id="nav-industries">Industries</button>
+    <button onclick="showResource('job-categories')"   id="nav-job-categories">Job Categories</button>
+    <button onclick="showResource('job-types')"        id="nav-job-types">Job Types</button>
+    <button onclick="showResource('job-locations')"    id="nav-job-locations">Job Locations</button>
+    <button onclick="showResource('experience-levels')" id="nav-experience-levels">Experience Levels</button>
+    <button onclick="showResource('education-levels')" id="nav-education-levels">Education Levels</button>
+    <button onclick="showResource('salary-ranges')"    id="nav-salary-ranges">Salary Ranges</button>
+
+    <div class="nav-section" style="margin-top:8px">Quick</div>
+    <button onclick="showResource('ref')">Endpoint Ref</button>
+  </nav>
+
+  <!-- ═══════════════════════════════════════════════ MAIN -->
+  <main>
+
+    <!-- Operation tabs -->
+    <div class="resource-tabs" id="opTabs" style="display:none">
+      <button onclick="showOp('index')"   id="tab-index">  LIST</button>
+      <button onclick="showOp('show')"    id="tab-show">   SHOW</button>
+      <button onclick="showOp('store')"   id="tab-store">  CREATE</button>
+      <button onclick="showOp('update')"  id="tab-update"> UPDATE</button>
+      <button onclick="showOp('destroy')" id="tab-destroy">DELETE</button>
+    </div>
+
+    <div class="content">
+
+      <!-- Left: operations panel -->
+      <div class="ops-panel" id="opsPanel">
+        <div class="empty-state" id="welcomeState">
+          <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path d="M3 12h18M3 6h18M3 18h18"/>
+          </svg>
+          <p>Select a resource from the sidebar to begin.</p>
+        </div>
+
+        <!-- ────── USERS ────── -->
+        <div id="panel-users" style="display:none">
+          <div id="op-users-index" class="op-section">
+            <div class="op-card">
+              <div class="op-card-header open" onclick="toggleCard(this)">
+                <span class="badge badge-get">GET</span>
+                <span class="op-title">List Users</span>
+                <span class="op-url">/api/v1/users</span>
+                <span class="chevron">▼</span>
+              </div>
+              <div class="op-card-body open">
+                <div class="form-row-inline">
+                  <div class="form-row">
+                    <label>Search <span class="optional">(name / email)</span></label>
+                    <input type="text" id="users-index-search" placeholder="John" />
+                  </div>
+                  <div class="form-row">
+                    <label>is_active <span class="optional">(optional)</span></label>
+                    <select id="users-index-is_active">
+                      <option value="">— any —</option>
+                      <option value="true">true</option>
+                      <option value="false">false</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <label>Per Page <span class="optional">(default 15)</span></label>
+                  <input type="number" id="users-index-per_page" value="15" min="1" max="100" />
+                </div>
+                <div class="btn-row">
+                  <button class="btn btn-primary" onclick="doIndex('users')">Send Request</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="op-users-show" class="op-section" style="display:none">
+            <div class="op-card">
+              <div class="op-card-header open" onclick="toggleCard(this)">
+                <span class="badge badge-get">GET</span>
+                <span class="op-title">Show User</span>
+                <span class="op-url">/api/v1/users/{id}</span>
+                <span class="chevron">▼</span>
+              </div>
+              <div class="op-card-body open">
+                <div class="form-row">
+                  <label>User ID <span class="required">*</span></label>
+                  <input type="number" id="users-show-id" placeholder="1" />
+                </div>
+                <div class="btn-row">
+                  <button class="btn btn-primary" onclick="doShow('users', document.getElementById('users-show-id').value)">Send Request</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="op-users-store" class="op-section" style="display:none">
+            <div class="op-card">
+              <div class="op-card-header open" onclick="toggleCard(this)">
+                <span class="badge badge-post">POST</span>
+                <span class="op-title">Create User</span>
+                <span class="op-url">/api/v1/users</span>
+                <span class="chevron">▼</span>
+              </div>
+              <div class="op-card-body open">
+                <div class="form-row-inline">
+                  <div class="form-row">
+                    <label>First Name <span class="required">*</span></label>
+                    <input type="text" id="users-store-first_name" placeholder="Jane" />
+                  </div>
+                  <div class="form-row">
+                    <label>Last Name <span class="required">*</span></label>
+                    <input type="text" id="users-store-last_name" placeholder="Doe" />
+                  </div>
+                </div>
+                <div class="form-row">
+                  <label>Email <span class="required">*</span></label>
+                  <input type="email" id="users-store-email" placeholder="jane@example.com" />
+                </div>
+                <div class="form-row-inline">
+                  <div class="form-row">
+                    <label>Phone <span class="optional">(optional)</span></label>
+                    <input type="text" id="users-store-phone" placeholder="+256700000000" />
+                  </div>
+                  <div class="form-row">
+                    <label>Country Code <span class="optional">(optional)</span></label>
+                    <input type="text" id="users-store-country_code" placeholder="UG" maxlength="2" />
+                  </div>
+                </div>
+                <div class="form-row-inline">
+                  <div class="form-row">
+                    <label>Role ID <span class="optional">(optional)</span></label>
+                    <input type="number" id="users-store-role_id" placeholder="2" />
+                  </div>
+                  <div class="form-row">
+                    <label>Is Active</label>
+                    <select id="users-store-is_active">
+                      <option value="true">true</option>
+                      <option value="false">false</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="btn-row">
+                  <button class="btn btn-primary" onclick="doStore('users', getUsersPayload())">Send Request</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="op-users-update" class="op-section" style="display:none">
+            <div class="op-card">
+              <div class="op-card-header open" onclick="toggleCard(this)">
+                <span class="badge badge-patch">PATCH</span>
+                <span class="op-title">Update User</span>
+                <span class="op-url">/api/v1/users/{id}</span>
+                <span class="chevron">▼</span>
+              </div>
+              <div class="op-card-body open">
+                <div class="form-row">
+                  <label>User ID <span class="required">*</span></label>
+                  <input type="number" id="users-update-id" placeholder="1" />
+                </div>
+                <div class="form-row-inline">
+                  <div class="form-row">
+                    <label>First Name <span class="optional">(optional)</span></label>
+                    <input type="text" id="users-update-first_name" />
+                  </div>
+                  <div class="form-row">
+                    <label>Last Name <span class="optional">(optional)</span></label>
+                    <input type="text" id="users-update-last_name" />
+                  </div>
+                </div>
+                <div class="form-row">
+                  <label>Email <span class="optional">(optional)</span></label>
+                  <input type="email" id="users-update-email" />
+                </div>
+                <div class="form-row-inline">
+                  <div class="form-row">
+                    <label>Phone <span class="optional">(optional)</span></label>
+                    <input type="text" id="users-update-phone" />
+                  </div>
+                  <div class="form-row">
+                    <label>Is Active <span class="optional">(optional)</span></label>
+                    <select id="users-update-is_active">
+                      <option value="">— unchanged —</option>
+                      <option value="true">true</option>
+                      <option value="false">false</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="btn-row">
+                  <button class="btn btn-primary" onclick="doUpdate('users', document.getElementById('users-update-id').value, getUsersUpdatePayload())">Send Request</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="op-users-destroy" class="op-section" style="display:none">
+            <div class="op-card">
+              <div class="op-card-header open" onclick="toggleCard(this)">
+                <span class="badge badge-delete">DEL</span>
+                <span class="op-title">Delete User</span>
+                <span class="op-url">/api/v1/users/{id}</span>
+                <span class="chevron">▼</span>
+              </div>
+              <div class="op-card-body open">
+                <div class="form-row">
+                  <label>User ID <span class="required">*</span></label>
+                  <input type="number" id="users-destroy-id" placeholder="1" />
+                </div>
+                <div class="btn-row">
+                  <button class="btn btn-danger" onclick="doDestroy('users', document.getElementById('users-destroy-id').value)">Delete</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div><!-- /panel-users -->
+
+        <!-- ────── COMPANIES ────── -->
+        <div id="panel-companies" style="display:none">
+          <div id="op-companies-index" class="op-section">
+            <div class="op-card">
+              <div class="op-card-header open" onclick="toggleCard(this)">
+                <span class="badge badge-get">GET</span>
+                <span class="op-title">List Companies</span>
+                <span class="op-url">/api/v1/companies</span>
+                <span class="chevron">▼</span>
+              </div>
+              <div class="op-card-body open">
+                <div class="form-row"><label>Search <span class="optional">(name)</span></label><input type="text" id="companies-index-search" /></div>
+                <div class="form-row-inline">
+                  <div class="form-row"><label>is_active</label><select id="companies-index-is_active"><option value="">— any —</option><option value="true">true</option><option value="false">false</option></select></div>
+                  <div class="form-row"><label>is_verified</label><select id="companies-index-is_verified"><option value="">— any —</option><option value="true">true</option><option value="false">false</option></select></div>
+                </div>
+                <div class="form-row-inline">
+                  <div class="form-row"><label>Industry ID <span class="optional">(optional)</span></label><input type="number" id="companies-index-industry_id" /></div>
+                  <div class="form-row"><label>Per Page</label><input type="number" id="companies-index-per_page" value="15" /></div>
+                </div>
+                <div class="btn-row"><button class="btn btn-primary" onclick="doIndex('companies')">Send Request</button></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="op-companies-show" class="op-section" style="display:none">
+            <div class="op-card">
+              <div class="op-card-header open" onclick="toggleCard(this)">
+                <span class="badge badge-get">GET</span>
+                <span class="op-title">Show Company</span>
+                <span class="op-url">/api/v1/companies/{slug}</span>
+                <span class="chevron">▼</span>
+              </div>
+              <div class="op-card-body open">
+                <p style="font-size:11px;color:var(--muted);margin-bottom:10px;">Companies are looked up by <strong>slug</strong> (e.g. <code>acme-corp</code>).</p>
+                <div class="form-row"><label>Slug <span class="required">*</span></label><input type="text" id="companies-show-id" placeholder="acme-corp" /></div>
+                <div class="btn-row"><button class="btn btn-primary" onclick="doShow('companies', document.getElementById('companies-show-id').value)">Send Request</button></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="op-companies-store" class="op-section" style="display:none">
+            <div class="op-card">
+              <div class="op-card-header open" onclick="toggleCard(this)">
+                <span class="badge badge-post">POST</span>
+                <span class="op-title">Create Company</span>
+                <span class="op-url">/api/v1/companies</span>
+                <span class="chevron">▼</span>
+              </div>
+              <div class="op-card-body open">
+                <div class="form-row"><label>Name <span class="required">*</span></label><input type="text" id="companies-store-name" placeholder="Acme Corporation" /></div>
+                <div class="form-row"><label>Description <span class="optional">(optional)</span></label><textarea id="companies-store-description" placeholder="What does this company do?"></textarea></div>
+                <div class="form-row"><label>Website <span class="optional">(optional)</span></label><input type="url" id="companies-store-website" placeholder="https://acme.com" /></div>
+                <div class="form-row-inline">
+                  <div class="form-row"><label>Contact Name</label><input type="text" id="companies-store-contact_name" /></div>
+                  <div class="form-row"><label>Contact Email</label><input type="email" id="companies-store-contact_email" /></div>
+                </div>
+                <div class="form-row-inline">
+                  <div class="form-row"><label>Contact Phone</label><input type="text" id="companies-store-contact_phone" /></div>
+                  <div class="form-row"><label>Company Size</label><input type="text" id="companies-store-company_size" placeholder="50-200" /></div>
+                </div>
+                <div class="form-row-inline">
+                  <div class="form-row"><label>Industry ID</label><input type="number" id="companies-store-industry_id" /></div>
+                  <div class="form-row"><label>Is Active</label><select id="companies-store-is_active"><option value="true">true</option><option value="false">false</option></select></div>
+                </div>
+                <div class="btn-row"><button class="btn btn-primary" onclick="doStore('companies', getCompanyPayload('store'))">Send Request</button></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="op-companies-update" class="op-section" style="display:none">
+            <div class="op-card">
+              <div class="op-card-header open" onclick="toggleCard(this)">
+                <span class="badge badge-patch">PATCH</span>
+                <span class="op-title">Update Company</span>
+                <span class="op-url">/api/v1/companies/{slug}</span>
+                <span class="chevron">▼</span>
+              </div>
+              <div class="op-card-body open">
+                <div class="form-row"><label>Slug <span class="required">*</span></label><input type="text" id="companies-update-id" placeholder="acme-corporation" /></div>
+                <div class="form-row"><label>Name <span class="optional">(optional)</span></label><input type="text" id="companies-update-name" /></div>
+                <div class="form-row"><label>Description <span class="optional">(optional)</span></label><textarea id="companies-update-description"></textarea></div>
+                <div class="form-row"><label>Website <span class="optional">(optional)</span></label><input type="url" id="companies-update-website" /></div>
+                <div class="form-row-inline">
+                  <div class="form-row"><label>Is Active</label><select id="companies-update-is_active"><option value="">— unchanged —</option><option value="true">true</option><option value="false">false</option></select></div>
+                  <div class="form-row"><label>Is Verified</label><select id="companies-update-is_verified"><option value="">— unchanged —</option><option value="true">true</option><option value="false">false</option></select></div>
+                </div>
+                <div class="btn-row"><button class="btn btn-primary" onclick="doUpdate('companies', document.getElementById('companies-update-id').value, getCompanyPayload('update'))">Send Request</button></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="op-companies-destroy" class="op-section" style="display:none">
+            <div class="op-card">
+              <div class="op-card-header open" onclick="toggleCard(this)">
+                <span class="badge badge-delete">DEL</span>
+                <span class="op-title">Delete Company</span>
+                <span class="op-url">/api/v1/companies/{slug}</span>
+                <span class="chevron">▼</span>
+              </div>
+              <div class="op-card-body open">
+                <div class="form-row"><label>Slug <span class="required">*</span></label><input type="text" id="companies-destroy-id" placeholder="acme-corporation" /></div>
+                <div class="btn-row"><button class="btn btn-danger" onclick="doDestroy('companies', document.getElementById('companies-destroy-id').value)">Delete</button></div>
+              </div>
+            </div>
+          </div>
+        </div><!-- /panel-companies -->
+
+        <!-- ────── GENERIC LOOKUP PANELS (industries, job-categories, job-types, education-levels) ────── -->
+        <div id="panel-industries" style="display:none"></div>
+        <div id="panel-job-categories" style="display:none"></div>
+        <div id="panel-job-types" style="display:none"></div>
+        <div id="panel-education-levels" style="display:none"></div>
+
+        <!-- ────── EXPERIENCE LEVELS ────── -->
+        <div id="panel-experience-levels" style="display:none"></div>
+
+        <!-- ────── JOB LOCATIONS ────── -->
+        <div id="panel-job-locations" style="display:none"></div>
+
+        <!-- ────── SALARY RANGES ────── -->
+        <div id="panel-salary-ranges" style="display:none"></div>
+
+        <!-- ────── ENDPOINT REFERENCE ────── -->
+        <div id="panel-ref" style="display:none">
+          <h3 style="font-size:14px;margin-bottom:12px;color:var(--accent-h)">Endpoint Reference</h3>
+          <table class="ref-table">
+            <thead><tr><th>Method</th><th>URL</th><th>Description</th></tr></thead>
+            <tbody id="refTableBody"></tbody>
+          </table>
+        </div>
+
+      </div><!-- /ops-panel -->
+
+      <!-- ─── Response panel ─── -->
+      <div class="response-panel">
+        <div class="response-header">
+          <span class="res-title">Response</span>
+          <span class="status-pill" id="statusPill" style="display:none"></span>
+          <span class="res-time" id="resTime"></span>
+          <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;margin-left:8px" onclick="clearResponse()">Clear</button>
+        </div>
+        <pre id="responseBox"><span style="color:var(--muted)">// Response will appear here</span></pre>
+      </div>
+
+    </div><!-- /content -->
+  </main>
+</div><!-- /layout -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════════════════════
+const getBase = () => document.getElementById('baseUrl').value.replace(/\/$/, '');
+const apiUrl  = (path) => `${getBase()}/api/${path}`;
+
+// ═══════════════════════════════════════════════════════════════════
+//  ENDPOINT REGISTRY
+// ═══════════════════════════════════════════════════════════════════
+const RESOURCES = {
+  'users':            { label: 'Users',            idType: 'number', idLabel: 'ID' },
+  'companies':        { label: 'Companies',         idType: 'text',   idLabel: 'Slug' },
+  'industries':       { label: 'Industries',        idType: 'number', idLabel: 'ID', hasIcon: true },
+  'job-categories':   { label: 'Job Categories',    idType: 'number', idLabel: 'ID', hasIcon: true },
+  'job-types':        { label: 'Job Types',         idType: 'number', idLabel: 'ID', hasIcon: true },
+  'education-levels': { label: 'Education Levels',  idType: 'number', idLabel: 'ID' },
+  'experience-levels':{ label: 'Experience Levels', idType: 'number', idLabel: 'ID', hasMinMax: true },
+  'job-locations':    { label: 'Job Locations',     idType: 'number', idLabel: 'ID', isLocation: true },
+  'salary-ranges':    { label: 'Salary Ranges',     idType: 'number', idLabel: 'ID', hasSalary: true },
+};
+
+// ═══════════════════════════════════════════════════════════════════
+//  GENERIC LOOKUP PANEL BUILDER
+// ═══════════════════════════════════════════════════════════════════
+function buildGenericPanel(resource, cfg) {
+  const r = resource;
+  const isSalary    = !!cfg.hasSalary;
+  const isLocation  = !!cfg.isLocation;
+  const isExp       = !!cfg.hasMinMax;
+  const hasIcon     = !!cfg.hasIcon;
+  const idLabel     = cfg.idLabel || 'ID';
+  const idType      = cfg.idType || 'number';
+
+  // Extra store fields
+  let extraStoreFields = '';
+  if (hasIcon)    extraStoreFields += `<div class="form-row"><label>Icon <span class="optional">(optional)</span></label><input type="text" id="${r}-store-icon" placeholder="fa-briefcase" /></div>`;
+  if (isExp)      extraStoreFields += `<div class="form-row-inline"><div class="form-row"><label>Min Years <span class="optional">(optional)</span></label><input type="number" id="${r}-store-min_years" min="0" /></div><div class="form-row"><label>Max Years <span class="optional">(optional)</span></label><input type="number" id="${r}-store-max_years" min="0" /></div></div>`;
+  if (isSalary)   extraStoreFields += `<div class="form-row-inline"><div class="form-row"><label>Min Salary <span class="optional">(optional)</span></label><input type="number" id="${r}-store-min_salary" min="0" /></div><div class="form-row"><label>Max Salary <span class="optional">(optional)</span></label><input type="number" id="${r}-store-max_salary" min="0" /></div></div><div class="form-row"><label>Currency <span class="optional">(default UGX)</span></label><input type="text" id="${r}-store-currency" value="UGX" /></div>`;
+  if (isLocation) extraStoreFields = `<div class="form-row-inline"><div class="form-row"><label>District <span class="required">*</span></label><input type="text" id="${r}-store-district" placeholder="Kampala" /></div><div class="form-row"><label>Country <span class="optional">(default UG)</span></label><input type="text" id="${r}-store-country" value="UG" maxlength="10" /></div></div>`;
+
+  // Name field (not for location)
+  const nameField = isLocation ? '' : `<div class="form-row"><label>Name <span class="required">*</span></label><input type="text" id="${r}-store-name" /></div>`;
+
+  // Extra update fields
+  let extraUpdateFields = '';
+  if (hasIcon)    extraUpdateFields += `<div class="form-row"><label>Icon <span class="optional">(optional)</span></label><input type="text" id="${r}-update-icon" /></div>`;
+  if (isExp)      extraUpdateFields += `<div class="form-row-inline"><div class="form-row"><label>Min Years</label><input type="number" id="${r}-update-min_years" min="0" /></div><div class="form-row"><label>Max Years</label><input type="number" id="${r}-update-max_years" min="0" /></div></div>`;
+  if (isSalary)   extraUpdateFields += `<div class="form-row-inline"><div class="form-row"><label>Min Salary</label><input type="number" id="${r}-update-min_salary" min="0" /></div><div class="form-row"><label>Max Salary</label><input type="number" id="${r}-update-max_salary" min="0" /></div></div><div class="form-row"><label>Currency</label><input type="text" id="${r}-update-currency" /></div>`;
+  if (isLocation) extraUpdateFields = `<div class="form-row-inline"><div class="form-row"><label>District <span class="optional">(optional)</span></label><input type="text" id="${r}-update-district" /></div><div class="form-row"><label>Country <span class="optional">(optional)</span></label><input type="text" id="${r}-update-country" maxlength="10" /></div></div>`;
+
+  const updateNameField = isLocation ? '' : `<div class="form-row"><label>Name <span class="optional">(optional)</span></label><input type="text" id="${r}-update-name" /></div>`;
+
+  const mainStoreFields = isLocation ? '' : `
+    <div class="form-row"><label>Description <span class="optional">(optional)</span></label><textarea id="${r}-store-description"></textarea></div>
+    <div class="form-row"><label>Meta Title <span class="optional">(optional)</span></label><input type="text" id="${r}-store-meta_title" /></div>
+    <div class="form-row"><label>Meta Description <span class="optional">(optional)</span></label><input type="text" id="${r}-store-meta_description" /></div>
+  `;
+
+  const locationStoreFields = isLocation ? `
+    <div class="form-row"><label>Description <span class="optional">(optional)</span></label><textarea id="${r}-store-description"></textarea></div>
+    <div class="form-row"><label>Meta Title <span class="optional">(optional)</span></label><input type="text" id="${r}-store-meta_title" /></div>
+  ` : '';
+
+  return `
+  <!-- INDEX -->
+  <div id="op-${r}-index" class="op-section">
+    <div class="op-card">
+      <div class="op-card-header open" onclick="toggleCard(this)">
+        <span class="badge badge-get">GET</span>
+        <span class="op-title">List ${cfg.label}</span>
+        <span class="op-url">/api/v1/${r}</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="op-card-body open">
+        ${isLocation
+          ? `<div class="form-row-inline"><div class="form-row"><label>Search <span class="optional">(district/country)</span></label><input type="text" id="${r}-index-search" /></div><div class="form-row"><label>Country <span class="optional">(optional)</span></label><input type="text" id="${r}-index-country" placeholder="UG" /></div></div>`
+          : `<div class="form-row"><label>Search <span class="optional">(name)</span></label><input type="text" id="${r}-index-search" /></div>`
+        }
+        ${isSalary ? `<div class="form-row"><label>Currency <span class="optional">(optional)</span></label><input type="text" id="${r}-index-currency" placeholder="UGX" /></div>` : ''}
+        <div class="form-row-inline">
+          <div class="form-row"><label>is_active</label><select id="${r}-index-is_active"><option value="">— any —</option><option value="true">true</option><option value="false">false</option></select></div>
+          <div class="form-row"><label>Per Page</label><input type="number" id="${r}-index-per_page" value="15" /></div>
+        </div>
+        <div class="btn-row"><button class="btn btn-primary" onclick="doIndex('${r}')">Send Request</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHOW -->
+  <div id="op-${r}-show" class="op-section" style="display:none">
+    <div class="op-card">
+      <div class="op-card-header open" onclick="toggleCard(this)">
+        <span class="badge badge-get">GET</span>
+        <span class="op-title">Show ${cfg.label.replace(/s$/, '')}</span>
+        <span class="op-url">/api/v1/${r}/{${idLabel.toLowerCase()}}</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="op-card-body open">
+        <div class="form-row"><label>${idLabel} <span class="required">*</span></label><input type="${idType}" id="${r}-show-id" /></div>
+        <div class="btn-row"><button class="btn btn-primary" onclick="doShow('${r}', document.getElementById('${r}-show-id').value)">Send Request</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATE -->
+  <div id="op-${r}-store" class="op-section" style="display:none">
+    <div class="op-card">
+      <div class="op-card-header open" onclick="toggleCard(this)">
+        <span class="badge badge-post">POST</span>
+        <span class="op-title">Create ${cfg.label.replace(/s$/, '')}</span>
+        <span class="op-url">/api/v1/${r}</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="op-card-body open">
+        ${nameField}
+        ${extraStoreFields}
+        ${mainStoreFields}
+        ${locationStoreFields}
+        <div class="form-row-inline">
+          <div class="form-row"><label>is_active <span class="optional">(default true)</span></label><select id="${r}-store-is_active"><option value="true">true</option><option value="false">false</option></select></div>
+          <div class="form-row"><label>Sort Order <span class="optional">(optional)</span></label><input type="number" id="${r}-store-sort_order" value="0" min="0" /></div>
+        </div>
+        <div class="btn-row"><button class="btn btn-primary" onclick="doStore('${r}', getGenericPayload('${r}', 'store'))">Send Request</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UPDATE -->
+  <div id="op-${r}-update" class="op-section" style="display:none">
+    <div class="op-card">
+      <div class="op-card-header open" onclick="toggleCard(this)">
+        <span class="badge badge-patch">PATCH</span>
+        <span class="op-title">Update ${cfg.label.replace(/s$/, '')}</span>
+        <span class="op-url">/api/v1/${r}/{${idLabel.toLowerCase()}}</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="op-card-body open">
+        <div class="form-row"><label>${idLabel} <span class="required">*</span></label><input type="${idType}" id="${r}-update-id" /></div>
+        ${updateNameField}
+        ${extraUpdateFields}
+        ${isLocation ? '' : `
+        <div class="form-row"><label>Description <span class="optional">(optional)</span></label><textarea id="${r}-update-description"></textarea></div>
+        <div class="form-row"><label>Meta Title <span class="optional">(optional)</span></label><input type="text" id="${r}-update-meta_title" /></div>
+        `}
+        <div class="form-row-inline">
+          <div class="form-row"><label>is_active</label><select id="${r}-update-is_active"><option value="">— unchanged —</option><option value="true">true</option><option value="false">false</option></select></div>
+          <div class="form-row"><label>Sort Order</label><input type="number" id="${r}-update-sort_order" min="0" /></div>
+        </div>
+        <div class="btn-row"><button class="btn btn-primary" onclick="doUpdate('${r}', document.getElementById('${r}-update-id').value, getGenericPayload('${r}', 'update'))">Send Request</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE -->
+  <div id="op-${r}-destroy" class="op-section" style="display:none">
+    <div class="op-card">
+      <div class="op-card-header open" onclick="toggleCard(this)">
+        <span class="badge badge-delete">DEL</span>
+        <span class="op-title">Delete ${cfg.label.replace(/s$/, '')}</span>
+        <span class="op-url">/api/v1/${r}/{${idLabel.toLowerCase()}}</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="op-card-body open">
+        <div class="form-row"><label>${idLabel} <span class="required">*</span></label><input type="${idType}" id="${r}-destroy-id" /></div>
+        <div class="btn-row"><button class="btn btn-danger" onclick="doDestroy('${r}', document.getElementById('${r}-destroy-id').value)">Delete</button></div>
+      </div>
+    </div>
+  </div>
+  `;
+}
+
+// Build generic panels on load
+(function buildPanels() {
+  const generics = [
+    'industries', 'job-categories', 'job-types',
+    'education-levels', 'experience-levels', 'job-locations', 'salary-ranges'
+  ];
+  generics.forEach(r => {
+    const panel = document.getElementById(`panel-${r}`);
+    if (panel) panel.innerHTML = buildGenericPanel(r, RESOURCES[r]);
+  });
+
+  // Build endpoint reference table
+  const tbody = document.getElementById('refTableBody');
+  const methods = [
+    { m: 'GET',   label: 'badge-get',    suffix: '' },
+    { m: 'GET',   label: 'badge-get',    suffix: '/{id}' },
+    { m: 'POST',  label: 'badge-post',   suffix: '' },
+    { m: 'PATCH', label: 'badge-patch',  suffix: '/{id}' },
+    { m: 'DELETE',label: 'badge-delete', suffix: '/{id}' },
+  ];
+  const descs = ['List (paginated)', 'Show single', 'Create', 'Update', 'Delete'];
+  Object.keys(RESOURCES).forEach(r => {
+    methods.forEach((meth, i) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="badge ${meth.label}">${meth.m}</span></td>
+        <td>/api/v1/${r}${meth.suffix}</td>
+        <td style="color:var(--muted)">${descs[i]} ${RESOURCES[r].label}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════════════════════
+let currentResource = null;
+let currentOp = 'index';
+
+function showResource(resource) {
+  // Hide welcome state
+  document.getElementById('welcomeState').style.display = 'none';
+
+  // Hide all panels
+  document.querySelectorAll('[id^="panel-"]').forEach(el => el.style.display = 'none');
+
+  const panel = document.getElementById(`panel-${resource}`);
+  if (panel) panel.style.display = 'block';
+
+  // Update nav active state
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  const navBtn = document.getElementById(`nav-${resource}`);
+  if (navBtn) navBtn.classList.add('active');
+
+  const opTabs = document.getElementById('opTabs');
+  if (resource === 'ref') {
+    opTabs.style.display = 'none';
+  } else {
+    opTabs.style.display = 'flex';
+    currentResource = resource;
+    showOp('index');
+  }
+}
+
+function showOp(op) {
+  if (!currentResource) return;
+  currentOp = op;
+
+  // Update tab active state
+  ['index','show','store','update','destroy'].forEach(o => {
+    const tab = document.getElementById(`tab-${o}`);
+    if (tab) tab.classList.toggle('active', o === op);
+  });
+
+  // Show/hide op sections
+  document.querySelectorAll(`#panel-${currentResource} .op-section`).forEach(el => {
+    el.style.display = 'none';
+  });
+  const target = document.getElementById(`op-${currentResource}-${op}`);
+  if (target) target.style.display = 'block';
+}
+
+function toggleCard(header) {
+  header.classList.toggle('open');
+  const body = header.nextElementSibling;
+  body.classList.toggle('open');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  HTTP HELPERS
+// ═══════════════════════════════════════════════════════════════════
+async function request(method, url, body = null) {
+  const start = performance.now();
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+  };
+  if (body) opts.body = JSON.stringify(body);
+
+  let res, json, elapsed;
+  try {
+    res     = await fetch(url, opts);
+    json    = await res.json();
+    elapsed = Math.round(performance.now() - start);
+    renderResponse(res.status, json, elapsed);
+  } catch (err) {
+    renderError(err.message);
+  }
+}
+
+function buildQuery(params) {
+  const q = Object.entries(params).filter(([, v]) => v !== '' && v !== null && v !== undefined);
+  return q.length ? '?' + new URLSearchParams(q).toString() : '';
+}
+
+// ── Operations ─────────────────────────────────────────────────────
+function doIndex(resource) {
+  const params = {};
+  const searchEl    = document.getElementById(`${resource}-index-search`);
+  const isActiveEl  = document.getElementById(`${resource}-index-is_active`);
+  const perPageEl   = document.getElementById(`${resource}-index-per_page`);
+  const countryEl   = document.getElementById(`${resource}-index-country`);
+  const currencyEl  = document.getElementById(`${resource}-index-currency`);
+  const isVerEl     = document.getElementById(`${resource}-index-is_verified`);
+  const industryEl  = document.getElementById(`${resource}-index-industry_id`);
+
+  if (searchEl?.value)   params.search      = searchEl.value;
+  if (isActiveEl?.value) params.is_active   = isActiveEl.value;
+  if (perPageEl?.value)  params.per_page    = perPageEl.value;
+  if (countryEl?.value)  params.country     = countryEl.value;
+  if (currencyEl?.value) params.currency    = currencyEl.value;
+  if (isVerEl?.value)    params.is_verified = isVerEl.value;
+  if (industryEl?.value) params.industry_id = industryEl.value;
+
+  request('GET', apiUrl(`v1/${resource}`) + buildQuery(params));
+}
+
+function doShow(resource, id) {
+  if (!id) return alert(`Please enter a ${RESOURCES[resource]?.idLabel || 'ID'}`);
+  request('GET', apiUrl(`v1/${resource}/${id}`));
+}
+
+function doStore(resource, payload) {
+  request('POST', apiUrl(`v1/${resource}`), payload);
+}
+
+function doUpdate(resource, id, payload) {
+  if (!id) return alert(`Please enter a ${RESOURCES[resource]?.idLabel || 'ID'}`);
+  // Remove empty string values so only changed fields are sent (PATCH semantics)
+  const cleaned = Object.fromEntries(Object.entries(payload).filter(([, v]) => v !== ''));
+  request('PATCH', apiUrl(`v1/${resource}/${id}`), cleaned);
+}
+
+function doDestroy(resource, id) {
+  if (!id) return alert(`Please enter a ${RESOURCES[resource]?.idLabel || 'ID'}`);
+  if (!confirm(`Delete ${resource.replace(/-/g,' ')} "${id}"? This cannot be undone.`)) return;
+  request('DELETE', apiUrl(`v1/${resource}/${id}`));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  PAYLOAD BUILDERS
+// ═══════════════════════════════════════════════════════════════════
+function val(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+
+function getUsersPayload() {
+  return {
+    first_name:   val('users-store-first_name'),
+    last_name:    val('users-store-last_name'),
+    email:        val('users-store-email'),
+    phone:        val('users-store-phone')       || undefined,
+    role_id:      val('users-store-role_id')     || undefined,
+    country_code: val('users-store-country_code')|| undefined,
+    is_active:    val('users-store-is_active') === 'true',
+  };
+}
+
+function getUsersUpdatePayload() {
+  const p = {};
+  if (val('users-update-first_name')) p.first_name   = val('users-update-first_name');
+  if (val('users-update-last_name'))  p.last_name    = val('users-update-last_name');
+  if (val('users-update-email'))      p.email        = val('users-update-email');
+  if (val('users-update-phone'))      p.phone        = val('users-update-phone');
+  const ia = val('users-update-is_active');
+  if (ia)  p.is_active = ia === 'true';
+  return p;
+}
+
+function getCompanyPayload(mode) {
+  const pfx = `companies-${mode}`;
+  const p = {};
+  if (val(`${pfx}-name`))          p.name          = val(`${pfx}-name`);
+  if (val(`${pfx}-description`))   p.description   = val(`${pfx}-description`);
+  if (val(`${pfx}-website`))       p.website       = val(`${pfx}-website`);
+  if (val(`${pfx}-contact_name`))  p.contact_name  = val(`${pfx}-contact_name`);
+  if (val(`${pfx}-contact_email`)) p.contact_email = val(`${pfx}-contact_email`);
+  if (val(`${pfx}-contact_phone`)) p.contact_phone = val(`${pfx}-contact_phone`);
+  if (val(`${pfx}-company_size`))  p.company_size  = val(`${pfx}-company_size`);
+  if (val(`${pfx}-industry_id`))   p.industry_id   = parseInt(val(`${pfx}-industry_id`));
+  const ia = val(`${pfx}-is_active`);
+  if (ia) p.is_active = ia === 'true';
+  const iv = val(`${pfx}-is_verified`);
+  if (iv) p.is_verified = iv === 'true';
+  return p;
+}
+
+function getGenericPayload(resource, mode) {
+  const pfx = `${resource}-${mode}`;
+  const cfg = RESOURCES[resource] || {};
+  const p   = {};
+
+  // Standard fields
+  ['name','description','meta_title','meta_description','icon'].forEach(f => {
+    const v = val(`${pfx}-${f}`);
+    if (v) p[f] = v;
+  });
+
+  // Location-specific
+  if (cfg.isLocation) {
+    const dist = val(`${pfx}-district`);
+    const ctry = val(`${pfx}-country`);
+    if (dist) p.district = dist;
+    if (ctry) p.country  = ctry;
+  }
+
+  // Experience level specific
+  if (cfg.hasMinMax) {
+    const mn = val(`${pfx}-min_years`);
+    const mx = val(`${pfx}-max_years`);
+    if (mn !== '') p.min_years = parseInt(mn);
+    if (mx !== '') p.max_years = parseInt(mx);
+  }
+
+  // Salary range specific
+  if (cfg.hasSalary) {
+    const mn  = val(`${pfx}-min_salary`);
+    const mx  = val(`${pfx}-max_salary`);
+    const cur = val(`${pfx}-currency`);
+    if (mn  !== '') p.min_salary = parseFloat(mn);
+    if (mx  !== '') p.max_salary = parseFloat(mx);
+    if (cur)        p.currency   = cur;
+  }
+
+  // Common
+  const ia = val(`${pfx}-is_active`);
+  if (ia) p.is_active = ia === 'true';
+  const so = val(`${pfx}-sort_order`);
+  if (so !== '') p.sort_order = parseInt(so);
+
+  return p;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  RESPONSE RENDERING
+// ═══════════════════════════════════════════════════════════════════
+function renderResponse(status, json, ms) {
+  const pill    = document.getElementById('statusPill');
+  const timeEl  = document.getElementById('resTime');
+  const pre     = document.getElementById('responseBox');
+
+  pill.style.display = 'inline-block';
+  pill.textContent   = status;
+  pill.className     = `status-pill ${status < 300 ? 'status-2xx' : status < 500 ? 'status-4xx' : 'status-5xx'}`;
+  timeEl.textContent = `${ms} ms`;
+  pre.innerHTML      = syntaxHighlight(JSON.stringify(json, null, 2));
+}
+
+function renderError(msg) {
+  const pill   = document.getElementById('statusPill');
+  const timeEl = document.getElementById('resTime');
+  const pre    = document.getElementById('responseBox');
+
+  pill.style.display = 'inline-block';
+  pill.className     = 'status-pill status-5xx';
+  pill.textContent   = 'ERR';
+  timeEl.textContent = '';
+  pre.innerHTML      = `<span style="color:var(--red)">${escapeHtml(msg)}</span>`;
+}
+
+function clearResponse() {
+  document.getElementById('statusPill').style.display = 'none';
+  document.getElementById('resTime').textContent = '';
+  document.getElementById('responseBox').innerHTML = '<span style="color:var(--muted)">// Response will appear here</span>';
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function syntaxHighlight(json) {
+  json = escapeHtml(json);
+  return json.replace(
+    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,
+    (match) => {
+      let cls = 'json-num';
+      if (/^"/.test(match)) {
+        cls = /:$/.test(match) ? 'json-key' : 'json-str';
+      } else if (/true|false/.test(match)) {
+        cls = 'json-bool';
+      } else if (/null/.test(match)) {
+        cls = 'json-null';
+      }
+      return `<span class="${cls}">${match}</span>`;
+    }
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  INIT — open Users by default
+// ═══════════════════════════════════════════════════════════════════
+showResource('users');
+</script>
+</body>
+</html>
