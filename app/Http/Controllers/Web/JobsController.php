@@ -159,158 +159,158 @@ class JobsController extends Controller
     }
     
     
-/**
- * Format job data for API response - FIXED VERSION
- */
-private function formatJobData($job, $detailed = false)
-{
-    try {
-        // Base data with safe null checks
-        $baseData = [
-            'id' => $job->id,
-            'job_title' => $job->job_title ?? '',
-            'slug' => $job->slug ?? '',
-            'job_description' => $job->job_description ?? '',
-            'responsibilities' => $job->responsibilities ?? '',
-            'qualifications' => $job->qualifications ?? '',
-            'skills' => $job->skills ?? '',
-            'application_procedure' => $job->application_procedure ?? '',
-            'email' => $job->email ?? '',
-            'telephone' => $job->telephone ?? '',
-            'duty_station' => $job->duty_station ?? '',
-            'street_address' => $job->street_address ?? '',
-            'location_type' => $job->location_type ?? 'on-site',
-            'work_hours' => $job->work_hours ?? '',
-            'employment_type' => $job->employment_type ?? 'full-time',
-            'salary_amount' => $job->salary_amount,
-            'currency' => $job->currency ?? 'UGX',
-            'payment_period' => $job->payment_period ?? 'monthly',
-            'is_featured' => (bool) ($job->is_featured ?? false),
-            'is_urgent' => (bool) ($job->is_urgent ?? false),
-            'is_verified' => (bool) ($job->is_verified ?? false),
-            'view_count' => (int) ($job->view_count ?? 0),
-            'application_count' => (int) ($job->application_count ?? 0),
-            'deadline' => $job->deadline ? $job->deadline->format('Y-m-d') : null,
-            'created_at' => $job->created_at ? $job->created_at->format('Y-m-d H:i:s') : now()->format('Y-m-d H:i:s'),
-            'published_at' => $job->published_at ? $job->published_at->format('Y-m-d H:i:s') : null,
-        ];
-
-        // Add formatted salary
-        $baseData['formatted_salary'] = $this->formatSalary($job);
-
-        // Safely add company data
-        if ($job->company) {
-            $baseData['company'] = [
-                'id' => $job->company->id,
-                'name' => $job->company->name ?? '',
-                'logo' => $job->company->logo_url ?? null,
-                'website' => $job->company->website ?? null,
+    /**
+     * Format job data for API response - FIXED VERSION
+     */
+    private function formatJobData($job, $detailed = false)
+    {
+        try {
+            // Base data with safe null checks
+            $baseData = [
+                'id' => $job->id,
+                'job_title' => $job->job_title ?? '',
+                'slug' => $job->slug ?? '',
+                'job_description' => $job->job_description ?? '',
+                'responsibilities' => $job->responsibilities ?? '',
+                'qualifications' => $job->qualifications ?? '',
+                'skills' => $job->skills ?? '',
+                'application_procedure' => $job->application_procedure ?? '',
+                'email' => $job->email ?? '',
+                'telephone' => $job->telephone ?? '',
+                'duty_station' => $job->duty_station ?? '',
+                'street_address' => $job->street_address ?? '',
+                'location_type' => $job->location_type ?? 'on-site',
+                'work_hours' => $job->work_hours ?? '',
+                'employment_type' => $job->employment_type ?? 'full-time',
+                'salary_amount' => $job->salary_amount,
+                'currency' => $job->currency ?? 'UGX',
+                'payment_period' => $job->payment_period ?? 'monthly',
+                'is_featured' => (bool) ($job->is_featured ?? false),
+                'is_urgent' => (bool) ($job->is_urgent ?? false),
+                'is_verified' => (bool) ($job->is_verified ?? false),
+                'view_count' => (int) ($job->view_count ?? 0),
+                'application_count' => (int) ($job->application_count ?? 0),
+                'deadline' => $job->deadline ? $job->deadline->format('Y-m-d') : null,
+                'created_at' => $job->created_at ? $job->created_at->format('Y-m-d H:i:s') : now()->format('Y-m-d H:i:s'),
+                'published_at' => $job->published_at ? $job->published_at->format('Y-m-d H:i:s') : null,
             ];
-        } else {
-            $baseData['company'] = null;
-        }
 
-        // Safely add job location
-        if ($job->jobLocation) {
-            $baseData['job_location'] = [
-                'id' => $job->jobLocation->id,
-                'country' => $job->jobLocation->country ?? '',
-                'district' => $job->jobLocation->district ?? '',
-                'name' => $job->jobLocation->district ?? $job->jobLocation->country ?? '',
-            ];
-        } else {
-            $baseData['job_location'] = null;
-        }
+            // Add formatted salary
+            $baseData['formatted_salary'] = $this->formatSalary($job);
 
-        // Safely add job type
-        if ($job->jobType) {
-            $baseData['job_type'] = [
-                'id' => $job->jobType->id,
-                'name' => $job->jobType->name ?? '',
-            ];
-        } else {
-            $baseData['job_type'] = ['name' => $job->employment_type ?? 'Full Time'];
-        }
+            // Safely add company data
+            if ($job->company) {
+                $baseData['company'] = [
+                    'id' => $job->company->id,
+                    'name' => $job->company->name ?? '',
+                    'logo' => $job->company->logo_url ?? null,
+                    'website' => $job->company->website ?? null,
+                ];
+            } else {
+                $baseData['company'] = null;
+            }
 
-        // Safely add experience level
-        if ($job->experienceLevel) {
-            $baseData['experience_level'] = [
-                'id' => $job->experienceLevel->id,
-                'name' => $job->experienceLevel->name ?? '',
-            ];
-        } else {
-            $baseData['experience_level'] = null;
-        }
+            // Safely add job location
+            if ($job->jobLocation) {
+                $baseData['job_location'] = [
+                    'id' => $job->jobLocation->id,
+                    'country' => $job->jobLocation->country ?? '',
+                    'district' => $job->jobLocation->district ?? '',
+                    'name' => $job->jobLocation->district ?? $job->jobLocation->country ?? '',
+                ];
+            } else {
+                $baseData['job_location'] = null;
+            }
 
-        // Safely add education level
-        if ($job->educationLevel) {
-            $baseData['education_level'] = [
-                'id' => $job->educationLevel->id,
-                'name' => $job->educationLevel->name ?? '',
-            ];
-        } else {
-            $baseData['education_level'] = null;
-        }
+            // Safely add job type
+            if ($job->jobType) {
+                $baseData['job_type'] = [
+                    'id' => $job->jobType->id,
+                    'name' => $job->jobType->name ?? '',
+                ];
+            } else {
+                $baseData['job_type'] = ['name' => $job->employment_type ?? 'Full Time'];
+            }
 
-        // Safely add salary range
-        if ($job->salaryRange) {
-            $baseData['salary_range'] = [
-                'id' => $job->salaryRange->id,
-                'name' => $job->salaryRange->name ?? '',
-                'min' => $job->salaryRange->min_salary ?? null,
-                'max' => $job->salaryRange->max_salary ?? null,
-                'currency' => $job->salaryRange->currency ?? 'UGX',
-            ];
-        } else {
-            $baseData['salary_range'] = null;
-        }
+            // Safely add experience level
+            if ($job->experienceLevel) {
+                $baseData['experience_level'] = [
+                    'id' => $job->experienceLevel->id,
+                    'name' => $job->experienceLevel->name ?? '',
+                ];
+            } else {
+                $baseData['experience_level'] = null;
+            }
 
-        // Add detailed data if requested
-        if ($detailed) {
-            $detailedData = [
-                'job_category' => $job->jobCategory ? [
-                    'id' => $job->jobCategory->id,
-                    'name' => $job->jobCategory->name ?? '',
-                ] : null,
-                'industry' => $job->industry ? [
-                    'id' => $job->industry->id,
-                    'name' => $job->industry->name ?? '',
-                ] : null,
-                'poster' => $job->poster ? [
-                    'id' => $job->poster->id,
-                    'name' => $job->poster->name ?? '',
-                    'email' => $job->poster->email ?? '',
-                ] : null,
-                'meta_title' => $job->meta_title ?? '',
-                'meta_description' => $job->meta_description ?? '',
-                'keywords' => $job->keywords ?? '',
-                'seo_score' => $job->seo_score ?? null,
-                'application_requirements' => [
-                    'cover_letter_required' => (bool) ($job->is_cover_letter_required ?? false),
-                    'resume_required' => (bool) ($job->is_resume_required ?? true),
-                    'academic_documents_required' => (bool) ($job->is_academic_documents_required ?? false),
-                ]
-            ];
+            // Safely add education level
+            if ($job->educationLevel) {
+                $baseData['education_level'] = [
+                    'id' => $job->educationLevel->id,
+                    'name' => $job->educationLevel->name ?? '',
+                ];
+            } else {
+                $baseData['education_level'] = null;
+            }
+
+            // Safely add salary range
+            if ($job->salaryRange) {
+                $baseData['salary_range'] = [
+                    'id' => $job->salaryRange->id,
+                    'name' => $job->salaryRange->name ?? '',
+                    'min' => $job->salaryRange->min_salary ?? null,
+                    'max' => $job->salaryRange->max_salary ?? null,
+                    'currency' => $job->salaryRange->currency ?? 'UGX',
+                ];
+            } else {
+                $baseData['salary_range'] = null;
+            }
+
+            // Add detailed data if requested
+            if ($detailed) {
+                $detailedData = [
+                    'job_category' => $job->jobCategory ? [
+                        'id' => $job->jobCategory->id,
+                        'name' => $job->jobCategory->name ?? '',
+                    ] : null,
+                    'industry' => $job->industry ? [
+                        'id' => $job->industry->id,
+                        'name' => $job->industry->name ?? '',
+                    ] : null,
+                    'poster' => $job->poster ? [
+                        'id' => $job->poster->id,
+                        'name' => $job->poster->name ?? '',
+                        'email' => $job->poster->email ?? '',
+                    ] : null,
+                    'meta_title' => $job->meta_title ?? '',
+                    'meta_description' => $job->meta_description ?? '',
+                    'keywords' => $job->keywords ?? '',
+                    'seo_score' => $job->seo_score ?? null,
+                    'application_requirements' => [
+                        'cover_letter_required' => (bool) ($job->is_cover_letter_required ?? false),
+                        'resume_required' => (bool) ($job->is_resume_required ?? true),
+                        'academic_documents_required' => (bool) ($job->is_academic_documents_required ?? false),
+                    ]
+                ];
+                
+                return array_merge($baseData, $detailedData);
+            }
+
+            return $baseData;
+
+        } catch (\Exception $e) {
+            Log::error('Error in formatJobData: ' . $e->getMessage());
+            Log::error('Job ID: ' . ($job->id ?? 'unknown'));
             
-            return array_merge($baseData, $detailedData);
+            // Return basic data if formatting fails
+            return [
+                'id' => $job->id ?? null,
+                'job_title' => $job->job_title ?? 'Unknown Job',
+                'slug' => $job->slug ?? '',
+                'formatted_salary' => 'Negotiable',
+                'error' => 'Partial data - some details unavailable'
+            ];
         }
-
-        return $baseData;
-
-    } catch (\Exception $e) {
-        Log::error('Error in formatJobData: ' . $e->getMessage());
-        Log::error('Job ID: ' . ($job->id ?? 'unknown'));
-        
-        // Return basic data if formatting fails
-        return [
-            'id' => $job->id ?? null,
-            'job_title' => $job->job_title ?? 'Unknown Job',
-            'slug' => $job->slug ?? '',
-            'formatted_salary' => 'Negotiable',
-            'error' => 'Partial data - some details unavailable'
-        ];
     }
-}
     
     /**
      * Format salary for display
@@ -423,11 +423,6 @@ private function formatJobData($job, $detailed = false)
             return response()->json(['Remote', 'Full Stack', 'Manager', 'Developer', 'Engineer', 'Analyst']); // Fallback
         }
     }
-
-
-
-
-
 
     
     /**
@@ -650,8 +645,6 @@ private function formatJobData($job, $detailed = false)
 
 
 
-
-    
 
 
 

@@ -9,7 +9,7 @@ use App\Http\Controllers\Main\{ DashboardController };
 // Authentication Routes
 Route::middleware('guest')->group(function () {
     // Login Routes
-    Route::get('/login', [LoginTokenController::class, 'showLogin'])->name('auth.login');
+    Route::get('/login', [LoginTokenController::class, 'showLogin'])->name('login');
     Route::post('/login', [LoginTokenController::class, 'sendLoginLink'])->name('auth.send-login-link');
     
     // Register Routes

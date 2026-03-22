@@ -38,7 +38,9 @@ use App\Http\Controllers\Api\Jobs\{
 
 Route::prefix('v1')->name('api.v1.')->group(function () {
 
-    // Users
+    // Users    
+    Route::get('users/list', [UserController::class, 'list']);
+    
     Route::apiResource('users',            UserController::class);
 
     // Job-related lookups
@@ -50,4 +52,31 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::apiResource('experience-levels', ExperienceLevelController::class);
     Route::apiResource('education-levels', EducationLevelController::class);
     Route::apiResource('salary-ranges',    SalaryRangeController::class);
+});
+
+
+use App\Http\Controllers\Api\Jobs\JobPostController;
+ 
+Route::prefix('v1')->middleware('api')->group(function () {
+ 
+    // -------------------------------------------------------------------------
+    // Job Posts — CRUD
+    // -------------------------------------------------------------------------
+    Route::apiResource('job-posts', JobPostController::class)->parameters([
+        'job-posts' => 'jobPost'  // force camelCase parameter name
+    ]);
+ 
+    // -------------------------------------------------------------------------
+    // Job Posts — Status / Action endpoints
+    // -------------------------------------------------------------------------
+    Route::prefix('job-posts/{jobPost}')->group(function () {
+        Route::patch('activate',   [JobPostController::class, 'activate']);
+        Route::patch('deactivate', [JobPostController::class, 'deactivate']);
+        Route::patch('verify',     [JobPostController::class, 'verify']);
+        Route::patch('feature',    [JobPostController::class, 'feature']);   // body: { "days": 14 }
+        Route::patch('urgent',     [JobPostController::class, 'markUrgent']);
+    });
+
+    Route::get('v1/users/list', [UserController::class, 'list']);
+ 
 });

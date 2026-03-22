@@ -135,9 +135,9 @@ class JobPostFactory extends Factory
             'application_count' => $this->faker->numberBetween(0, 200),
             'click_count' => $this->faker->numberBetween(0, 1000),
             'is_cover_letter_required' => $this->faker->boolean(60),
-            'is_cover_application_required' => $this->faker->boolean(50),
-            'is_cover_academic_documents_required' => $this->faker->boolean(40),
-            'is_cover_resume_required' => $this->faker->boolean(90),
+            'is_application_required' => $this->faker->boolean(50),
+            'is_academic_documents_required' => $this->faker->boolean(40),
+            'is_resume_required' => $this->faker->boolean(90),
 
             // AI Optimization
             'ai_optimized_title' => $this->generateAIOptimizedTitle($jobTitle),

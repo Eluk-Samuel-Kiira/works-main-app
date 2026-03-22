@@ -66,6 +66,8 @@ return new class extends Migration
             $table->boolean('is_pinged')->default(false);
             $table->timestamp('last_pinged_at')->nullable();
             $table->boolean('is_indexed')->default(false);
+            $table->boolean('is_whatsapp_contact')->default(false);
+            $table->boolean('is_telephone_call')->default(false);
             $table->timestamp('last_indexed_at')->nullable();
             $table->boolean('is_featured')->default(false);
             $table->boolean('is_urgent')->default(false);
@@ -74,10 +76,10 @@ return new class extends Migration
             $table->integer('view_count')->default(0);
             $table->integer('application_count')->default(0);
             $table->integer('click_count')->default(0);
-            $table->boolean('is_cover_application_required')->default(false); // Changed to boolean
-            $table->boolean('is_cover_academic_documents_required')->default(false); // Changed to boolean
-            $table->boolean('is_cover_letter_required')->default(false); // Changed to boolean
-            $table->boolean('is_cover_resume_required')->default(true); // Changed to boolean
+            $table->boolean('is_application_required')->default(false);
+            $table->boolean('is_academic_documents_required')->default(false); 
+            $table->boolean('is_cover_letter_required')->default(false); 
+            $table->boolean('is_resume_required')->default(true);
             
             // AI Optimization
             $table->string('ai_optimized_title')->nullable();
