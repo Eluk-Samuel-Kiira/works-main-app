@@ -104,7 +104,7 @@ class LoginTokenController extends Controller
         } catch (\Exception $e) {
             
             \Log::error('Authentication error: ' . $e->getMessage());
-            return redirect()->route('auth.login')
+            return redirect()->route('login')
                 ->with('error', 'An error occurred during authentication. Please try again.');
         }
     }

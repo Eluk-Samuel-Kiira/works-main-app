@@ -12,6 +12,7 @@ use App\Traits\LogsJobActivities;
 class JobPost extends Model
 {
     use HasFactory, SoftDeletes, LogsJobActivities;
+    protected static bool $skipSeoOnUpdate = false;
 
     protected $fillable = [
         // Core Job Information
@@ -64,6 +65,8 @@ class JobPost extends Model
         
         // Advanced SEO Features
         'is_pinged',
+        'is_whatsapp_contact',
+        'is_telephone_call',
         'last_pinged_at',
         'is_indexed',
         'last_indexed_at',
@@ -78,6 +81,7 @@ class JobPost extends Model
         // Application Requirements
         'is_cover_letter_required',
         'is_resume_required',
+        'is_application_required',
         'is_academic_documents_required',
         
         // AI Optimization
@@ -121,11 +125,11 @@ class JobPost extends Model
         'is_cover_letter_required' => 'boolean',
         'is_resume_required' => 'boolean',
         'is_academic_documents_required' => 'boolean',
-        'structured_data' => 'array',
-        'search_terms' => 'array',
-        'competitor_analysis' => 'array',
-        'ranking_keywords' => 'array',
-        'social_metrics' => 'array',
+        // 'structured_data' => 'array',
+        // 'search_terms' => 'array',
+        // 'competitor_analysis' => 'array',
+        // 'ranking_keywords' => 'array',
+        // 'social_metrics' => 'array',
         'seo_score' => 'decimal:2',
         'content_quality_score' => 'decimal:2',
         'click_through_rate' => 'decimal:2',
@@ -139,53 +143,59 @@ class JobPost extends Model
     {
         parent::boot();
 
-        static::creating(function ($job) {
-            if (empty($job->slug)) {
-                $job->slug = $job->generateAIOptimizedSlug();
-            }
+        // static::creating(function ($job) {
+        //     if (empty($job->slug)) {
+        //         $job->slug = $job->generateAIOptimizedSlug();
+        //     }
             
-            if (empty($job->meta_title)) {
-                $job->meta_title = $job->generateAIMetaTitle();
-            }
+        //     if (empty($job->meta_title)) {
+        //         $job->meta_title = $job->generateAIMetaTitle();
+        //     }
             
-            if (empty($job->meta_description)) {
-                $job->meta_description = $job->generateAIMetaDescription();
-            }
+        //     if (empty($job->meta_description)) {
+        //         $job->meta_description = $job->generateAIMetaDescription();
+        //     }
             
-            if (empty($job->published_at)) {
-                $job->published_at = now();
-            }
+        //     if (empty($job->published_at)) {
+        //         $job->published_at = now();
+        //     }
             
-            // Set default values for required fields
-            $job->currency = $job->currency ?? 'UGX';
-            $job->location_type = $job->location_type ?? 'on-site';
-            $job->employment_type = $job->employment_type ?? 'full-time';
-            $job->is_resume_required = $job->is_resume_required ?? true;
-            $job->view_count = $job->view_count ?? 0;
-            $job->application_count = $job->application_count ?? 0;
-            $job->click_count = $job->click_count ?? 0;
+        //     // Set default values for required fields
+        //     $job->currency = $job->currency ?? 'UGX';
+        //     $job->location_type = $job->location_type ?? 'on-site';
+        //     $job->employment_type = $job->employment_type ?? 'full-time';
+        //     $job->is_resume_required = $job->is_resume_required ?? true;
+        //     $job->view_count = $job->view_count ?? 0;
+        //     $job->application_count = $job->application_count ?? 0;
+        //     $job->click_count = $job->click_count ?? 0;
             
-            // AI-powered SEO optimization
-            $job->runAISEOAnalysis();
-        });
+        //     // AI-powered SEO optimization
+        //     // $job->runAISEOAnalysis();
+        // });
 
-        static::updating(function ($job) {
-            $seoRelevantFields = ['job_title', 'company_id', 'job_location_id', 'job_description', 'salary_amount'];
-            
-            if ($job->isDirty($seoRelevantFields)) {
-                $job->slug = $job->generateAIOptimizedSlug();
-                $job->meta_title = $job->generateAIMetaTitle();
-                $job->meta_description = $job->generateAIMetaDescription();
-                $job->runAISEOAnalysis();
-            }
-        });
+        // static::updating(function ($job) {
+        //     // Only run SEO analysis if we have a fully loaded model
+        //     // and SEO-relevant fields actually changed
+        //     if (!$job->exists || $job->wasRecentlyCreated) return;
 
-        static::created(function ($job) {
-            // Auto-ping search engines for new jobs
-            if ($job->is_active) {
-                $job->pingSearchEngines();
-            }
-        });
+        //     $seoRelevantFields = ['job_title', 'company_id', 'job_location_id', 'job_description', 'salary_amount'];
+
+        //     if ($job->isDirty($seoRelevantFields) && !static::$skipSeoOnUpdate) {
+        //         static::$skipSeoOnUpdate = true;
+        //         $job->slug = $job->generateAIOptimizedSlug();
+        //         $job->meta_title = $job->generateAIMetaTitle();
+        //         $job->meta_description = $job->generateAIMetaDescription();
+        //         // $job->runAISEOAnalysis();
+        //         static::$skipSeoOnUpdate = false;
+        //     }
+        // });
+
+        // static::created(function ($job) {
+        //     // Auto-ping search engines for new jobs
+        //     if ($job->is_active) {
+        //         $job->pingSearchEngines();
+        //     }
+        // });
     }
 
     // Relationships

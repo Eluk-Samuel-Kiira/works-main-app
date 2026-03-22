@@ -88,4 +88,20 @@ class UserController extends Controller
 
         return $this->deleted('User deleted successfully');
     }
+
+    public function list(): JsonResponse
+    {
+        $users = \App\Models\Auth\User::select('id', 'first_name', 'last_name', 'email')
+            ->where('is_active', true)
+            ->whereDoesntHave('roles', fn($q) => $q->where('name', 'job_seeker'))
+            ->orderBy('first_name')
+            ->get()
+            ->map(fn($u) => [
+                'id'    => $u->id,
+                'name'  => trim($u->first_name . ' ' . $u->last_name),
+                'email' => $u->email,
+            ]);
+
+        return response()->json(['data' => $users]);
+    }
 }
