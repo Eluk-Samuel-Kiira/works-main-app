@@ -489,6 +489,12 @@
                 </div>
                 <div class="col-12">
                     <label class="form-label fw-semibold">Job Description <span class="text-danger">*</span></label>
+                    <x-rich-editor
+                        id="descEditor"
+                        name="job_description"
+                        placeholder="Describe the role…"
+                        :height="200"
+                    />
                     <textarea name="job_description" class="form-control" rows="5" required>${esc(job.job_description ?? '')}</textarea>
                 </div>
                 <div class="col-12">
