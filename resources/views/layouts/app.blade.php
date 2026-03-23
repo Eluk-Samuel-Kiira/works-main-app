@@ -13,8 +13,10 @@
 
     <!-- Core Css -->
     <link rel="stylesheet" href="{{ asset('assets/css/styles.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/libs/bootstrap-datepicker/dist/css/bootstrap-datepicker.min.css') }}" />
 
     <title>@yield('title')</title>
+    @stack('rich-editor-styles')
 </head>
 
 <body>
@@ -241,6 +243,9 @@
         });
     </script>
 
+<!-- First, load jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
 <!-- Import Js Files -->
 <script src="{{ asset('assets/js/breadcrumb/breadcrumbChart.js') }}"></script>
 <script src="{{ asset('assets/libs/apexcharts/dist/apexcharts.min.js') }}"></script>
@@ -265,7 +270,18 @@
         codeBlock.textContent = codeBlock.innerHTML;
     });
 </script>
+
+
+<!-- Then load other dependencies -->
+<script src="{{ asset('assets/libs/bootstrap-datepicker/dist/js/bootstrap-datepicker.min.js') }}"></script>
+<script src="{{ asset('assets/js/extra-libs/moment/moment.min.js') }}"></script>
+
+<!-- Then load your custom scripts -->
 <script src="{{ asset('assets/js/dashboards/dashboard1.js') }}"></script>
+<script src="{{ asset('assets/js/forms/datepicker-init.js') }}"></script>
+
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"ceaa0eef431a46f3b195537c6963f062","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+@stack('rich-editor-scripts')
 </body>
 
 </html>

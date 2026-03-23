@@ -705,11 +705,19 @@ class JobPost extends Model
             'is_featured' => true,
             'featured_until' => now()->addDays($days)
         ]);
+
+        $this->logAction('featured', 'status_change', [
+            'featured_days' => $days,
+            'featured_until' => $this->featured_until
+        ]);
     }
 
     public function markAsUrgent()
     {
         $this->update(['is_urgent' => true]);
+        $this->logAction('urgent', 'status_change', [
+            'marked_urgent_at' => now()->toDateTimeString()
+        ]);
     }
 
     public function activate()
@@ -719,15 +727,27 @@ class JobPost extends Model
             'published_at' => now()
         ]);
         $this->pingSearchEngines();
+
+        $this->logAction('activated', 'status_change', [
+            'previous_status' => 'inactive',
+            'new_status' => 'active'
+        ]);
     }
 
     public function deactivate()
     {
         $this->update(['is_active' => false]);
+        $this->logAction('deactivated', 'status_change', [
+            'previous_status' => 'active',
+            'new_status' => 'inactive'
+        ]);
     }
 
     public function verify()
     {
         $this->update(['is_verified' => true]);
+        $this->logAction('verified', 'status_change', [
+            'verified_at' => now()->toDateTimeString()
+        ]);
     }
 }

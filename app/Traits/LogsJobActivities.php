@@ -2,7 +2,7 @@
 
 namespace App\Traits;
 
-use App\Models\Job\JobAuditLog;
+use App\Models\System\JobAuditLog;
 
 trait LogsJobActivities
 {

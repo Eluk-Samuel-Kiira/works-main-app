@@ -62,6 +62,7 @@ Route::prefix('v1')->middleware('api')->group(function () {
     // -------------------------------------------------------------------------
     // Job Posts — CRUD
     // -------------------------------------------------------------------------
+    Route::post('/job-posts/check-duplicate', [JobPostController::class, 'checkDuplicate']);
     Route::apiResource('job-posts', JobPostController::class)->parameters([
         'job-posts' => 'jobPost'  // force camelCase parameter name
     ]);

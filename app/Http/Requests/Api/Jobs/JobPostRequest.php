@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api\Jobs;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\ValidationException;
 
 class JobPostRequest extends FormRequest
 {
@@ -31,7 +32,7 @@ class JobPostRequest extends FormRequest
             'telephone'             => 'nullable|string|max:50',
 
             // ----------------------------------------------------------------
-            // Relationships — migration: foreignId columns
+            // Relationships
             // ----------------------------------------------------------------
             'company_id'          => "{$required}|integer|exists:companies,id",
             'job_category_id'     => "{$required}|integer|exists:job_categories,id",
@@ -60,16 +61,13 @@ class JobPostRequest extends FormRequest
 
             // ----------------------------------------------------------------
             // Job Specifications
-            // migration: location_type default on-site, employment_type default full-time
             // ----------------------------------------------------------------
             'location_type'   => 'nullable|string|in:remote,hybrid,on-site',
             'work_hours'      => 'nullable|string|max:255',
             'employment_type' => 'nullable|string|in:full-time,part-time,contract,internship,volunteer,temporary',
 
             // ----------------------------------------------------------------
-            // SEO — migration: meta_title(string), meta_description(text),
-            //        keywords(text), canonical_url(string), structured_data(json),
-            //        focus_keyphrase(text), seo_synonyms(text)
+            // SEO
             // ----------------------------------------------------------------
             'meta_title'       => 'nullable|string|max:70',
             'meta_description' => 'nullable|string|max:170',
@@ -79,7 +77,7 @@ class JobPostRequest extends FormRequest
             'seo_synonyms'     => 'nullable|string',
 
             // ----------------------------------------------------------------
-            // Boolean Flags — exactly matching migration column names
+            // Boolean Flags
             // ----------------------------------------------------------------
             'is_pinged'          => 'nullable|boolean',
             'is_indexed'         => 'nullable|boolean',
@@ -91,11 +89,7 @@ class JobPostRequest extends FormRequest
             'is_verified'        => 'nullable|boolean',
 
             // ----------------------------------------------------------------
-            // Application Requirements — migration column names:
-            //   is_application_required (boolean)
-            //   is_academic_documents_required (boolean)
-            //   is_cover_letter_required (boolean)
-            //   is_resume_required (boolean)
+            // Application Requirements
             // ----------------------------------------------------------------
             'is_application_required'        => 'nullable|boolean',
             'is_academic_documents_required' => 'nullable|boolean',
@@ -110,38 +104,200 @@ class JobPostRequest extends FormRequest
         ];
     }
 
+    /**
+     * After validation hook for custom validation
+     */
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            $this->validateJobDescription($validator);
+            $this->validateContactMethods($validator);
+            $this->validateLinks($validator);
+        });
+    }
+
+    /**
+     * Validate job description doesn't contain phone numbers or emails
+     * when those fields are empty
+     */
+    protected function validateJobDescription($validator)
+    {
+        $description = $this->input('job_description');
+        $email = $this->input('email');
+        $telephone = $this->input('telephone');
+        
+        if (empty($description)) {
+            return;
+        }
+        
+        // Pattern to detect email addresses
+        $emailPattern = '/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/';
+        
+        // Pattern to detect phone numbers (various formats)
+        $phonePattern = '/(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}|' .
+                        '\+?\d{1,3}[-.\s]?\d{3}[-.\s]?\d{3}[-.\s]?\d{3,4}|' .
+                        '\d{10,}/';
+        
+        $hasEmailInDesc = preg_match($emailPattern, $description);
+        $hasPhoneInDesc = preg_match($phonePattern, $description);
+        
+        // Case 1: No email or phone provided in contact fields
+        if (empty($email) && empty($telephone)) {
+            if ($hasEmailInDesc || $hasPhoneInDesc) {
+                $validator->errors()->add(
+                    'job_description',
+                    'Job description should not contain email addresses or phone numbers. ' .
+                    'Please provide them in the designated contact fields above.'
+                );
+            }
+        }
+        
+        // Case 2: Email not provided but found in description
+        if (empty($email) && $hasEmailInDesc) {
+            $validator->errors()->add(
+                'email',
+                'Email address found in job description. Please provide it in the contact email field.'
+            );
+        }
+        
+        // Case 3: Phone not provided but found in description
+        if (empty($telephone) && $hasPhoneInDesc) {
+            $validator->errors()->add(
+                'telephone',
+                'Phone number found in job description. Please provide it in the telephone field.'
+            );
+        }
+    }
+
+    /**
+     * Validate contact methods based on provided phone number
+     */
+    protected function validateContactMethods($validator)
+    {
+        $telephone = $this->input('telephone');
+        $isWhatsappContact = $this->input('is_whatsapp_contact');
+        $isTelephoneCall = $this->input('is_telephone_call');
+        
+        // If phone number is provided, at least one contact method must be enabled
+        if (!empty($telephone)) {
+            if (!$isWhatsappContact && !$isTelephoneCall) {
+                $validator->errors()->add(
+                    'is_whatsapp_contact',
+                    'When a telephone number is provided, you must specify if it\'s for WhatsApp contact and/or phone calls.'
+                );
+                $validator->errors()->add(
+                    'is_telephone_call',
+                    'When a telephone number is provided, you must specify if it\'s for WhatsApp contact and/or phone calls.'
+                );
+            }
+        } else {
+            // If no phone number, contact method flags should be false or null
+            if ($isWhatsappContact || $isTelephoneCall) {
+                $validator->errors()->add(
+                    'telephone',
+                    'Telephone number is required when enabling WhatsApp contact or phone call options.'
+                );
+            }
+        }
+    }
+
+    /**
+     * Validate that job description contains a link if contact fields are empty
+     */
+    protected function validateLinks($validator)
+    {
+        $description = $this->input('job_description');
+        $email = $this->input('email');
+        $telephone = $this->input('telephone');
+        
+        // If no email and no telephone provided, description must contain a link
+        if (empty($email) && empty($telephone)) {
+            // Pattern to detect URLs
+            $urlPattern = '/(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\/[^\s]*)/';
+            
+            if (!preg_match($urlPattern, $description)) {
+                $validator->errors()->add(
+                    'job_description',
+                    'When no contact email or telephone is provided, the job description must include a link ' .
+                    '(website, application link, etc.) where applicants can apply or get more information.'
+                );
+            }
+        }
+    }
+
     public function attributes(): array
     {
         return [
-            'job_title'                      => 'job title',
-            'job_description'                => 'job description',
-            'company_id'                     => 'company',
-            'job_category_id'                => 'job category',
-            'industry_id'                    => 'industry',
-            'job_location_id'                => 'job location',
-            'job_type_id'                    => 'job type',
-            'experience_level_id'            => 'experience level',
-            'education_level_id'             => 'education level',
-            'salary_range_id'                => 'salary range',
-            'poster_id'                      => 'poster',
-            'location_type'                  => 'location type',
-            'employment_type'                => 'employment type',
-            'payment_period'                 => 'payment period',
-            'is_application_required'        => 'application letter requirement',
-            'is_cover_letter_required'       => 'cover letter requirement',
-            'is_resume_required'             => 'resume requirement',
-            'is_academic_documents_required' => 'academic documents requirement',
-            'is_whatsapp_contact'            => 'whatsapp contact',
-            'is_telephone_call'              => 'telephone call',
-            'applicant_location_requirements'=> 'applicant location requirements',
+            'company_id' => 'company',
+            'job_category_id' => 'job category',
+            'industry_id' => 'industry',
+            'job_location_id' => 'job location',
+            'job_type_id' => 'job type',
+            'experience_level_id' => 'experience level',
+            'education_level_id' => 'education level',
+            'salary_range_id' => 'salary range',
+            'poster_id' => 'poster',
+            'job_title' => 'job title',
+            'job_description' => 'job description',
+            'deadline' => 'application deadline',
+            'email' => 'contact email',
+            'telephone' => 'telephone number',
+            'location_type' => 'location type',
+            'employment_type' => 'employment type',
+            'payment_period' => 'payment period',
+            'meta_title' => 'meta title',
+            'meta_description' => 'meta description',
+            'canonical_url' => 'canonical URL',
+            'work_hours' => 'work hours',
+            'duty_station' => 'duty station',
+            'salary_amount' => 'salary amount',
+            'base_salary' => 'base salary',
         ];
     }
 
     public function messages(): array
     {
         return [
-            'deadline.after_or_equal'       => 'The deadline must be today or a future date.',
-            'featured_until.after_or_equal' => 'The featured until date must be today or a future date.',
+            // Custom messages that override the default ones
+            'deadline.after_or_equal' => 'The :attribute must be today or a future date.',
+            'featured_until.after_or_equal' => 'The :attribute must be today or a future date.',
+            'job_title.max' => 'The :attribute cannot exceed 255 characters.',
+            'meta_title.max' => 'The :attribute cannot exceed 70 characters for SEO optimization.',
+            'meta_description.max' => 'The :attribute cannot exceed 170 characters for SEO optimization.',
+            'salary_amount.numeric' => 'The :attribute must be a valid number.',
+            'salary_amount.min' => 'The :attribute must be at least 0.',
+            'base_salary.numeric' => 'The :attribute must be a valid number.',
+            'base_salary.min' => 'The :attribute must be at least 0.',
         ];
+    }
+
+
+    /**
+     * Prepare the data for validation
+     */
+    protected function prepareForValidation()
+    {
+        // Sanitize phone number (remove spaces and special characters for validation)
+        if ($this->has('telephone')) {
+            $this->merge([
+                'telephone' => preg_replace('/[^0-9+]/', '', $this->telephone)
+            ]);
+        }
+        
+        // Ensure boolean flags are properly cast
+        $booleanFields = [
+            'is_whatsapp_contact', 'is_telephone_call', 'is_featured',
+            'is_urgent', 'is_active', 'is_verified', 'is_pinged', 'is_indexed',
+            'is_application_required', 'is_academic_documents_required',
+            'is_cover_letter_required', 'is_resume_required'
+        ];
+        
+        foreach ($booleanFields as $field) {
+            if ($this->has($field)) {
+                $this->merge([
+                    $field => filter_var($this->$field, FILTER_VALIDATE_BOOLEAN)
+                ]);
+            }
+        }
     }
 }

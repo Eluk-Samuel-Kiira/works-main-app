@@ -1,4 +1,3 @@
-{{-- ============================================================ CREATE MODAL ============================================================ --}}
 <div class="modal fade" id="createModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
@@ -8,6 +7,7 @@
             </div>
             <div class="modal-body">
                 <form id="createForm">
+                    <input type="hidden" name="poster_id" id="c_poster_id" value="{{ auth()->id() }}">
                     <div class="row g-3">
 
                         {{-- Job Title --}}
@@ -20,29 +20,11 @@
                         {{-- Description with lightweight formatter --}}
                         <div class="col-12">
                             <label class="form-label fw-semibold">Job Description <span class="text-danger">*</span></label>
-                            <div class="border rounded overflow-hidden">
-                                {{-- Toolbar --}}
-                                <div class="d-flex flex-wrap gap-1 p-2 border-bottom bg-light" id="descToolbar">
-                                    <button type="button" class="btn btn-sm btn-light border" onclick="descFmt('bold')" title="Bold"><b>B</b></button>
-                                    <button type="button" class="btn btn-sm btn-light border fst-italic" onclick="descFmt('italic')" title="Italic"><i>I</i></button>
-                                    <button type="button" class="btn btn-sm btn-light border" onclick="descFmt('underline')" title="Underline"><u>U</u></button>
-                                    <div class="vr mx-1"></div>
-                                    <button type="button" class="btn btn-sm btn-light border" onclick="descFmt('insertUnorderedList')" title="Bullet list">&#8226; List</button>
-                                    <button type="button" class="btn btn-sm btn-light border" onclick="descFmt('insertOrderedList')" title="Numbered list">1. List</button>
-                                    <div class="vr mx-1"></div>
-                                    <button type="button" class="btn btn-sm btn-light border" onclick="descFmt('formatBlock','h3')" title="Heading">H</button>
-                                    <button type="button" class="btn btn-sm btn-light border" onclick="descFmt('formatBlock','p')" title="Paragraph">P</button>
-                                    <div class="vr mx-1"></div>
-                                    <button type="button" class="btn btn-sm btn-light border" onclick="descFmt('removeFormat')" title="Clear format">✕</button>
-                                </div>
-                                {{-- Editable area --}}
-                                <div id="descEditor"
-                                    contenteditable="true"
-                                    class="p-3"
-                                    style="min-height:160px;max-height:300px;overflow-y:auto;outline:none;font-size:14px;line-height:1.6"
-                                    data-placeholder="Describe the role, responsibilities, and what makes this opportunity exciting…">
-                                </div>
-                            </div>
+                            <x-rich-editor
+                                id="descEditor"
+                                name="job_description"
+                                :height="200"
+                            />
                             <input type="hidden" name="job_description" id="c_job_description">
                         </div>
 
@@ -58,38 +40,48 @@
 
                         <div class="col-12"><hr class="my-1"></div>
 
-                        {{-- Dropdowns row 1 --}}
+                        {{-- Typable Dropdowns row 1 --}}
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Company <span class="text-danger">*</span></label>
-                            <select name="company_id" id="c_company_id" class="form-select" required>
-                                <option value="">— Select company —</option>
-                            </select>
+                            <div class="position-relative">
+                                <input type="text" id="c_company_input" class="form-control" placeholder="Type to search company..." autocomplete="off">
+                                <input type="hidden" name="company_id" id="c_company_id">
+                                <ul class="dropdown-menu w-100" id="c_company_list" style="max-height: 250px; overflow-y: auto;"></ul>
+                            </div>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Category <span class="text-danger">*</span></label>
-                            <select name="job_category_id" id="c_job_category_id" class="form-select" required>
-                                <option value="">— Select category —</option>
-                            </select>
+                            <div class="position-relative">
+                                <input type="text" id="c_job_category_input" class="form-control" placeholder="Type to search category..." autocomplete="off">
+                                <input type="hidden" name="job_category_id" id="c_job_category_id">
+                                <ul class="dropdown-menu w-100" id="c_job_category_list" style="max-height: 250px; overflow-y: auto;"></ul>
+                            </div>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Industry <span class="text-danger">*</span></label>
-                            <select name="industry_id" id="c_industry_id" class="form-select" required>
-                                <option value="">— Select industry —</option>
-                            </select>
+                            <div class="position-relative">
+                                <input type="text" id="c_industry_input" class="form-control" placeholder="Type to search industry..." autocomplete="off">
+                                <input type="hidden" name="industry_id" id="c_industry_id">
+                                <ul class="dropdown-menu w-100" id="c_industry_list" style="max-height: 250px; overflow-y: auto;"></ul>
+                            </div>
                         </div>
 
-                        {{-- Dropdowns row 2 --}}
+                        {{-- Typable Dropdowns row 2 --}}
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Location <span class="text-danger">*</span></label>
-                            <select name="job_location_id" id="c_job_location_id" class="form-select" required>
-                                <option value="">— Select location —</option>
-                            </select>
+                            <div class="position-relative">
+                                <input type="text" id="c_job_location_input" class="form-control" placeholder="Type to search location..." autocomplete="off">
+                                <input type="hidden" name="job_location_id" id="c_job_location_id">
+                                <ul class="dropdown-menu w-100" id="c_job_location_list" style="max-height: 250px; overflow-y: auto;"></ul>
+                            </div>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Job Type <span class="text-danger">*</span></label>
-                            <select name="job_type_id" id="c_job_type_id" class="form-select" required>
-                                <option value="">— Select type —</option>
-                            </select>
+                            <div class="position-relative">
+                                <input type="text" id="c_job_type_input" class="form-control" placeholder="Type to search job type..." autocomplete="off">
+                                <input type="hidden" name="job_type_id" id="c_job_type_id">
+                                <ul class="dropdown-menu w-100" id="c_job_type_list" style="max-height: 250px; overflow-y: auto;"></ul>
+                            </div>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Employment <span class="text-danger">*</span></label>
@@ -103,18 +95,22 @@
                             </select>
                         </div>
 
-                        {{-- Dropdowns row 3 --}}
+                        {{-- Typable Dropdowns row 3 --}}
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Experience Level <span class="text-danger">*</span></label>
-                            <select name="experience_level_id" id="c_experience_level_id" class="form-select" required>
-                                <option value="">— Select level —</option>
-                            </select>
+                            <div class="position-relative">
+                                <input type="text" id="c_experience_level_input" class="form-control" placeholder="Type to search experience..." autocomplete="off">
+                                <input type="hidden" name="experience_level_id" id="c_experience_level_id">
+                                <ul class="dropdown-menu w-100" id="c_experience_level_list" style="max-height: 250px; overflow-y: auto;"></ul>
+                            </div>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Education Level <span class="text-danger">*</span></label>
-                            <select name="education_level_id" id="c_education_level_id" class="form-select" required>
-                                <option value="">— Select education —</option>
-                            </select>
+                            <div class="position-relative">
+                                <input type="text" id="c_education_level_input" class="form-control" placeholder="Type to search education..." autocomplete="off">
+                                <input type="hidden" name="education_level_id" id="c_education_level_id">
+                                <ul class="dropdown-menu w-100" id="c_education_level_list" style="max-height: 250px; overflow-y: auto;"></ul>
+                            </div>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Location Type</label>
@@ -128,7 +124,12 @@
                         {{-- Deadline + duty station --}}
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Application Deadline <span class="text-danger">*</span></label>
-                            <input type="date" name="deadline" class="form-control" required>
+                            <div class="input-group">
+                                <input type="text" name="deadline" class="form-control" id="datepicker-autoclose" placeholder="mm/dd/yyyy" required/>
+                                <span class="input-group-text">
+                                    <i class="ti ti-calendar fs-5"></i>
+                                </span>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Duty Station</label>
@@ -200,5 +201,4 @@
         </div>
     </div>
 </div>
-
 @include('jobs.job-posts.simple-post-js')
