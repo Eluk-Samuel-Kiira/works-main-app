@@ -8,6 +8,7 @@
             <div class="modal-body">
                 <form id="createForm">
                     <input type="hidden" name="poster_id" id="c_poster_id" value="{{ auth()->id() }}">
+                    <input type="hidden" name="is_simple_job" id="c_simple_job" value="1">
                     <div class="row g-3">
 
                         {{-- Job Title --}}
@@ -182,6 +183,12 @@
                                     <div class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" name="is_featured" id="c_featured">
                                         <label class="form-check-label" for="c_featured">Featured</label>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="is_quick_gig" id="c_quick_gig">
+                                        <label class="form-check-label" for="c_featured">Quick gig</label>
                                     </div>
                                 </div>
                             </div>

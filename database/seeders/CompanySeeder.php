@@ -16,6 +16,21 @@ class CompanySeeder extends Seeder
     {
         $companies = [
             [
+                'name' => 'A Leading Private Company',
+                'slug' => Str::slug('A Leading Private Company'),
+                'logo' => 'companies/logos/private-uganda.png',
+                'description' => 'A Leading Private Company company in Uganda, providing mobile voice, data, fintech, digital, and enterprise solutions to millions of Ugandans.',
+                'website' => 'https://www.mtn.co.ug',
+                'contact_name' => 'Okello Bosco',
+                'contact_email' => 'okello@mtn.co.ug',
+                'contact_phone' => '+256312200200',
+                'address1' => 'MTN Towers, 22 Hannington Road, Kampala',
+                'company_size' => '1000+',
+                'industry_id' => 5, // Telecommunications/Technology
+                'is_active' => true,
+                'is_verified' => true,
+            ],
+            [
                 'name' => 'MTN Uganda',
                 'slug' => Str::slug('MTN Uganda'),
                 'logo' => 'companies/logos/mtn-uganda.png',

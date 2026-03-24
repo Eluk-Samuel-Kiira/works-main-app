@@ -223,6 +223,7 @@ class JobPostController extends Controller
      */
     public function store(JobPostRequest $request): JsonResponse
     {
+        // \Log::info($request->all());
         try {
             $validated = $request->validated();
             
@@ -265,6 +266,8 @@ class JobPostController extends Controller
             // Set default values if not provided
             $validated['is_active'] = $validated['is_active'] ?? true;
             $validated['is_verified'] = $validated['is_verified'] ?? false;
+            $validated['is_simple_job'] = $validated['is_simple_job'] ?? false;
+            $validated['is_quick_gig'] = $validated['is_quick_gig'] ?? false;
             $validated['is_featured'] = $validated['is_featured'] ?? false;
             $validated['is_urgent'] = $validated['is_urgent'] ?? false;
             $validated['is_pinged'] = $validated['is_pinged'] ?? false;

@@ -1,4 +1,3 @@
-
 <script>
 
     // ============================================================
@@ -146,6 +145,8 @@
                     <div class="mt-1">
                         ${job.is_urgent   ? '<span class="badge bg-danger me-1">Urgent</span>'              : ''}
                         ${job.is_featured ? '<span class="badge bg-warning me-1">Featured</span>' : ''}
+                        ${job.is_simple_job ? '<span class="badge bg-info me-1">Simple</span>' : ''}
+                        ${job.is_quick_gig ? '<span class="badge bg-warning text-dark me-1">Gig</span>' : ''}
                         ${job.is_pinged   ? '<span class="badge bg-info me-1">Pinged</span>'                : ''}
                         ${job.seo_score   ? `<span class="badge bg-light text-dark border">SEO ${job.seo_score}</span>` : ''}
                     </div>
@@ -269,6 +270,8 @@
                             ${statusBadge(job)}
                             ${job.is_urgent   ? '<span class="badge bg-danger">Urgent</span>'             : ''}
                             ${job.is_featured ? '<span class="badge bg-warning text-dark">Featured</span>': ''}
+                            ${job.is_simple_job ? '<span class="badge bg-info">Simple Job</span>' : ''}
+                            ${job.is_quick_gig ? '<span class="badge bg-warning text-dark">Quick Gig</span>' : ''}
                             ${job.is_verified ? '<span class="badge bg-success">Verified</span>'          : ''}
                             ${job.is_pinged   ? '<span class="badge bg-info">Pinged</span>'               : ''}
                             ${job.is_indexed  ? '<span class="badge bg-primary">Indexed</span>'           : ''}
@@ -360,6 +363,8 @@
                     <div class="col-6">${boolBadge(job.is_verified,  'Verified',  'Unverified')}</div>
                     <div class="col-6">${boolBadge(job.is_featured,  'Featured',  'Not Featured')}</div>
                     <div class="col-6">${boolBadge(job.is_urgent,    'Urgent',    'Normal')}</div>
+                    <div class="col-6">${boolBadge(job.is_simple_job, 'Simple Job', 'Regular Job')}</div>
+                    <div class="col-6">${boolBadge(job.is_quick_gig,  'Quick Gig',  'Regular')}</div>
                     <div class="col-6">${boolBadge(job.is_pinged,    'Pinged',    'Not Pinged')}</div>
                     <div class="col-6">${boolBadge(job.is_indexed,   'Indexed',   'Not Indexed')}</div>
                     <div class="col-6">${boolBadge(job.is_whatsapp_contact, 'WhatsApp', 'No WhatsApp')}</div>
@@ -434,9 +439,124 @@
             const res = await apiFetch(`${API_BASE}/${slug}`);
             const job = res.data ?? res;
             document.getElementById('editModalBody').innerHTML = buildEditForm(job);
+
+            // Pre-fill rich editors AFTER DOM is ready
+            richEditorSet('edit_job_description', job.job_description ?? '');
+            richEditorSet('edit_responsibilities', job.responsibilities ?? '');
+            richEditorSet('edit_qualifications', job.qualifications ?? '');
+            richEditorSet('edit_skills', job.skills ?? '');
+
+            // Initialize edit dropdowns
+            initializeEditDropdowns(job);
+
+            // Initialize datepicker
+            if (typeof $ !== 'undefined' && $.fn.datepicker) {
+                $('.datepicker-autoclose').datepicker({
+                    autoclose: true,
+                    todayHighlight: true,
+                    format: 'mm/dd/yyyy'
+                });
+            }
+
         } catch (e) {
             document.getElementById('editModalBody').innerHTML =
                 '<div class="alert alert-danger">Failed to load job for editing.</div>';
+        }
+    }
+
+    function initializeEditDropdowns(job) {
+        const editDropdownConfigs = {
+            company: {
+                url: '/api/v1/companies?per_page=500',
+                inputId: 'e_company_input',
+                hiddenId: 'e_company_id',
+                listId: 'e_company_list',
+                displayKey: 'name',
+                valueKey: 'id'
+            },
+            job_category: {
+                url: '/api/v1/job-categories?per_page=200',
+                inputId: 'e_job_category_input',
+                hiddenId: 'e_job_category_id',
+                listId: 'e_job_category_list',
+                displayKey: 'name',
+                valueKey: 'id'
+            },
+            industry: {
+                url: '/api/v1/industries?per_page=200',
+                inputId: 'e_industry_input',
+                hiddenId: 'e_industry_id',
+                listId: 'e_industry_list',
+                displayKey: 'name',
+                valueKey: 'id'
+            },
+            job_location: {
+                url: '/api/v1/job-locations?per_page=200',
+                inputId: 'e_job_location_input',
+                hiddenId: 'e_job_location_id',
+                listId: 'e_job_location_list',
+                formatItem: (item) => [item.district, item.country].filter(Boolean).join(', ')
+            },
+            job_type: {
+                url: '/api/v1/job-types?per_page=200',
+                inputId: 'e_job_type_input',
+                hiddenId: 'e_job_type_id',
+                listId: 'e_job_type_list',
+                displayKey: 'name',
+                valueKey: 'id'
+            },
+            experience_level: {
+                url: '/api/v1/experience-levels?per_page=100',
+                inputId: 'e_experience_level_input',
+                hiddenId: 'e_experience_level_id',
+                listId: 'e_experience_level_list',
+                displayKey: 'name',
+                valueKey: 'id'
+            },
+            education_level: {
+                url: '/api/v1/education-levels?per_page=100',
+                inputId: 'e_education_level_input',
+                hiddenId: 'e_education_level_id',
+                listId: 'e_education_level_list',
+                displayKey: 'name',
+                valueKey: 'id'
+            },
+            salary_range: {
+                url: '/api/v1/salary-ranges?per_page=100',
+                inputId: 'e_salary_range_input',
+                hiddenId: 'e_salary_range_id',
+                listId: 'e_salary_range_list',
+                displayKey: 'name',
+                valueKey: 'id'
+            }
+        };
+
+        // Initialize edit dropdowns
+        for (const [key, config] of Object.entries(editDropdownConfigs)) {
+            loadDropdownItems(key, config, job);
+        }
+    }
+
+    async function loadDropdownItems(key, config, job) {
+        try {
+            const res = await apiFetch(config.url);
+            const items = res.data ?? [];
+            
+            if (!window.editDropdowns) window.editDropdowns = {};
+            window.editDropdowns[key] = new TypableDropdown(config);
+            window.editDropdowns[key].setItems(items);
+            
+            // Set current value if exists
+            const currentId = job[config.valueKey];
+            if (currentId) {
+                // Find the item with matching id
+                const selectedItem = items.find(item => item[config.valueKey] == currentId);
+                if (selectedItem) {
+                    window.editDropdowns[key].select(selectedItem);
+                }
+            }
+        } catch (err) {
+            console.error(`Failed to load ${key}:`, err);
         }
     }
 
@@ -444,13 +564,16 @@
         const employmentTypes = ['full-time','part-time','contract','internship','volunteer','temporary'];
         const locationTypes   = ['on-site','remote','hybrid'];
         const paymentPeriods  = ['hourly','daily','weekly','monthly','yearly'];
+
         return `
         <form id="editForm">
             <div class="row g-3">
+
                 <div class="col-12">
                     <label class="form-label fw-semibold">Job Title <span class="text-danger">*</span></label>
                     <input type="text" name="job_title" class="form-control" value="${esc(job.job_title)}" required>
                 </div>
+
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Employment Type</label>
                     <select name="employment_type" class="form-select">
@@ -463,6 +586,87 @@
                         ${locationTypes.map(t => `<option value="${t}" ${job.location_type===t?'selected':''}>${capitalize(t)}</option>`).join('')}
                     </select>
                 </div>
+
+                {{-- Company Dropdown --}}
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Company <span class="text-danger">*</span></label>
+                    <div class="position-relative">
+                        <input type="text" id="e_company_input" class="form-control" placeholder="Type to search company..." autocomplete="off" value="${esc(job.company?.name ?? '')}">
+                        <input type="hidden" name="company_id" id="e_company_id" value="${job.company?.id ?? ''}">
+                        <ul class="dropdown-menu w-100" id="e_company_list" style="max-height: 250px; overflow-y: auto;"></ul>
+                    </div>
+                </div>
+
+                {{-- Job Category Dropdown --}}
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Category <span class="text-danger">*</span></label>
+                    <div class="position-relative">
+                        <input type="text" id="e_job_category_input" class="form-control" placeholder="Type to search category..." autocomplete="off" value="${esc(job.job_category?.name ?? '')}">
+                        <input type="hidden" name="job_category_id" id="e_job_category_id" value="${job.job_category?.id ?? ''}">
+                        <ul class="dropdown-menu w-100" id="e_job_category_list" style="max-height: 250px; overflow-y: auto;"></ul>
+                    </div>
+                </div>
+
+                {{-- Industry Dropdown --}}
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Industry <span class="text-danger">*</span></label>
+                    <div class="position-relative">
+                        <input type="text" id="e_industry_input" class="form-control" placeholder="Type to search industry..." autocomplete="off" value="${esc(job.industry?.name ?? '')}">
+                        <input type="hidden" name="industry_id" id="e_industry_id" value="${job.industry?.id ?? ''}">
+                        <ul class="dropdown-menu w-100" id="e_industry_list" style="max-height: 250px; overflow-y: auto;"></ul>
+                    </div>
+                </div>
+
+                {{-- Job Location Dropdown --}}
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Location <span class="text-danger">*</span></label>
+                    <div class="position-relative">
+                        <input type="text" id="e_job_location_input" class="form-control" placeholder="Type to search location..." autocomplete="off" value="${job.job_location ? [job.job_location.district, job.job_location.country].filter(Boolean).join(', ') : ''}">
+                        <input type="hidden" name="job_location_id" id="e_job_location_id" value="${job.job_location?.id ?? ''}">
+                        <ul class="dropdown-menu w-100" id="e_job_location_list" style="max-height: 250px; overflow-y: auto;"></ul>
+                    </div>
+                </div>
+
+                {{-- Job Type Dropdown --}}
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Job Type <span class="text-danger">*</span></label>
+                    <div class="position-relative">
+                        <input type="text" id="e_job_type_input" class="form-control" placeholder="Type to search job type..." autocomplete="off" value="${esc(job.job_type?.name ?? '')}">
+                        <input type="hidden" name="job_type_id" id="e_job_type_id" value="${job.job_type?.id ?? ''}">
+                        <ul class="dropdown-menu w-100" id="e_job_type_list" style="max-height: 250px; overflow-y: auto;"></ul>
+                    </div>
+                </div>
+
+                {{-- Experience Level Dropdown --}}
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Experience Level <span class="text-danger">*</span></label>
+                    <div class="position-relative">
+                        <input type="text" id="e_experience_level_input" class="form-control" placeholder="Type to search experience..." autocomplete="off" value="${esc(job.experience_level?.name ?? '')}">
+                        <input type="hidden" name="experience_level_id" id="e_experience_level_id" value="${job.experience_level?.id ?? ''}">
+                        <ul class="dropdown-menu w-100" id="e_experience_level_list" style="max-height: 250px; overflow-y: auto;"></ul>
+                    </div>
+                </div>
+
+                {{-- Education Level Dropdown --}}
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Education Level <span class="text-danger">*</span></label>
+                    <div class="position-relative">
+                        <input type="text" id="e_education_level_input" class="form-control" placeholder="Type to search education..." autocomplete="off" value="${esc(job.education_level?.name ?? '')}">
+                        <input type="hidden" name="education_level_id" id="e_education_level_id" value="${job.education_level?.id ?? ''}">
+                        <ul class="dropdown-menu w-100" id="e_education_level_list" style="max-height: 250px; overflow-y: auto;"></ul>
+                    </div>
+                </div>
+
+                {{-- Salary Range Dropdown --}}
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Salary Range</label>
+                    <div class="position-relative">
+                        <input type="text" id="e_salary_range_input" class="form-control" placeholder="Type to search salary range..." autocomplete="off" value="${esc(job.salary_range?.name ?? '')}">
+                        <input type="hidden" name="salary_range_id" id="e_salary_range_id" value="${job.salary_range?.id ?? ''}">
+                        <ul class="dropdown-menu w-100" id="e_salary_range_list" style="max-height: 250px; overflow-y: auto;"></ul>
+                    </div>
+                </div>
+
                 <div class="col-md-4">
                     <label class="form-label fw-semibold">Salary Amount</label>
                     <input type="number" name="salary_amount" class="form-control" value="${job.salary_amount ?? ''}">
@@ -478,41 +682,62 @@
                         ${paymentPeriods.map(p => `<option value="${p}" ${job.payment_period===p?'selected':''}>${capitalize(p)}</option>`).join('')}
                     </select>
                 </div>
+
                 <div class="col-md-6">
-                    <label class="form-label fw-semibold">Deadline <span class="text-danger">*</span></label>
-                    <input type="date" name="deadline" class="form-control"
-                        value="${job.deadline ? String(job.deadline).substring(0,10) : ''}" required>
+                    <label class="form-label fw-semibold">Application Deadline <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <input type="text" name="deadline" class="form-control datepicker-autoclose" 
+                            value="${job.deadline ? new Date(job.deadline).toLocaleDateString('en-US') : ''}" 
+                            placeholder="mm/dd/yyyy" required/>
+                        <span class="input-group-text">
+                            <i class="ti ti-calendar fs-5"></i>
+                        </span>
+                    </div>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Work Hours</label>
                     <input type="text" name="work_hours" class="form-control" value="${esc(job.work_hours ?? '')}">
                 </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Duty Station</label>
+                    <input type="text" name="duty_station" class="form-control" value="${esc(job.duty_station ?? '')}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Street Address</label>
+                    <input type="text" name="street_address" class="form-control" value="${esc(job.street_address ?? '')}">
+                </div>
+
                 <div class="col-12">
                     <label class="form-label fw-semibold">Job Description <span class="text-danger">*</span></label>
-                    <x-rich-editor
-                        id="descEditor"
-                        name="job_description"
-                        placeholder="Describe the role…"
-                        :height="200"
-                    />
-                    <textarea name="job_description" class="form-control" rows="5" required>${esc(job.job_description ?? '')}</textarea>
+                    ${buildRichEditor('edit_job_description', 'job_description', 'Describe the role…', 180)}
+                    <input type="hidden" name="job_description" id="edit_job_description_hidden">
                 </div>
+
                 <div class="col-12">
                     <label class="form-label fw-semibold">Responsibilities</label>
-                    <textarea name="responsibilities" class="form-control" rows="3">${esc(job.responsibilities ?? '')}</textarea>
+                    ${buildRichEditor('edit_responsibilities', 'responsibilities', 'List key responsibilities…', 140)}
+                    <input type="hidden" name="responsibilities" id="edit_responsibilities_hidden">
                 </div>
+
                 <div class="col-12">
                     <label class="form-label fw-semibold">Skills</label>
-                    <textarea name="skills" class="form-control" rows="2">${esc(job.skills ?? '')}</textarea>
+                    ${buildRichEditor('edit_skills', 'skills', 'List required skills…', 120)}
+                    <input type="hidden" name="skills" id="edit_skills_hidden">
                 </div>
+
                 <div class="col-12">
                     <label class="form-label fw-semibold">Qualifications</label>
-                    <textarea name="qualifications" class="form-control" rows="2">${esc(job.qualifications ?? '')}</textarea>
+                    ${buildRichEditor('edit_qualifications', 'qualifications', 'List qualifications…', 120)}
+                    <input type="hidden" name="qualifications" id="edit_qualifications_hidden">
                 </div>
+
                 <div class="col-12">
                     <label class="form-label fw-semibold">Application Procedure</label>
-                    <input type="text" name="application_procedure" class="form-control" value="${esc(job.application_procedure ?? '')}">
+                    <input type="text" name="application_procedure" class="form-control"
+                        value="${esc(job.application_procedure ?? '')}">
                 </div>
+
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Contact Email</label>
                     <input type="email" name="email" class="form-control" value="${esc(job.email ?? '')}">
@@ -521,6 +746,27 @@
                     <label class="form-label fw-semibold">Telephone</label>
                     <input type="text" name="telephone" class="form-control" value="${esc(job.telephone ?? '')}">
                 </div>
+
+                <div class="col-12">
+                    <label class="form-label fw-semibold mb-2">Job Type Flags</label>
+                    <div class="d-flex flex-wrap gap-3 mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="is_simple_job"
+                                id="chkSimpleJob" value="1" ${job.is_simple_job ? 'checked' : ''}>
+                            <label class="form-check-label" for="chkSimpleJob">
+                                Simple Job <small class="text-muted">(Quick apply via link)</small>
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="is_quick_gig"
+                                id="chkQuickGig" value="1" ${job.is_quick_gig ? 'checked' : ''}>
+                            <label class="form-check-label" for="chkQuickGig">
+                                Quick Gig <small class="text-muted">(Short-term / freelance)</small>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="col-12">
                     <label class="form-label fw-semibold mb-2">Application Requirements</label>
                     <div class="d-flex flex-wrap gap-3">
@@ -551,19 +797,61 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="col-12">
+                    <label class="form-label fw-semibold mb-2">SEO & Metadata</label>
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label small">Meta Title</label>
+                            <input type="text" name="meta_title" class="form-control" value="${esc(job.meta_title ?? '')}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small">Meta Description</label>
+                            <textarea name="meta_description" class="form-control" rows="2">${esc(job.meta_description ?? '')}</textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small">Keywords</label>
+                            <input type="text" name="keywords" class="form-control" value="${esc(job.keywords ?? '')}">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small">Canonical URL</label>
+                            <input type="url" name="canonical_url" class="form-control" value="${esc(job.canonical_url ?? '')}">
+                        </div>
+                    </div>
+                </div>
+
                 <div id="editFormErrors"></div>
             </div>
         </form>`;
     }
 
     async function submitEdit() {
+        richEditorSync('edit_job_description');
+        richEditorSync('edit_responsibilities');
+        richEditorSync('edit_qualifications');
+        richEditorSync('edit_skills');
+
         const form = document.getElementById('editForm');
         if (!form) return;
         const data = {};
         new FormData(form).forEach((v, k) => data[k] = v);
+        
+        // Convert deadline date from mm/dd/yyyy to YYYY-MM-DD
+        if (data.deadline) {
+            const dateParts = data.deadline.split('/');
+            if (dateParts.length === 3) {
+                // Assuming format is mm/dd/yyyy
+                const month = dateParts[0];
+                const day = dateParts[1];
+                const year = dateParts[2];
+                data.deadline = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+            }
+        }
+        
         // Checkboxes — FormData omits unchecked ones
         ['is_resume_required','is_cover_letter_required',
-        'is_academic_documents_required','is_whatsapp_contact','is_telephone_call']
+        'is_academic_documents_required','is_whatsapp_contact','is_telephone_call',
+        'is_simple_job','is_quick_gig']
             .forEach(k => { data[k] = data[k] === '1'; });
 
         document.getElementById('editBtnText').textContent = 'Saving…';

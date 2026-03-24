@@ -79,14 +79,16 @@ class JobPostRequest extends FormRequest
             // ----------------------------------------------------------------
             // Boolean Flags
             // ----------------------------------------------------------------
-            'is_pinged'          => 'nullable|boolean',
-            'is_indexed'         => 'nullable|boolean',
-            'is_whatsapp_contact'=> 'nullable|boolean',
-            'is_telephone_call'  => 'nullable|boolean',
-            'is_featured'        => 'nullable|boolean',
-            'is_urgent'          => 'nullable|boolean',
-            'is_active'          => 'nullable|boolean',
-            'is_verified'        => 'nullable|boolean',
+            'is_pinged'           => 'nullable|boolean',
+            'is_indexed'          => 'nullable|boolean',
+            'is_whatsapp_contact' => 'nullable|boolean',
+            'is_telephone_call'   => 'nullable|boolean',
+            'is_featured'         => 'nullable|boolean',
+            'is_urgent'           => 'nullable|boolean',
+            'is_active'           => 'nullable|boolean',
+            'is_verified'         => 'nullable|boolean',
+            'is_simple_job'       => 'nullable|boolean',
+            'is_quick_gig'        => 'nullable|boolean',
 
             // ----------------------------------------------------------------
             // Application Requirements
@@ -112,13 +114,12 @@ class JobPostRequest extends FormRequest
         $validator->after(function ($validator) {
             $this->validateJobDescription($validator);
             $this->validateContactMethods($validator);
-            $this->validateLinks($validator);
+            $this->validateApplicationProcedure($validator);
         });
     }
 
     /**
      * Validate job description doesn't contain phone numbers or emails
-     * when those fields are empty
      */
     protected function validateJobDescription($validator)
     {
@@ -202,24 +203,75 @@ class JobPostRequest extends FormRequest
     }
 
     /**
-     * Validate that job description contains a link if contact fields are empty
+     * Validate application procedure based on job type
      */
-    protected function validateLinks($validator)
+    protected function validateApplicationProcedure($validator)
     {
-        $description = $this->input('job_description');
+        $isSimpleJob = $this->input('is_simple_job');
+        $applicationProcedure = $this->input('application_procedure');
         $email = $this->input('email');
         $telephone = $this->input('telephone');
+        $isWhatsappContact = $this->input('is_whatsapp_contact');
+        $isTelephoneCall = $this->input('is_telephone_call');
         
-        // If no email and no telephone provided, description must contain a link
-        if (empty($email) && empty($telephone)) {
-            // Pattern to detect URLs
-            $urlPattern = '/(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\/[^\s]*)/';
+        // Pattern to detect URLs
+        $urlPattern = '/(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\/[^\s]*)/';
+        
+        // Case 1: Simple Job (is_simple_job = true)
+        if ($isSimpleJob) {
+            // Simple job can have WhatsApp and phone call enabled
+            // No restrictions on contact methods
             
-            if (!preg_match($urlPattern, $description)) {
+            // If WhatsApp and phone call are both false, then description must have a link
+            if (!$isWhatsappContact && !$isTelephoneCall) {
+                $description = $this->input('job_description');
+                $hasLinkInDesc = !empty($description) && preg_match($urlPattern, $description);
+                
+                if (!$hasLinkInDesc) {
+                    $validator->errors()->add(
+                        'job_description',
+                        'For simple jobs with no WhatsApp or phone contact, the job description must include a link where applicants can apply.'
+                    );
+                }
+            }
+            
+            // Application procedure should be empty for simple jobs
+            if (!empty($applicationProcedure)) {
+                $validator->errors()->add(
+                    'application_procedure',
+                    'For simple job posts, the application procedure field should be left empty. Application link should be in the job description.'
+                );
+            }
+        } 
+        // Case 2: Regular Job (is_simple_job = false or null)
+        else {
+            // If no contact methods (email, phone, whatsapp, call) are provided
+            $hasEmail = !empty($email);
+            $hasPhone = !empty($telephone);
+            $hasWhatsapp = $isWhatsappContact;
+            $hasCall = $isTelephoneCall;
+            
+            $hasAnyContact = $hasEmail || $hasPhone || $hasWhatsapp || $hasCall;
+            
+            if (!$hasAnyContact) {
+                // Then application_procedure MUST have a link
+                $hasLinkInProcedure = !empty($applicationProcedure) && preg_match($urlPattern, $applicationProcedure);
+                
+                if (!$hasLinkInProcedure) {
+                    $validator->errors()->add(
+                        'application_procedure',
+                        'When no contact email, phone, WhatsApp, or call options are provided, the application procedure must include a link where applicants can apply.'
+                    );
+                }
+            }
+            
+            // Also ensure job description doesn't have links for regular jobs
+            // (Links should be in application_procedure, not job description)
+            $description = $this->input('job_description');
+            if (!empty($description) && preg_match($urlPattern, $description)) {
                 $validator->errors()->add(
                     'job_description',
-                    'When no contact email or telephone is provided, the job description must include a link ' .
-                    '(website, application link, etc.) where applicants can apply or get more information.'
+                    'For regular job posts, please do not include application links in the job description. Use the "Application Procedure" field instead.'
                 );
             }
         }
@@ -252,6 +304,11 @@ class JobPostRequest extends FormRequest
             'duty_station' => 'duty station',
             'salary_amount' => 'salary amount',
             'base_salary' => 'base salary',
+            'applicant_location_requirements' => 'applicant location requirements',
+            'application_procedure' => 'application procedure',
+            'is_simple_job' => 'simple job',
+            'is_whatsapp_contact' => 'whatsapp contact',
+            'is_telephone_call' => 'phone call',
         ];
     }
 
@@ -271,7 +328,6 @@ class JobPostRequest extends FormRequest
         ];
     }
 
-
     /**
      * Prepare the data for validation
      */
@@ -289,7 +345,7 @@ class JobPostRequest extends FormRequest
             'is_whatsapp_contact', 'is_telephone_call', 'is_featured',
             'is_urgent', 'is_active', 'is_verified', 'is_pinged', 'is_indexed',
             'is_application_required', 'is_academic_documents_required',
-            'is_cover_letter_required', 'is_resume_required'
+            'is_cover_letter_required', 'is_resume_required', 'is_simple_job', 'is_quick_gig'
         ];
         
         foreach ($booleanFields as $field) {

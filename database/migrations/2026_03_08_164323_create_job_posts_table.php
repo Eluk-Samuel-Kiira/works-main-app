@@ -73,6 +73,8 @@ return new class extends Migration
             $table->boolean('is_urgent')->default(false);
             $table->boolean('is_active')->default(true);
             $table->boolean('is_verified')->default(false);
+            $table->boolean('is_simple_job')->default(false);
+            $table->boolean('is_quick_gig')->default(false);
             $table->integer('view_count')->default(0);
             $table->integer('application_count')->default(0);
             $table->integer('click_count')->default(0);
