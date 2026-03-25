@@ -217,20 +217,24 @@ class JobPostRequest extends FormRequest
         // Pattern to detect URLs
         $urlPattern = '/(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\/[^\s]*)/';
         
+        // Check if any contact method is provided
+        $hasEmail = !empty($email);
+        $hasPhone = !empty($telephone);
+        $hasWhatsapp = $isWhatsappContact;
+        $hasCall = $isTelephoneCall;
+        $hasAnyContact = $hasEmail || $hasPhone || $hasWhatsapp || $hasCall;
+        
         // Case 1: Simple Job (is_simple_job = true)
         if ($isSimpleJob) {
-            // Simple job can have WhatsApp and phone call enabled
-            // No restrictions on contact methods
-            
-            // If WhatsApp and phone call are both false, then description must have a link
-            if (!$isWhatsappContact && !$isTelephoneCall) {
+            // If NO contact methods are provided (email, phone, WhatsApp, call), then description MUST have a link
+            if (!$hasAnyContact) {
                 $description = $this->input('job_description');
                 $hasLinkInDesc = !empty($description) && preg_match($urlPattern, $description);
                 
                 if (!$hasLinkInDesc) {
                     $validator->errors()->add(
                         'job_description',
-                        'For simple jobs with no WhatsApp or phone contact, the job description must include a link where applicants can apply.'
+                        'For simple jobs with no contact information (email, phone, WhatsApp, or call), the job description must include a link where applicants can apply.'
                     );
                 }
             }
@@ -246,13 +250,6 @@ class JobPostRequest extends FormRequest
         // Case 2: Regular Job (is_simple_job = false or null)
         else {
             // If no contact methods (email, phone, whatsapp, call) are provided
-            $hasEmail = !empty($email);
-            $hasPhone = !empty($telephone);
-            $hasWhatsapp = $isWhatsappContact;
-            $hasCall = $isTelephoneCall;
-            
-            $hasAnyContact = $hasEmail || $hasPhone || $hasWhatsapp || $hasCall;
-            
             if (!$hasAnyContact) {
                 // Then application_procedure MUST have a link
                 $hasLinkInProcedure = !empty($applicationProcedure) && preg_match($urlPattern, $applicationProcedure);
