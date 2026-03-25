@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api\Jobs;
 use App\Http\Concerns\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\Jobs\JobPostRequest;
-use App\Models\Job\{ JobPost, Company, JobLocation };
+use App\Models\Job\{ JobPost, Company, JobLocation, ExperienceLevel, EducationLevel };
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -223,7 +223,6 @@ class JobPostController extends Controller
      */
     public function store(JobPostRequest $request): JsonResponse
     {
-        // \Log::info($request->all());
         try {
             $validated = $request->validated();
             
@@ -262,6 +261,9 @@ class JobPostController extends Controller
                 $validated['company_id'] ?? null,
                 $validated['job_location_id'] ?? null
             );
+
+            $location = JobLocation::find($validated['job_location_id']);
+            $company = Company::find($validated['company_id']);
             
             // Set default values if not provided
             $validated['is_active'] = $validated['is_active'] ?? true;
@@ -278,19 +280,24 @@ class JobPostController extends Controller
             $validated['is_academic_documents_required'] = $validated['is_academic_documents_required'] ?? false;
             $validated['is_cover_letter_required'] = $validated['is_cover_letter_required'] ?? false;
             $validated['is_resume_required'] = $validated['is_resume_required'] ?? true;
-                        
-            // Set SEO meta data if not provided
+            
+            // ============================================================
+            // DYNAMIC SEO META DATA GENERATION
+            // ============================================================
+            
+            // Generate dynamic meta title (50-60 characters optimal)
             if (empty($validated['meta_title'])) {
-                $validated['meta_title'] = Str::limit($validated['job_title'], 60);
+                $validated['meta_title'] = $this->generateDynamicMetaTitle($validated, $company, $location);
             }
             
+            // Generate dynamic meta description (150-160 characters optimal)
             if (empty($validated['meta_description'])) {
-                $validated['meta_description'] = Str::limit(strip_tags($validated['job_description'] ?? ''), 160);
+                $validated['meta_description'] = $this->generateDynamicMetaDescription($validated, $company, $location);
             }
             
+            // Generate dynamic keywords
             if (empty($validated['keywords'])) {
-                $keywords = explode(' ', $validated['job_title']);
-                $validated['keywords'] = implode(', ', array_slice($keywords, 0, 5));
+                $validated['keywords'] = $this->generateDynamicKeywords($validated, $company, $location);
             }
             
             // Create the job post
@@ -306,6 +313,332 @@ class JobPostController extends Controller
             Log::error('Job post creation failed: ' . $e->getMessage());
             return $this->error('Failed to create job post: ' . $e->getMessage(), 500);
         }
+    }
+
+    /**
+     * Generate dynamic SEO-optimized meta title
+     */
+    private function generateDynamicMetaTitle(array $validated, $company, $location): string
+    {
+        $title = $validated['job_title'];
+        $parts = [];
+        
+        // Add job title first
+        $parts[] = $title;
+        
+        // Add company name
+        if ($company && $company->name) {
+            $parts[] = "at {$company->name}";
+        }
+        
+        // Add location
+        if ($location) {
+            $locationName = $location->district ?? $location->country ?? '';
+            if ($locationName) {
+                $parts[] = "in {$locationName}";
+            }
+        }
+        
+        // Add salary if available (great for click-through rate)
+        if (!empty($validated['salary_amount'])) {
+            $salary = number_format($validated['salary_amount']);
+            $currency = $validated['currency'] ?? 'UGX';
+            $period = $validated['payment_period'] ?? 'monthly';
+            
+            $periodMap = [
+                'hourly' => '/hr',
+                'daily' => '/day', 
+                'weekly' => '/week',
+                'monthly' => '/month',
+                'yearly' => '/year'
+            ];
+            
+            $suffix = $periodMap[$period] ?? '';
+            $parts[] = "{$currency} {$salary}{$suffix}";
+        }
+        
+        // Add job type for better targeting
+        if (!empty($validated['employment_type'])) {
+            $typeMap = [
+                'full-time' => 'Full Time',
+                'part-time' => 'Part Time',
+                'contract' => 'Contract',
+                'internship' => 'Internship',
+                'volunteer' => 'Volunteer',
+                'temporary' => 'Temporary'
+            ];
+            $parts[] = $typeMap[$validated['employment_type']] ?? $validated['employment_type'];
+        }
+        
+        // Add urgency for featured/urgent jobs
+        if (!empty($validated['is_urgent']) || !empty($validated['is_featured'])) {
+            $parts[] = 'Hiring Now';
+        }
+        
+        // Add location type for remote jobs
+        if (!empty($validated['location_type']) && $validated['location_type'] === 'remote') {
+            $parts[] = 'Remote';
+        }
+        
+        // Add year for freshness signal
+        $parts[] = now()->year;
+        
+        // Combine and limit to 60 characters
+        $metaTitle = implode(' | ', $parts);
+        
+        return Str::limit($metaTitle, 60);
+    }
+
+    /**
+     * Generate dynamic SEO-optimized meta description
+     */
+    private function generateDynamicMetaDescription(array $validated, $company, $location): string
+    {
+        $description = '';
+        
+        // Start with job title and company
+        $description .= "{$validated['job_title']} position";
+        
+        if ($company && $company->name) {
+            $description .= " at {$company->name}";
+        }
+        
+        if ($location) {
+            $locationName = $location->district ?? $location->country ?? '';
+            if ($locationName) {
+                $description .= " in {$locationName}";
+            }
+        }
+        
+        $description .= ". ";
+        
+        // Add key benefits/highlights
+        $highlights = [];
+        
+        if (!empty($validated['salary_amount'])) {
+            $salary = number_format($validated['salary_amount']);
+            $currency = $validated['currency'] ?? 'UGX';
+            $period = $validated['payment_period'] ?? 'monthly';
+            $periodMap = ['hourly' => 'hour', 'daily' => 'day', 'weekly' => 'week', 'monthly' => 'month', 'yearly' => 'year'];
+            $highlights[] = "{$currency} {$salary} per {$periodMap[$period]}";
+        }
+        
+        if (!empty($validated['employment_type'])) {
+            $typeMap = [
+                'full-time' => 'Full-time position',
+                'part-time' => 'Part-time opportunity',
+                'contract' => 'Contract role',
+                'internship' => 'Internship opportunity',
+                'volunteer' => 'Volunteer position',
+                'temporary' => 'Temporary role'
+            ];
+            $highlights[] = $typeMap[$validated['employment_type']] ?? $validated['employment_type'];
+        }
+        
+        if (!empty($validated['location_type']) && $validated['location_type'] === 'remote') {
+            $highlights[] = 'Work from home';
+        } elseif (!empty($validated['location_type']) && $validated['location_type'] === 'hybrid') {
+            $highlights[] = 'Hybrid work model';
+        }
+        
+        if (!empty($validated['is_urgent'])) {
+            $highlights[] = 'Urgent hiring';
+        }
+        
+        if (!empty($validated['is_featured'])) {
+            $highlights[] = 'Featured job';
+        }
+        
+        if (!empty($validated['experience_level_id'])) {
+            $experience = ExperienceLevel::find($validated['experience_level_id']);
+            if ($experience) {
+                $highlights[] = $experience->name . ' level';
+            }
+        }
+        
+        if (!empty($validated['education_level_id'])) {
+            $education = EducationLevel::find($validated['education_level_id']);
+            if ($education) {
+                $highlights[] = $education->name . ' required';
+            }
+        }
+        
+        if (!empty($highlights)) {
+            $description .= implode(' • ', $highlights) . ". ";
+        }
+        
+        // Add application call to action
+        $deadline = !empty($validated['deadline']) ? \Carbon\Carbon::parse($validated['deadline'])->format('M d, Y') : 'soon';
+        $description .= "Apply now before {$deadline}. ";
+        
+        // Add platform name
+        $description .= "Find the best jobs on Stardena Works. ";
+        
+        // Add unique selling point based on job type
+        if (!empty($validated['is_simple_job'])) {
+            $description .= "Quick application process. ";
+        }
+        
+        if (!empty($validated['is_quick_gig'])) {
+            $description .= "Short-term opportunity. ";
+        }
+        
+        // Limit to 160 characters
+        return Str::limit($description, 160);
+    }
+
+    /**
+     * Generate dynamic SEO keywords
+     */
+    private function generateDynamicKeywords(array $validated, $company, $location): string
+    {
+        $keywords = [];
+        
+        // Add job title variations
+        $keywords[] = $validated['job_title'];
+        $keywords[] = $validated['job_title'] . ' jobs';
+        $keywords[] = $validated['job_title'] . ' vacancy';
+        
+        // Add company
+        if ($company && $company->name) {
+            $keywords[] = $company->name;
+            $keywords[] = $company->name . ' careers';
+        }
+        
+        // Add location
+        if ($location) {
+            $locationName = $location->district ?? $location->country ?? '';
+            if ($locationName) {
+                $keywords[] = "jobs in {$locationName}";
+                $keywords[] = "{$locationName} careers";
+            }
+        }
+        
+        // Add job type keywords
+        if (!empty($validated['employment_type'])) {
+            $typeMap = [
+                'full-time' => ['full time', 'full-time jobs', 'permanent jobs'],
+                'part-time' => ['part time', 'part-time jobs', 'flexible hours'],
+                'contract' => ['contract jobs', 'contract work', 'temporary contract'],
+                'internship' => ['internship', 'intern', 'graduate program'],
+                'volunteer' => ['volunteer', 'volunteering', 'community service'],
+                'temporary' => ['temp jobs', 'temporary work', 'short term']
+            ];
+            
+            if (isset($typeMap[$validated['employment_type']])) {
+                $keywords = array_merge($keywords, $typeMap[$validated['employment_type']]);
+            }
+        }
+        
+        // Add location type
+        if (!empty($validated['location_type'])) {
+            $keywords[] = $validated['location_type'] . ' jobs';
+            if ($validated['location_type'] === 'remote') {
+                $keywords[] = 'work from home';
+                $keywords[] = 'remote work';
+            }
+        }
+        
+        // Add salary range keywords
+        if (!empty($validated['salary_amount'])) {
+            $salary = number_format($validated['salary_amount']);
+            $keywords[] = "{$salary} salary";
+            $keywords[] = "jobs paying {$salary}";
+        }
+        
+        // Add urgency keywords
+        if (!empty($validated['is_urgent'])) {
+            $keywords[] = 'urgent hiring';
+            $keywords[] = 'immediate hiring';
+            $keywords[] = 'apply now';
+        }
+        
+        // Add platform
+        $keywords[] = 'Stardena Works';
+        $keywords[] = 'job portal';
+        $keywords[] = 'career opportunities';
+        
+        // Add country
+        if ($location && $location->country) {
+            $keywords[] = "jobs in {$location->country}";
+            $keywords[] = "{$location->country} careers";
+        }
+        
+        // Remove duplicates and limit to 10-15 keywords
+        $keywords = array_unique($keywords);
+        $keywords = array_slice($keywords, 0, 15);
+        
+        return implode(', ', $keywords);
+    }
+
+    /**
+     * Generate canonical URL
+     */
+    private function generateCanonicalUrl(string $slug): string
+    {
+        return url("/jobs/{$slug}");
+    }
+
+    /**
+     * Generate focus keyphrase for SEO
+     */
+    private function generateFocusKeyphrase(array $validated, $location): string
+    {
+        $keyphrase = $validated['job_title'];
+        
+        if ($location && $location->district) {
+            $keyphrase .= " in {$location->district}";
+        } elseif ($location && $location->country) {
+            $keyphrase .= " in {$location->country}";
+        }
+        
+        if (!empty($validated['employment_type']) && $validated['employment_type'] === 'full-time') {
+            $keyphrase .= " Full Time";
+        }
+        
+        return $keyphrase;
+    }
+
+    /**
+     * Generate SEO synonyms
+     */
+    private function generateSeoSynonyms(array $validated, $company, $location): string
+    {
+        $synonyms = [];
+        
+        // Job title variations
+        $titleWords = explode(' ', $validated['job_title']);
+        if (count($titleWords) > 2) {
+            $synonyms[] = implode(' ', array_slice($titleWords, 0, 2));
+        }
+        
+        // Industry synonyms
+        if (!empty($validated['industry_id'])) {
+            $industry = Industry::find($validated['industry_id']);
+            if ($industry) {
+                $synonyms[] = $industry->name;
+                $synonyms[] = $industry->name . ' industry';
+            }
+        }
+        
+        // Location synonyms
+        if ($location) {
+            if ($location->district) {
+                $synonyms[] = $location->district . ' jobs';
+                $synonyms[] = 'work in ' . $location->district;
+            }
+            if ($location->country) {
+                $synonyms[] = $location->country . ' employment';
+            }
+        }
+        
+        // Company synonyms
+        if ($company && $company->name) {
+            $synonyms[] = $company->name . ' careers';
+            $synonyms[] = 'join ' . $company->name;
+        }
+        
+        return implode(', ', array_slice($synonyms, 0, 10));
     }
 
     /**
@@ -370,7 +703,7 @@ class JobPostController extends Controller
                 ->where('id', $jobPost->id)
                 ->first();
 
-            $formatted = $this->formatJobData($fresh, true);
+            $formatted = $this->formatJobData($fresh, false);
 
             return $this->success($formatted, 'Job post updated successfully');
 
@@ -423,38 +756,173 @@ class JobPostController extends Controller
 
     public function activate($slug): JsonResponse
     {
-        $job = JobPost::where('slug', $slug)->firstOrFail();
-        $job->activate();
-        return $this->success($this->formatJobData($job->fresh(), false), 'Job post activated successfully');
+        // Try to update only inactive jobs
+        $updated = JobPost::where('slug', $slug)
+            ->where('is_active', false)
+            ->update([
+                'is_active' => true,
+                'updated_at' => now(),
+                'published_at' => now()
+            ]);
+        
+        if ($updated) {
+            // Success - job was activated
+            $job = JobPost::where('slug', $slug)->first();
+            return $this->success(
+                $this->formatJobData($job->fresh(), false), 
+                'Job post activated successfully'
+            );
+        }
+        
+        // Check if job exists at all
+        $exists = JobPost::where('slug', $slug)->exists();
+        
+        if (!$exists) {
+            return $this->error('Job post not found', 404);
+        }
+        
+        // Job exists but is already active
+        $job = JobPost::where('slug', $slug)->first();
+        return $this->warning(
+            'Job is already active',
+            $this->formatJobData($job, false),
+            200,
+            [
+                'current_status' => 'active',
+                'suggestion' => 'No action needed'
+            ]
+        );
     }
 
     public function deactivate($slug): JsonResponse
     {
-        $job = JobPost::where('slug', $slug)->firstOrFail();
-        $job->deactivate();
-        return $this->success($this->formatJobData($job->fresh(), false), 'Job post deactivated successfully');
+        // Try to update only active jobs
+        $updated = JobPost::where('slug', $slug)
+            ->where('is_active', true)
+            ->update([
+                'is_active' => false,
+                'updated_at' => now()
+            ]);
+        
+        if ($updated) {
+            $job = JobPost::where('slug', $slug)->first();
+            return $this->success(
+                $this->formatJobData($job->fresh(), false), 
+                'Job post deactivated successfully'
+            );
+        }
+        
+        $exists = JobPost::where('slug', $slug)->exists();
+        
+        if (!$exists) {
+            return $this->error('Job post not found', 404);
+        }
+        
+        $job = JobPost::where('slug', $slug)->first();
+        return $this->warning(
+            'Job is already inactive',
+            $this->formatJobData($job, false),
+            200,
+            [
+                'current_status' => 'inactive',
+                'suggestion' => 'Use activate to publish the job'
+            ]
+        );
     }
 
     public function verify($slug): JsonResponse
     {
-        $job = JobPost::where('slug', $slug)->firstOrFail();
-        $job->verify();
-        return $this->success($this->formatJobData($job->fresh(), false), 'Job post verified successfully');
+        $updated = JobPost::where('slug', $slug)
+            ->where('is_verified', false)
+            ->update([
+                'is_verified' => true,
+                'updated_at' => now()
+            ]);
+        
+        if ($updated) {
+            $job = JobPost::where('slug', $slug)->first();
+            return $this->success(
+                $this->formatJobData($job->fresh(), false), 
+                'Job post verified successfully'
+            );
+        }
+        
+        $exists = JobPost::where('slug', $slug)->exists();
+        
+        if (!$exists) {
+            return $this->error('Job post not found', 404);
+        }
+        
+        $job = JobPost::where('slug', $slug)->first();
+        return $this->warning(
+            'Job is already verified',
+            $this->formatJobData($job, false),
+            200,
+            [
+                'current_status' => 'verified',
+                'verified_at' => $job->updated_at?->toDateTimeString()
+            ]
+        );
     }
 
     public function feature(Request $request, $slug): JsonResponse
     {
-        $job  = JobPost::where('slug', $slug)->firstOrFail();
         $days = $request->integer('days', 7);
-        $job->markAsFeatured($days);
-        return $this->success($this->formatJobData($job->fresh(), false), "Job post featured for {$days} days");
+        
+        // Direct update without loading the model first
+        $updated = JobPost::where('slug', $slug)
+            ->update([
+                'is_featured' => true,
+                'featured_until' => now()->addDays($days),
+                'updated_at' => now()
+            ]);
+        
+        if (!$updated) {
+            return $this->error('Job post not found', 404);
+        }
+        
+        // Only load if needed for response
+        $job = JobPost::where('slug', $slug)->first();
+        
+        return $this->success(
+            $this->formatJobData($job, false), 
+            "Job post featured for {$days} days"
+        );
     }
 
     public function markUrgent($slug): JsonResponse
     {
-        $job = JobPost::where('slug', $slug)->firstOrFail();
-        $job->markAsUrgent();
-        return $this->success($this->formatJobData($job->fresh(), false), 'Job post marked as urgent');
+        $updated = JobPost::where('slug', $slug)
+            ->where('is_urgent', false)
+            ->update([
+                'is_urgent' => true,
+                'updated_at' => now()
+            ]);
+        
+        if ($updated) {
+            $job = JobPost::where('slug', $slug)->first();
+            return $this->success(
+                $this->formatJobData($job->fresh(), false), 
+                'Job post marked as urgent successfully'
+            );
+        }
+        
+        $exists = JobPost::where('slug', $slug)->exists();
+        
+        if (!$exists) {
+            return $this->error('Job post not found', 404);
+        }
+        
+        $job = JobPost::where('slug', $slug)->first();
+        return $this->warning(
+            'Job is already marked as urgent',
+            $this->formatJobData($job, false),
+            200,
+            [
+                'current_status' => 'urgent',
+                'suggestion' => 'Job already has urgent priority'
+            ]
+        );
     }
 
     // -------------------------------------------------------------------------

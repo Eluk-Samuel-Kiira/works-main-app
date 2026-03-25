@@ -147,60 +147,20 @@ class JobPost extends Model
     {
         parent::boot();
 
-        // static::creating(function ($job) {
-        //     if (empty($job->slug)) {
-        //         $job->slug = $job->generateAIOptimizedSlug();
-        //     }
-            
-        //     if (empty($job->meta_title)) {
-        //         $job->meta_title = $job->generateAIMetaTitle();
-        //     }
-            
-        //     if (empty($job->meta_description)) {
-        //         $job->meta_description = $job->generateAIMetaDescription();
-        //     }
-            
-        //     if (empty($job->published_at)) {
-        //         $job->published_at = now();
-        //     }
-            
-        //     // Set default values for required fields
-        //     $job->currency = $job->currency ?? 'UGX';
-        //     $job->location_type = $job->location_type ?? 'on-site';
-        //     $job->employment_type = $job->employment_type ?? 'full-time';
-        //     $job->is_resume_required = $job->is_resume_required ?? true;
-        //     $job->view_count = $job->view_count ?? 0;
-        //     $job->application_count = $job->application_count ?? 0;
-        //     $job->click_count = $job->click_count ?? 0;
-            
-        //     // AI-powered SEO optimization
-        //     // $job->runAISEOAnalysis();
-        // });
+        static::creating(function ($job) {
+            if (empty($job->published_at)) $job->published_at = now();
+            $job->currency        = $job->currency        ?? 'UGX';
+            $job->location_type   = $job->location_type   ?? 'on-site';
+            $job->employment_type = $job->employment_type ?? 'full-time';
+            $job->is_resume_required = $job->is_resume_required ?? true;
+            $job->view_count = $job->view_count ?? 0;
+            $job->application_count = $job->application_count ?? 0;
+            $job->click_count = $job->click_count ?? 0;
 
-        // static::updating(function ($job) {
-        //     // Only run SEO analysis if we have a fully loaded model
-        //     // and SEO-relevant fields actually changed
-        //     if (!$job->exists || $job->wasRecentlyCreated) return;
+        });
 
-        //     $seoRelevantFields = ['job_title', 'company_id', 'job_location_id', 'job_description', 'salary_amount'];
 
-        //     if ($job->isDirty($seoRelevantFields) && !static::$skipSeoOnUpdate) {
-        //         static::$skipSeoOnUpdate = true;
-        //         $job->slug = $job->generateAIOptimizedSlug();
-        //         $job->meta_title = $job->generateAIMetaTitle();
-        //         $job->meta_description = $job->generateAIMetaDescription();
-        //         // $job->runAISEOAnalysis();
-        //         static::$skipSeoOnUpdate = false;
-        //     }
-        // });
-
-        // static::created(function ($job) {
-        //     // Auto-ping search engines for new jobs
-        //     if ($job->is_active) {
-        //         $job->pingSearchEngines();
-        //     }
-        // });
-    }
+        }
 
     // Relationships
     public function company()
@@ -677,11 +637,7 @@ class JobPost extends Model
         return min($score, 100);
     }
 
-    // Performance Tracking
-    public function incrementViewCount()
-    {
-        $this->increment('view_count');
-    }
+
 
     public function incrementApplicationCount()
     {
@@ -702,56 +658,5 @@ class JobPost extends Model
         }
     }
 
-    // Business Methods
-    public function markAsFeatured($days = 7)
-    {
-        $this->update([
-            'is_featured' => true,
-            'featured_until' => now()->addDays($days)
-        ]);
 
-        $this->logAction('featured', 'status_change', [
-            'featured_days' => $days,
-            'featured_until' => $this->featured_until
-        ]);
-    }
-
-    public function markAsUrgent()
-    {
-        $this->update(['is_urgent' => true]);
-        $this->logAction('urgent', 'status_change', [
-            'marked_urgent_at' => now()->toDateTimeString()
-        ]);
-    }
-
-    public function activate()
-    {
-        $this->update([
-            'is_active' => true,
-            'published_at' => now()
-        ]);
-        $this->pingSearchEngines();
-
-        $this->logAction('activated', 'status_change', [
-            'previous_status' => 'inactive',
-            'new_status' => 'active'
-        ]);
-    }
-
-    public function deactivate()
-    {
-        $this->update(['is_active' => false]);
-        $this->logAction('deactivated', 'status_change', [
-            'previous_status' => 'active',
-            'new_status' => 'inactive'
-        ]);
-    }
-
-    public function verify()
-    {
-        $this->update(['is_verified' => true]);
-        $this->logAction('verified', 'status_change', [
-            'verified_at' => now()->toDateTimeString()
-        ]);
-    }
 }

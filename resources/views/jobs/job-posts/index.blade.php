@@ -200,6 +200,7 @@
                     <button class="btn btn-outline-secondary d-flex justify-content-between align-items-center"
                         onclick="doStatusAction('deactivate')">
                         <span><i class="ti ti-player-stop me-2"></i>Deactivate</span>
+                        <span class="badge bg-success" id="badgeInactive"></span>
                     </button>
                     <button class="btn btn-outline-info d-flex justify-content-between align-items-center"
                         onclick="doStatusAction('verify')">

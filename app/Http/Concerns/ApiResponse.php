@@ -52,6 +52,33 @@ trait ApiResponse
         return response()->json($payload, $status);
     }
 
+    /**
+     * Warning response - For non-critical issues that don't break functionality
+     * 
+     * @param string $message Warning message
+     * @param mixed $data Optional data to return
+     * @param int $status HTTP status code (defaults to 200 or 202)
+     * @param mixed $warnings Additional warning details
+     */
+    protected function warning(string $message, mixed $data = null, int $status = 200, mixed $warnings = null): JsonResponse
+    {
+        $payload = [
+            'success' => true,
+            'warning' => true,
+            'message' => $message,
+        ];
+
+        if ($data !== null) {
+            $payload['data'] = $data;
+        }
+
+        if ($warnings !== null) {
+            $payload['warnings'] = $warnings;
+        }
+
+        return response()->json($payload, $status);
+    }
+
     protected function notFound(string $message = 'Resource not found'): JsonResponse
     {
         return $this->error($message, 404);

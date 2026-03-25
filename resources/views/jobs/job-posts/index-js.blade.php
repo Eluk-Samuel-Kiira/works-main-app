@@ -55,6 +55,7 @@
     }
 
     function statusBadge(job) {
+        // console.log(job.is_active);
         if (!job.is_active)  return '<span class="badge bg-secondary">Inactive</span>';
         if (job.is_verified) return '<span class="badge bg-success">Verified</span>';
         return '<span class="badge bg-primary">Active</span>';
@@ -915,9 +916,38 @@
             const res = await apiFetch(`${API_BASE}/${slug}`);
             const job = res.data ?? res;
             document.getElementById('statusJobTitle').textContent = job.job_title;
-            document.getElementById('badgeActive').textContent   = job.is_active   ? 'Active'   : '';
-            document.getElementById('badgeVerified').textContent = job.is_verified ? 'Verified' : '';
-            document.getElementById('badgeUrgent').textContent   = job.is_urgent   ? 'Urgent'   : '';
+            
+            // Active/Inactive badges
+            if (job.is_active) {
+                document.getElementById('badgeActive').textContent = 'Active';
+                document.getElementById('badgeActive').className = 'badge bg-success';
+                document.getElementById('badgeInactive').textContent = '';
+                document.getElementById('badgeInactive').className = 'badge bg-secondary d-none';
+            } else {
+                document.getElementById('badgeActive').textContent = '';
+                document.getElementById('badgeActive').className = 'badge bg-success d-none';
+                document.getElementById('badgeInactive').textContent = 'Inactive';
+                document.getElementById('badgeInactive').className = 'badge bg-danger';
+            }
+            
+            // Verified badge
+            if (job.is_verified) {
+                document.getElementById('badgeVerified').textContent = 'Verified';
+                document.getElementById('badgeVerified').className = 'badge bg-success';
+            } else {
+                document.getElementById('badgeVerified').textContent = 'Unverified';
+                document.getElementById('badgeVerified').className = 'badge bg-secondary';
+            }
+            
+            // Urgent badge
+            if (job.is_urgent) {
+                document.getElementById('badgeUrgent').textContent = 'Urgent';
+                document.getElementById('badgeUrgent').className = 'badge bg-danger';
+            } else {
+                document.getElementById('badgeUrgent').textContent = 'Normal';
+                document.getElementById('badgeUrgent').className = 'badge bg-secondary';
+            }
+            
         } catch (_) {}
         bsModal('statusModal').show();
     }
@@ -927,12 +957,48 @@
         msgDiv.innerHTML = `<div class="d-flex align-items-center gap-2 text-muted">
             <div class="spinner-border spinner-border-sm"></div> Updating…</div>`;
         try {
-            await apiFetch(`${API_BASE}/${currentSlug}/${action}`, { method: 'PATCH' });
-            msgDiv.innerHTML = `<div class="alert alert-success py-2 mb-0">Done — ${action} applied.</div>`;
-            toast(`Job post ${action}d successfully!`, 'success');
+            const response = await apiFetch(`${API_BASE}/${currentSlug}/${action}`, { method: 'PATCH' });
+            
+            // Check if response has warning flag
+            if (response.warning) {
+                const warningMessage = response.message || `Job is already ${action}d!`;
+                msgDiv.innerHTML = `
+                    <div class="alert alert-warning py-2 mb-0">
+                        <i class="ti ti-alert-triangle me-2"></i>⚠️ ${warningMessage}
+                        ${response.warnings ? `<br><small class="text-muted">${JSON.stringify(response.warnings)}</small>` : ''}
+                    </div>`;
+                toast(warningMessage, 'warning');
+                
+                // Still reload jobs to reflect current state
+                if (response.data) {
+                    loadJobs(currentPage);
+                }
+                return;
+            }
+            
+            // Success response
+            const successMessage = response.message || `Job post ${action}d successfully!`;
+            msgDiv.innerHTML = `<div class="alert alert-success py-2 mb-0">✓ ${successMessage}</div>`;
+            toast(successMessage, 'success');
+
+            // Close the modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('statusModal'));
+            if (modal) {
+                modal.hide();
+            }
             loadJobs(currentPage);
+            
         } catch (e) {
-            msgDiv.innerHTML = `<div class="alert alert-danger py-2 mb-0">Action failed. Try again.</div>`;
+            // Error response
+            const errorMessage = e.message || `Failed to ${action} job post.`;
+            msgDiv.innerHTML = `<div class="alert alert-danger py-2 mb-0">⚠️ ${errorMessage}</div>`;
+            toast(errorMessage, 'error');
+            
+            // Display detailed errors if available
+            if (e.errors) {
+                const errorDetails = Object.values(e.errors).flat().join(', ');
+                msgDiv.innerHTML += `<div class="alert alert-danger mt-2 small">Details: ${errorDetails}</div>`;
+            }
         }
     }
 
