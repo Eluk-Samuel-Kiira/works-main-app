@@ -456,7 +456,7 @@ class JobsController extends Controller
             // Get similar jobs
             $similarJobs = $this->getSimilarJobs($job);
             
-            // Build the formatted response
+            // Build the formatted response with ALL fields
             $response = [
                 'id' => $job->id,
                 'job_title' => $job->job_title,
@@ -470,18 +470,39 @@ class JobsController extends Controller
                 'telephone' => $job->telephone,
                 'duty_station' => $job->duty_station,
                 'street_address' => $job->street_address,
-                'location_type' => $job->location_type ?? 'On-site',
+                'location_type' => $job->location_type ?? 'on-site',
                 'work_hours' => $job->work_hours,
                 'employment_type' => $job->employment_type,
                 'salary_amount' => $job->salary_amount,
                 'currency' => $job->currency,
                 'payment_period' => $job->payment_period,
-                'is_featured' => (bool)$job->is_featured,
-                'is_urgent' => (bool)$job->is_urgent,
-                'is_verified' => (bool)$job->is_verified,
-                'view_count' => (int)$job->view_count + 1,
-                'application_count' => (int)$job->application_count,
-                'social_shares' => (int)($job->social_shares ?? 0),
+                
+                // ============================================================
+                // BOOLEAN FLAGS - ADD THESE!
+                // ============================================================
+                'is_featured' => (bool) $job->is_featured,
+                'is_urgent' => (bool) $job->is_urgent,
+                'is_verified' => (bool) $job->is_verified,
+                'is_active' => (bool) $job->is_active,
+                'is_pinged' => (bool) $job->is_pinged,
+                'is_indexed' => (bool) $job->is_indexed,
+                'is_simple_job' => (bool) $job->is_simple_job,
+                'is_quick_gig' => (bool) $job->is_quick_gig,
+                
+                // Contact method flags - CRITICAL FOR THE MODAL
+                'is_whatsapp_contact' => (bool) $job->is_whatsapp_contact,
+                'is_telephone_call' => (bool) $job->is_telephone_call,
+                
+                // Application requirement flags
+                'is_resume_required' => (bool) ($job->is_resume_required ?? true),
+                'is_cover_letter_required' => (bool) ($job->is_cover_letter_required ?? false),
+                'is_academic_documents_required' => (bool) ($job->is_academic_documents_required ?? false),
+                'is_application_required' => (bool) ($job->is_application_required ?? false),
+                // ============================================================
+                
+                'view_count' => (int) $job->view_count + 1,
+                'application_count' => (int) $job->application_count,
+                'social_shares' => (int) ($job->social_shares ?? 0),
                 'deadline' => $job->deadline ? $job->deadline->format('Y-m-d\TH:i:s.u\Z') : null,
                 'created_at' => $job->created_at ? $job->created_at->format('Y-m-d\TH:i:s.u\Z') : null,
                 
@@ -520,6 +541,8 @@ class JobsController extends Controller
                 'experience_level' => $job->experienceLevel ? [
                     'id' => $job->experienceLevel->id,
                     'name' => $job->experienceLevel->name,
+                    'min_years' => $job->experienceLevel->min_years,
+                    'max_years' => $job->experienceLevel->max_years,
                 ] : null,
                 
                 'education_level' => $job->educationLevel ? [

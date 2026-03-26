@@ -192,17 +192,35 @@ class JobPostController extends Controller
         
         // Try to get company and location names for better uniqueness
         if ($companyId) {
+            // \Log::info('Generating slug - Company ID: ' . $companyId);
             $company = Company::find($companyId);
+            
             if ($company && $company->name) {
+                \Log::info('Company found: ' . $company->name);
                 $slug = Str::slug($title . ' at ' . $company->name);
+                \Log::info('Slug after adding company: ' . $slug);
+            } else {
+                \Log::warning('Company not found for ID: ' . $companyId);
             }
         }
         
         if ($locationId) {
+            \Log::info('Generating slug - Location ID: ' . $locationId);
             $location = JobLocation::find($locationId);
+            
             if ($location && ($location->district || $location->country)) {
                 $locationName = $location->district ?? $location->country;
-                $slug = Str::slug($title . ' in ' . $locationName);
+                \Log::info('Location found: ' . $locationName);
+                
+                // If we already have company in slug, add location with "in"
+                if ($slug !== $baseSlug) {
+                    $slug = Str::slug($title . ' at ' . $company->name . ' in ' . $locationName);
+                } else {
+                    $slug = Str::slug($title . ' in ' . $locationName);
+                }
+                // \Log::info('Slug after adding location: ' . $slug);
+            } else {
+                \Log::warning('Location not found for ID: ' . $locationId);
             }
         }
         
@@ -213,7 +231,10 @@ class JobPostController extends Controller
         while (JobPost::where('slug', $slug)->exists()) {
             $slug = $originalSlug . '-' . $counter;
             $counter++;
+            \Log::info('Duplicate slug found, trying: ' . $slug);
         }
+        
+        // \Log::info('Final slug generated: ' . $slug);
         
         return $slug;
     }
