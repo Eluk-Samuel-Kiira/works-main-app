@@ -2,6 +2,17 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\Jobs\{
+    CompanyController,
+    EducationLevelController,
+    ExperienceLevelController,
+    IndustryController,
+    JobCategoryController,
+    JobLocationController,
+    JobTypeController,
+    SalaryRangeController,
+};
 
 // ─── Existing read-only data routes (consumed by works-web app) ─────────────
 use App\Http\Controllers\Web\{ DashboardController, JobsController };
@@ -14,27 +25,20 @@ Route::get('/test', function () {
     return response()->json(['message' => 'API is working!']);
 });
 
-Route::get('/user-data',                         [DashboardController::class, 'getUserData']);
-Route::get('/jobs-data-from-main',               [JobsController::class, 'index']);
-Route::get('/jobs-data-from-main/featured',      [JobsController::class, 'featured']);
-Route::get('/jobs-data-from-main/urgent',        [JobsController::class, 'urgent']);
-Route::get('/popular-searches',                  [JobsController::class, 'popularSearches']);
-Route::get('/jobs-data-from-main/{job}',         [JobsController::class, 'show']);
-Route::get('/jobs-data-from-main/id/{id}',       [JobsController::class, 'showById']);
 
+Route::prefix('v2')->name('api.v1.')->group(function () {
+
+    Route::get('/user-data',                         [DashboardController::class, 'getUserData']);
+    Route::get('/jobs-data-from-main',               [JobsController::class, 'index']);
+    Route::get('/jobs-data-from-main/featured',      [JobsController::class, 'featured']);
+    Route::get('/jobs-data-from-main/urgent',        [JobsController::class, 'urgent']);
+    Route::get('/popular-searches',                  [JobsController::class, 'popularSearches']);
+    Route::get('/jobs-data-from-main/{job}',         [JobsController::class, 'show']);
+    Route::get('/jobs-data-from-main/id/{id}',       [JobsController::class, 'showById']);
+});
 
 // ─── v1 CRUD API ─────────────────────────────────────────────────────────────
-use App\Http\Controllers\Api\UserController;
-use App\Http\Controllers\Api\Jobs\{
-    CompanyController,
-    EducationLevelController,
-    ExperienceLevelController,
-    IndustryController,
-    JobCategoryController,
-    JobLocationController,
-    JobTypeController,
-    SalaryRangeController,
-};
+
 
 Route::prefix('v1')->name('api.v1.')->group(function () {
 
