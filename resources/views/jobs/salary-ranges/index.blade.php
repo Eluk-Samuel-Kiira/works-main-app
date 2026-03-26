@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Companies - Stardena Works')
+@section('title', 'Salary Ranges - Stardena Works')
 
 @section('app-content')
 <div class="body-wrapper">
@@ -10,19 +10,19 @@
             <div class="card-body px-0">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h4 class="font-weight-medium mb-0">Companies</h4>
+                        <h4 class="font-weight-medium mb-0">Salary Ranges</h4>
                         <nav aria-label="breadcrumb">
                             <ol class="breadcrumb">
                                 <li class="breadcrumb-item">
                                     <a class="text-muted text-decoration-none" href="{{ route('dashboard') }}">Home</a>
                                 </li>
-                                <li class="breadcrumb-item text-muted" aria-current="page">Companies</li>
+                                <li class="breadcrumb-item text-muted" aria-current="page">Salary Ranges</li>
                             </ol>
                         </nav>
                     </div>
                     <div>
                         <button class="btn btn-primary d-flex align-items-center gap-2" onclick="openCreateModal()">
-                            <i class="ti ti-plus fs-4"></i> Add Company
+                            <i class="ti ti-plus fs-4"></i> Add Salary Range
                         </button>
                     </div>
                 </div>
@@ -38,8 +38,13 @@
                             placeholder="Search by name…" oninput="debounceLoad()">
                     </div>
                     <div class="col-md-2">
-                        <select id="filterIndustry" class="form-select form-select-sm" onchange="loadItems(1)">
-                            <option value="">All Industries</option>
+                        <select id="filterCurrency" class="form-select form-select-sm" onchange="loadItems(1)">
+                            <option value="">All Currencies</option>
+                            <option value="UGX">UGX</option>
+                            <option value="USD">USD</option>
+                            <option value="EUR">EUR</option>
+                            <option value="GBP">GBP</option>
+                            <option value="KES">KES</option>
                         </select>
                     </div>
                     <div class="col-md-2">
@@ -50,13 +55,6 @@
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <select id="filterVerified" class="form-select form-select-sm" onchange="loadItems(1)">
-                            <option value="">All</option>
-                            <option value="1">Verified</option>
-                            <option value="0">Unverified</option>
-                        </select>
-                    </div>
-                    <div class="col-md-1">
                         <button class="btn btn-sm btn-outline-secondary w-100" onclick="resetFilters()">
                             <i class="ti ti-refresh me-1"></i>Reset
                         </button>
@@ -69,7 +67,7 @@
         <div class="card">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h4 class="card-title mb-0">All Companies</h4>
+                    <h4 class="card-title mb-0">All Salary Ranges</h4>
                     <small class="text-muted" id="paginationInfo"></small>
                 </div>
                 <div class="table-responsive">
@@ -77,12 +75,12 @@
                         <thead>
                             <tr>
                                 <th width="40">#</th>
-                                <th>Company</th>
-                                <th>Industry</th>
-                                <th>Contact</th>
-                                <th>Website</th>
+                                <th>Name</th>
+                                <th>Min Salary</th>
+                                <th>Max Salary</th>
+                                <th>Currency</th>
                                 <th>Status</th>
-                                <th>Verified</th>
+                                <th>Sort Order</th>
                                 <th width="130">Actions</th>
                             </tr>
                         </thead>
@@ -102,10 +100,10 @@
 
 {{-- VIEW MODAL --}}
 <div class="modal fade" id="viewModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="ti ti-building me-2"></i><span id="viewModalTitle">Company Details</span></h5>
+                <h5 class="modal-title"><i class="ti ti-currency-dollar me-2"></i><span id="viewModalTitle">Salary Range Details</span></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="viewModalBody">
@@ -121,10 +119,10 @@
 
 {{-- CREATE/EDIT MODAL --}}
 <div class="modal fade" id="formModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="formModalTitle"><i class="ti ti-plus me-2"></i>Add Company</h5>
+                <h5 class="modal-title" id="formModalTitle"><i class="ti ti-plus me-2"></i>Add Salary Range</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -132,57 +130,47 @@
                     <input type="hidden" id="formId">
                     <div class="row g-3">
                         <div class="col-md-8">
-                            <label class="form-label">Company Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="formName" required>
+                            <label class="form-label">Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="formName" required placeholder="e.g. Mid-Range">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Industry</label>
-                            <select class="form-select" id="formIndustryId">
-                                <option value="">— Select Industry —</option>
+                            <label class="form-label">Currency</label>
+                            <select class="form-select" id="formCurrency">
+                                <option value="UGX">UGX</option>
+                                <option value="USD">USD</option>
+                                <option value="EUR">EUR</option>
+                                <option value="GBP">GBP</option>
+                                <option value="KES">KES</option>
                             </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Min Salary</label>
+                            <input type="number" class="form-control" id="formMinSalary" min="0" step="1" placeholder="e.g. 500000">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Max Salary</label>
+                            <input type="number" class="form-control" id="formMaxSalary" min="0" step="1" placeholder="e.g. 1500000">
                         </div>
                         <div class="col-12">
                             <label class="form-label">Description</label>
-                            <textarea class="form-control" id="formDescription" rows="3"></textarea>
+                            <textarea class="form-control" id="formDescription" rows="2"></textarea>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Website</label>
-                            <input type="url" class="form-control" id="formWebsite" placeholder="https://example.com">
+                            <label class="form-label">Meta Title</label>
+                            <input type="text" class="form-control" id="formMetaTitle">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Logo URL</label>
-                            <input type="text" class="form-control" id="formLogo" placeholder="URL or path to logo">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Contact Name</label>
-                            <input type="text" class="form-control" id="formContactName">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Contact Email</label>
-                            <input type="email" class="form-control" id="formContactEmail">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Contact Phone</label>
-                            <input type="text" class="form-control" id="formContactPhone">
+                            <label class="form-label">Meta Description</label>
+                            <input type="text" class="form-control" id="formMetaDescription">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Address</label>
-                            <input type="text" class="form-control" id="formAddress1">
+                            <label class="form-label">Sort Order</label>
+                            <input type="number" class="form-control" id="formSortOrder" value="0" min="0">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Company Size</label>
-                            <input type="text" class="form-control" id="formCompanySize" placeholder="e.g. 50-200">
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-check form-switch">
+                            <div class="form-check form-switch mt-4">
                                 <input class="form-check-input" type="checkbox" id="formIsActive" checked>
                                 <label class="form-check-label" for="formIsActive">Active</label>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="formIsVerified">
-                                <label class="form-check-label" for="formIsVerified">Verified</label>
                             </div>
                         </div>
                     </div>
@@ -204,7 +192,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title"><i class="ti ti-trash me-2"></i>Delete Company</h5>
+                <h5 class="modal-title"><i class="ti ti-trash me-2"></i>Delete Salary Range</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -222,5 +210,5 @@
     </div>
 </div>
 
-@include('jobs.company.index-js')
+@include('jobs.salary-ranges.index-js')
 @endsection

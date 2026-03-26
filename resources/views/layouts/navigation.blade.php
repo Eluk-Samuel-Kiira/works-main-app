@@ -53,38 +53,86 @@
                             </a>
                         </li>
                         <li class="sidebar-item">
-                            <a href="../main/frontend-blogpage.html" class="sidebar-link sublink">
+                            <a href="{{ route('industry.index') }}" class="sidebar-link sublink">
                                 <div class="round-16 d-flex align-items-center justify-content-center">
                                 <iconify-icon icon="solar:stop-circle-line-duotone"></iconify-icon>
                                 </div>
-                                <span class="hide-menu">{{__('AI & Simple Posting')}}</span>
+                                <span class="hide-menu">{{__('Industries')}}</span>
                             </a>
                         </li>
                         <li class="sidebar-item">
-                            <a href="../main/frontend-blogdetailpage.html" class="sidebar-link sublink">
+                            <a href="{{ route('job-category.index') }}" class="sidebar-link sublink">
                                 <div class="round-16 d-flex align-items-center justify-content-center">
                                 <iconify-icon icon="solar:stop-circle-line-duotone"></iconify-icon>
                                 </div>
-                                <span class="hide-menu">{{__('Job Settings')}}</span>
+                                <span class="hide-menu">{{__('Job Categories')}}</span>
                             </a>
                         </li>
                         <li class="sidebar-item">
-                            <a href="../main/frontend-contactpage.html" class="sidebar-link sublink">
+                            <a href="{{ route('job-type.index') }}" class="sidebar-link sublink">
                                 <div class="round-16 d-flex align-items-center justify-content-center">
                                 <iconify-icon icon="solar:stop-circle-line-duotone"></iconify-icon>
                                 </div>
-                                <span class="hide-menu">{{__('Posting Locations')}}</span>
+                                <span class="hide-menu">{{__('Job Types')}}</span>
                             </a>
                         </li>
                         <li class="sidebar-item">
-                            <a href="../main/frontend-pricingpage.html" class="sidebar-link sublink">
+                            <a href="{{ route('job-location.index') }}" class="sidebar-link sublink">
                                 <div class="round-16 d-flex align-items-center justify-content-center">
                                 <iconify-icon icon="solar:stop-circle-line-duotone"></iconify-icon>
                                 </div>
-                                <span class="hide-menu">{{__('Pricing')}}</span>
+                                <span class="hide-menu">{{__('Locations')}}</span>
                             </a>
                         </li>
                     </ul>
+                </li>
+
+                <li class="nav-small-cap">
+                    <iconify-icon icon="solar:menu-dots-bold" class="nav-small-cap-icon fs-4"></iconify-icon>
+                    <span class="hide-menu">{{__('Lookups')}}</span>
+                </li>
+                <li class="sidebar-item">
+                    <a class="sidebar-link has-arrow" href="javascript:void(0)" aria-expanded="false">
+                        <iconify-icon icon="solar:settings-linear" class="aside-icon"></iconify-icon>
+                        <span class="hide-menu">{{__('Job Settings')}}</span>
+                    </a>
+                    <ul aria-expanded="false" class="collapse first-level">
+                        <li class="sidebar-item">
+                            <a href="{{ route('experience-level.index') }}" class="sidebar-link sublink">
+                                <div class="round-16 d-flex align-items-center justify-content-center">
+                                <iconify-icon icon="solar:stop-circle-line-duotone"></iconify-icon>
+                                </div>
+                                <span class="hide-menu">{{__('Experience Levels')}}</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a href="{{ route('education-level.index') }}" class="sidebar-link sublink">
+                                <div class="round-16 d-flex align-items-center justify-content-center">
+                                <iconify-icon icon="solar:stop-circle-line-duotone"></iconify-icon>
+                                </div>
+                                <span class="hide-menu">{{__('Education Levels')}}</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a href="{{ route('salary-range.index') }}" class="sidebar-link sublink">
+                                <div class="round-16 d-flex align-items-center justify-content-center">
+                                <iconify-icon icon="solar:stop-circle-line-duotone"></iconify-icon>
+                                </div>
+                                <span class="hide-menu">{{__('Salary Ranges')}}</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <li class="nav-small-cap">
+                    <iconify-icon icon="solar:menu-dots-bold" class="nav-small-cap-icon fs-4"></iconify-icon>
+                    <span class="hide-menu">{{__('User Management')}}</span>
+                </li>
+                <li class="sidebar-item">
+                    <a class="sidebar-link" href="{{ route('user.index') }}">
+                        <iconify-icon icon="solar:users-group-rounded-linear" class="aside-icon"></iconify-icon>
+                        <span class="hide-menu">{{__('Users')}}</span>
+                    </a>
                 </li>
 
                 <li class="nav-small-cap">
@@ -97,14 +145,6 @@
                         <span class="hide-menu">{{__('App Settings')}}</span>
                     </a>
                     <ul aria-expanded="false" class="collapse first-level">
-                        <li class="sidebar-item">
-                            <a href="../main/frontend-landingpage.html" class="sidebar-link sublink">
-                                <div class="round-16 d-flex align-items-center justify-content-center">
-                                <iconify-icon icon="solar:stop-circle-line-duotone"></iconify-icon>
-                                </div>
-                                <span class="hide-menu">{{__('Jobs')}}</span>
-                            </a>
-                        </li>
                         <li class="sidebar-item">
                             <a href="{{ route('artisan.index') }}" class="sidebar-link sublink">
                                 <div class="round-16 d-flex align-items-center justify-content-center">
