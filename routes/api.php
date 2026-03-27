@@ -35,6 +35,10 @@ Route::prefix('v2')->name('api.v1.')->group(function () {
     Route::get('/popular-searches',                  [JobsController::class, 'popularSearches']);
     Route::get('/jobs-data-from-main/{job}',         [JobsController::class, 'show']);
     Route::get('/jobs-data-from-main/id/{id}',       [JobsController::class, 'showById']);
+    Route::post('/report-missing-link',              [JobsController::class, 'reportMissingLink'])->name('report.missing.link');
+    Route::post('/jobs/{job}/increment-share',       [JobsController::class, 'incrementShare'])->name('jobs.increment.share');
+    Route::post('/jobs/{job}/increment-application', [JobsController::class, 'incrementApplication'])->name('jobs.increment.application');
+
 });
 
 // ─── v1 CRUD API ─────────────────────────────────────────────────────────────

@@ -2,13 +2,13 @@
 
 namespace App\Models\Auth;
 
-use App\Models\Role; // You'll need to create this model
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 use Spatie\Permission\Traits\HasRoles;
+use Spatie\Permission\Models\Role; // Import Spatie's Role model
 
 class User extends Authenticatable
 {
@@ -55,11 +55,20 @@ class User extends Authenticatable
         
         // Sync Spatie roles with role_id when saving
         static::saved(function ($model) {
-            if ($model->role_id && !$model->hasRole($model->role->name)) {
-                // Remove all existing roles and assign the primary one
-                $model->syncRoles([$model->role->name]);
+            if ($model->role_id) {
+                $role = Role::find($model->role_id);
+                if ($role && !$model->hasRole($role->name)) {
+                    // Remove all existing roles and assign the primary one
+                    $model->syncRoles([$role->name]);
+                }
             }
         });
+    }
+
+    // Add relationship to Spatie's Role model
+    public function role()
+    {
+        return $this->belongsTo(Role::class, 'role_id');
     }
 
     public function getFullNameAttribute()
@@ -70,32 +79,32 @@ class User extends Authenticatable
     // Role-based helper methods using role_id for quick checks
     public function isSuperAdmin()
     {
-        return $this->role_id && $this->role->name === 'super_admin';
+        return $this->role_id && $this->role && $this->role->name === 'super_admin';
     }
 
     public function isAdmin()
     {
-        return $this->role_id && in_array($this->role->name, ['super_admin', 'admin']);
+        return $this->role_id && $this->role && in_array($this->role->name, ['super_admin', 'admin']);
     }
 
     public function isEmployer()
     {
-        return $this->role_id && $this->role->name === 'employer';
+        return $this->role_id && $this->role && $this->role->name === 'employer';
     }
 
     public function isJobSeeker()
     {
-        return $this->role_id && $this->role->name === 'job_seeker';
+        return $this->role_id && $this->role && $this->role->name === 'job_seeker';
     }
 
     public function isModerator()
     {
-        return $this->role_id && $this->role->name === 'moderator';
+        return $this->role_id && $this->role && $this->role->name === 'moderator';
     }
 
     public function isSupport()
     {
-        return $this->role_id && $this->role->name === 'support';
+        return $this->role_id && $this->role && $this->role->name === 'support';
     }
 
     // Also keep Spatie-based checks for completeness

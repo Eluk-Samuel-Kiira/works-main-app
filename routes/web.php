@@ -6,9 +6,9 @@ use App\Http\Controllers\Main\{ DashboardController };
 use App\Http\Controllers\Settings\{ ArtisanCommandController };
 
 
-
-Route::get('/', [DashboardController::class, 'index'])->name('home.welcome');
-
+Route::middleware('guest')->group(function () {
+    Route::get('/', [DashboardController::class, 'index'])->name('home.welcome');
+});
 
 // Protected Routes (Require Authentication)
 Route::middleware('auth')->group(function () {

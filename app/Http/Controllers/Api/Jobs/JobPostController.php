@@ -766,8 +766,7 @@ class JobPostController extends Controller
      */
     public function destroy($slug): JsonResponse
     {
-        $jobPost = JobPost::where('slug', $slug)->firstOrFail();
-        $jobPost->delete();
+        $jobPost = JobPost::where('slug', $slug)->delete();
         return $this->deleted('Job post deleted successfully');
     }
 
