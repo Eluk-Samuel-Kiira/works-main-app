@@ -21,7 +21,7 @@
     
     <!-- Request New Link Button -->
     <div class="d-grid mb-3">
-        <a href="{{ route('auth.login') }}" class="btn btn-primary py-8">
+        <a href="{{ route('login') }}" class="btn btn-primary py-8">
             <i class="ti ti-mail fs-5 me-2"></i>
             {{ __('Request New Magic Link') }}
         </a>
