@@ -4,8 +4,9 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\Job\JobPost;
-use Illuminate\Support\Facades\{ Log, Http };
+use App\Models\Job\{ JobPost };
+use App\Models\{ Notification };
+use Illuminate\Support\Facades\{ Log, Http, DB, Mail  };
 
 class JobsController extends Controller
 {
@@ -32,7 +33,8 @@ class JobsController extends Controller
                 'salaryRange',
                 'poster'
             ])
-            ->where('is_active', true);
+            ->where('is_active', true)
+            ->latest();
             
             // Apply keyword search if provided
             if ($request->has('keyword') && !empty($request->keyword)) {
@@ -111,6 +113,7 @@ class JobsController extends Controller
             $jobs->getCollection()->transform(function ($job) {
                 return $this->formatJobData($job);
             });
+            // Log::info($jobs);
             
             return response()->json($jobs);
             
@@ -189,6 +192,7 @@ class JobsController extends Controller
                 'is_urgent' => (bool) ($job->is_urgent ?? false),
                 'is_verified' => (bool) ($job->is_verified ?? false),
                 'view_count' => (int) ($job->view_count ?? 0),
+                'social_shares' => (int) ($job->click_count ?? 0),
                 'application_count' => (int) ($job->application_count ?? 0),
                 'deadline' => $job->deadline ? $job->deadline->format('Y-m-d') : null,
                 'created_at' => $job->created_at ? $job->created_at->format('Y-m-d H:i:s') : now()->format('Y-m-d H:i:s'),
@@ -502,7 +506,7 @@ class JobsController extends Controller
                 
                 'view_count' => (int) $job->view_count + 1,
                 'application_count' => (int) $job->application_count,
-                'social_shares' => (int) ($job->social_shares ?? 0),
+                'social_shares' => (int) ($job->click_count ?? 0),
                 'deadline' => $job->deadline ? $job->deadline->format('Y-m-d\TH:i:s.u\Z') : null,
                 'created_at' => $job->created_at ? $job->created_at->format('Y-m-d\TH:i:s.u\Z') : null,
                 
@@ -666,6 +670,181 @@ class JobsController extends Controller
     }
 
 
+        /**
+     * Report missing application link
+     */
+    public function reportMissingLink(Request $request)
+    {
+        try {
+            // Validate the request
+            $validated = $request->validate([
+                'job_id' => 'required|integer',
+                'job_title' => 'required|string|max:255',
+                'company_name' => 'nullable|string|max:255',
+                'url' => 'required|url',
+                'user_agent' => 'nullable|string',
+                'reported_at' => 'nullable|date',
+                'reported_by_email' => 'nullable|email',
+                'reported_by_name' => 'nullable|string|max:255'
+            ]);
+
+            // Log the report
+            // Log::info('Missing application link reported', $validated);
+            
+            // Get the job if it exists
+            $job = JobPost::find($validated['job_id']);
+            
+            // Store in notifications table
+            $notification = Notification::create([
+                'type' => 'missing_application_link',
+                'title' => 'Missing Application Link Reported',
+                'message' => "A user reported that the job \"{$validated['job_title']}\" at {$validated['company_name']} has no application link.",
+                'data' => json_encode([
+                    'job_id' => $validated['job_id'],
+                    'job_title' => $validated['job_title'],
+                    'company_name' => $validated['company_name'],
+                    'url' => $validated['url'],
+                    'user_agent' => $validated['user_agent'] ?? $request->userAgent(),
+                    'reported_by_email' => $validated['reported_by_email'] ?? null,
+                    'reported_by_name' => $validated['reported_by_name'] ?? null,
+                    'reported_at' => $validated['reported_at'] ?? now(),
+                    'job_exists' => $job ? true : false
+                ]),
+                'status' => 'unread',
+                'priority' => 'medium',
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+            
+            // Send email notification to admin
+            $this->sendAdminNotification($validated, $job);
+            
+            // Return success response
+            return response()->json([
+                'success' => true,
+                'message' => 'Report submitted successfully. Our team will review and update the job posting.',
+                'notification_id' => $notification->id,
+                'data' => [
+                    'reported_at' => now()->format('Y-m-d H:i:s'),
+                    'reference_id' => $notification->id
+                ]
+            ]);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to report missing link: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to submit report. Please try again or contact support.',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+    
+    /**
+     * Send admin notification email
+     */
+    private function sendAdminNotification($data, $job = null)
+    {
+        try {
+            // Get admin emails from config or database
+            $adminEmails = config('mail.admin_emails', ['admin@stardenaworks.com']);
+            
+            // Convert string to array if needed
+            if (is_string($adminEmails)) {
+                $adminEmails = array_map('trim', explode(',', $adminEmails));
+            }
+            
+            // Ensure it's an array
+            if (!is_array($adminEmails) || empty($adminEmails)) {
+                $adminEmails = ['admin@stardenaworks.com'];
+            }
+            
+            // Send email to each admin
+            foreach ($adminEmails as $email) {
+                if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    Mail::send('emails.admin.missing-link-report', [
+                        'jobTitle' => $data['job_title'],
+                        'companyName' => $data['company_name'],
+                        'jobId' => $data['job_id'],
+                        'job' => $job,
+                        'url' => $data['url'],
+                        'reportedBy' => $data['reported_by_name'] ?? $data['reported_by_email'] ?? 'Guest User',
+                        'reportedAt' => now()->format('Y-m-d H:i:s'),
+                        'userAgent' => $data['user_agent'] ?? 'Not provided',
+                        'dashboardLink' => url('/admin/notifications')
+                    ], function ($message) use ($email) {
+                        $message->to($email)
+                                ->subject('⚠️ [URGENT] Missing Application Link Report - Action Required');
+                    });
+                }
+            }
+            
+            Log::info('Admin notification sent for missing link report', ['job_id' => $data['job_id']]);
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to send admin notification email: ' . $e->getMessage());
+            // Don't throw - we still want to return success to the user even if email fails
+        }
+    }
+
+
+    public function incrementShare($jobId, Request $request)
+    {
+        try {
+            // Update directly without loading model
+            $updated = JobPost::where('id', $jobId)
+                ->increment('click_count');
+
+            if ($updated) {
+                return response()->json([
+                    'success' => (bool) $updated
+                ]);
+            }
+            
+            
+        } catch (\Exception $e) {
+            \Log::error('Share increment failed: ' . $e->getMessage());
+            return response()->json(['success' => false], 500);
+        }
+    }
+
+    public function incrementApplication($job, Request $request)
+    {
+        try {
+            $updated = DB::table('job_posts')
+                ->where('id', $job)
+                ->increment('application_count');
+            
+            if (!$updated) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Job not found'
+                ], 404);
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Application counted'
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Failed to increment application count: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to record application'
+            ], 500);
+        }
+    }
 
 
 
