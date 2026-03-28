@@ -60,7 +60,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::apiResource('experience-levels', ExperienceLevelController::class);
     Route::apiResource('education-levels', EducationLevelController::class);
     Route::apiResource('salary-ranges',    SalaryRangeController::class);
-});
+})->middleware('auth:sanctum');
 
 
 use App\Http\Controllers\Api\Jobs\JobPostController;
@@ -88,4 +88,4 @@ Route::prefix('v1')->middleware('api')->group(function () {
 
     Route::get('v1/users/list', [UserController::class, 'list']);
  
-});
+})->middleware('auth:sanctum');

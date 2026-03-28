@@ -20,6 +20,7 @@ class GenerateSitemap extends Command
         $this->info("Generating sitemap for frontend: {$webUrl}");
         
         $sitemap = Sitemap::create();
+        
 
         // Homepage
         $sitemap->add(Url::create($webUrl)
