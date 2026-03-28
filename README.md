@@ -95,6 +95,128 @@ php artisan db:seed
 
 ---
 
+## Running with Docker
+
+This project includes Docker support based on the [Laravel Docker Examples](https://github.com/dockersamples/laravel-docker-examples) setup. It uses **PHP-FPM**, **Nginx**, **PostgreSQL**, and **Redis**, with separate configurations for development and production.
+
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) installed
+- [Docker Compose](https://docs.docker.com/compose/install/) installed
+
+---
+
+### Development
+
+The development environment is defined in `compose.dev.yaml`. It extends the production setup and adds tools like **Xdebug**, volume mounts for hot reloading, and a **workspace** sidecar container with Composer, Node.js, and NPM.
+
+#### 1. Environment setup
+
+```bash
+cp .env.example .env
+```
+
+Update your `.env` to use the Docker service names:
+
+```env
+DB_CONNECTION=pgsql
+DB_HOST=postgres
+DB_PORT=5432
+DB_DATABASE=works
+DB_USERNAME=postgres
+DB_PASSWORD=your_password
+
+REDIS_HOST=redis
+REDIS_PORT=6379
+```
+
+#### 2. Build and start the containers
+
+```bash
+docker compose -f compose.dev.yaml up -d --build
+```
+
+#### 3. Install dependencies & set up the application
+
+Use the workspace container to run Composer, Artisan, and NPM commands:
+
+```bash
+# Install PHP dependencies
+docker compose -f compose.dev.yaml exec workspace composer install
+
+# Generate application key
+docker compose -f compose.dev.yaml exec workspace php artisan key:generate
+
+# Run migrations
+docker compose -f compose.dev.yaml exec workspace php artisan migrate
+
+# (Optional) Seed the database
+docker compose -f compose.dev.yaml exec workspace php artisan db:seed
+
+# Build frontend assets
+docker compose -f compose.dev.yaml exec workspace npm install
+docker compose -f compose.dev.yaml exec workspace npm run build
+```
+
+#### 4. Access the application
+
+Visit [http://localhost](http://localhost) in your browser.
+
+#### Useful commands
+
+```bash
+# Open a shell in the workspace container
+docker compose -f compose.dev.yaml exec workspace bash
+
+# View logs
+docker compose -f compose.dev.yaml logs -f
+
+# Stop the containers
+docker compose -f compose.dev.yaml down
+```
+
+---
+
+### Production
+
+The production environment is defined in `compose.yaml` and is optimised for deployment with multi-stage builds and minimal image sizes.
+
+#### 1. Environment setup
+
+```bash
+cp .env.example .env
+```
+
+Configure your `.env` with production values, making sure `APP_ENV=production` and `APP_DEBUG=false`.
+
+#### 2. Build and start the containers
+
+```bash
+docker compose up -d --build
+```
+
+#### 3. Run post-deployment steps
+
+```bash
+docker compose exec php-fpm php artisan key:generate
+docker compose exec php-fpm php artisan migrate --force
+docker compose exec php-fpm php artisan config:cache
+docker compose exec php-fpm php artisan route:cache
+docker compose exec php-fpm php artisan view:cache
+```
+
+#### 4. Stop the containers
+
+```bash
+docker compose down
+```
+
+---
+
+> **Note:** HTTPS is not configured in this setup. For production deployments, it is strongly recommended to configure SSL certificates and serve the application over HTTPS using a reverse proxy such as Nginx or Traefik.
+
+---
+
 ## Running the Application
 
 ### Development (server + queue + Vite in one command)
