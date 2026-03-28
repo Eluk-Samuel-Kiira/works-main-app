@@ -641,6 +641,26 @@ class UserSeeder extends Seeder
             $superAdmin->assignRole('super_admin');
         }
 
+
+        // Create SUPER ADMIN user
+        $superAdmin = User::firstOrCreate(
+            ['email' => 'ogirekenneth@gmail.com'],
+            [
+                'uuid' => Str::uuid(),
+                'first_name' => 'Kenneth',
+                'last_name' => 'Ogrey',
+                'phone' => '+256781315904',
+                'role_id' => $superAdminRole?->id,
+                'email_verified_at' => now(),
+                'country_code' => 'UG',
+                'is_active' => true,
+                'last_login_at' => now(),
+            ]
+        );
+        if (!$superAdmin->hasRole('super_admin')) {
+            $superAdmin->assignRole('super_admin');
+        }
+
         // Create Another SUPER ADMIN user
         $superAdmin = User::firstOrCreate(
             ['email' => 'fredsseginda70@gmail.com'],
