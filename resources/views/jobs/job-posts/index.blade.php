@@ -2,6 +2,7 @@
 @section('title', 'Job Posts - Stardena Works')
 
 @section('app-content')
+
 <div class="body-wrapper">
     <div class="container-fluid">
 

@@ -69,7 +69,7 @@ class JobPostRequest extends FormRequest
             // ----------------------------------------------------------------
             // SEO
             // ----------------------------------------------------------------
-            'meta_title'       => 'nullable|string|max:70',
+            'meta_title'       => 'nullable|string|max:100',
             'meta_description' => 'nullable|string|max:170',
             'keywords'         => 'nullable|string',
             'canonical_url'    => 'nullable|url|max:255',
@@ -316,7 +316,7 @@ class JobPostRequest extends FormRequest
             'deadline.after_or_equal' => 'The :attribute must be today or a future date.',
             'featured_until.after_or_equal' => 'The :attribute must be today or a future date.',
             'job_title.max' => 'The :attribute cannot exceed 255 characters.',
-            'meta_title.max' => 'The :attribute cannot exceed 70 characters for SEO optimization.',
+            'meta_title.max' => 'The :attribute cannot exceed 100 characters for SEO optimization.',
             'meta_description.max' => 'The :attribute cannot exceed 170 characters for SEO optimization.',
             'salary_amount.numeric' => 'The :attribute must be a valid number.',
             'salary_amount.min' => 'The :attribute must be at least 0.',

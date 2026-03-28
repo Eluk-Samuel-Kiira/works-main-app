@@ -690,9 +690,9 @@
                     <div class="d-flex align-items-center px-3">
                         <img src="{{ asset('assets/images/profile/user-1.jpg') }}" class="rounded-circle round-50" alt="" />
                         <div class="ms-3">
-                        <h5 class="mb-1 fs-4">Markarn Doe</h5>
+                        <h5 class="mb-1 fs-4">{{ auth()->user()->full_name }}</h5>
                         <p class="mb-0 fs-2 d-flex align-items-center text-muted">
-                            markrarn@wrappixel.com
+                            {{ auth()->user()->email }}
                         </p>
                         </div>
                     </div>

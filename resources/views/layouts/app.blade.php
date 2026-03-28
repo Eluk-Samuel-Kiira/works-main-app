@@ -17,6 +17,7 @@
 
     <title>@yield('title')</title>
     @stack('rich-editor-styles')
+    @include('auth.api-token')
 </head>
 
 <body>
@@ -47,6 +48,8 @@
             <!--  Header End -->
 
             <!-- Dynamic Content Section -->
+
+
             @yield('app-content')
         </div>
 
