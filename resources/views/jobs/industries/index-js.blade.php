@@ -1,5 +1,7 @@
 <script>
 
+    @include('jobs.industries.tabler-icons')
+
     // ============================================================
     // CONFIG & STATE
     // ============================================================
@@ -8,6 +10,7 @@
     let currentPage   = 1;
     let currentId     = null;
     let debounceTimer = null;
+    let filteredIcons = TABLER_ICONS;
 
     // ============================================================
     // UTILS
@@ -173,10 +176,11 @@
         <table class="table table-bordered mb-0">
             <tr><th width="180">Name</th><td>${esc(item.name)}</td></tr>
             <tr><th>Slug</th><td><code>${esc(item.slug)}</code></td></tr>
-            <tr><th>Icon</th><td>${item.icon ? `<i class="${esc(item.icon)} fs-5 me-2"></i>${esc(item.icon)}` : '—'}</td></tr>
+            <tr><th>Icon</th><td>${item.icon ? `<i class="${esc(item.icon)} fs-5 me-2"></i><code>${esc(item.icon)}</code>` : '—'}</td></tr>
             <tr><th>Description</th><td>${esc(item.description) || '—'}</td></tr>
             <tr><th>Meta Title</th><td>${esc(item.meta_title) || '—'}</td></tr>
             <tr><th>Meta Description</th><td>${esc(item.meta_description) || '—'}</td></tr>
+            <tr><th>Estimated Salary</th><td>${item.estimated_salary ? new Intl.NumberFormat('en-UG', {style: 'currency', currency: 'UGX'}).format(item.estimated_salary) : '—'}</td></tr>
             <tr><th>Status</th><td>${item.is_active
                 ? '<span class="badge bg-success">Active</span>'
                 : '<span class="badge bg-secondary">Inactive</span>'}</td></tr>
@@ -200,10 +204,12 @@
         document.getElementById('formId').value = '';
         document.getElementById('formName').value = '';
         document.getElementById('formIcon').value = '';
+        document.getElementById('iconPreview').innerHTML = '';
         document.getElementById('formDescription').value = '';
         document.getElementById('formMetaTitle').value = '';
         document.getElementById('formMetaDescription').value = '';
         document.getElementById('formSortOrder').value = '0';
+        document.getElementById('formEstimatedSalary').value = '';
         document.getElementById('formIsActive').checked = true;
         document.getElementById('formBtnText').textContent = 'Save';
         bsModal('formModal').show();
@@ -220,10 +226,16 @@
             document.getElementById('formId').value = item.id;
             document.getElementById('formName').value = item.name ?? '';
             document.getElementById('formIcon').value = item.icon ?? '';
+            if (item.icon) {
+                updateIconPreview(item.icon);
+            } else {
+                document.getElementById('iconPreview').innerHTML = '';
+            }
             document.getElementById('formDescription').value = item.description ?? '';
             document.getElementById('formMetaTitle').value = item.meta_title ?? '';
             document.getElementById('formMetaDescription').value = item.meta_description ?? '';
             document.getElementById('formSortOrder').value = item.sort_order ?? 0;
+            document.getElementById('formEstimatedSalary').value = item.estimated_salary ?? '';
             document.getElementById('formIsActive').checked = !!item.is_active;
         } catch (e) {
             toast('Failed to load industry data.', 'error');
@@ -245,6 +257,7 @@
             meta_title:       document.getElementById('formMetaTitle').value.trim() || null,
             meta_description: document.getElementById('formMetaDescription').value.trim() || null,
             sort_order:       parseInt(document.getElementById('formSortOrder').value) || 0,
+            estimated_salary: document.getElementById('formEstimatedSalary').value ? parseFloat(document.getElementById('formEstimatedSalary').value) : null,
             is_active:        document.getElementById('formIsActive').checked,
         };
 
@@ -293,6 +306,49 @@
             btn.disabled = false;
             spinner.classList.add('d-none');
         }
+    }
+
+    // ============================================================
+    // ICON PICKER
+    // ============================================================
+    function openIconPicker() {
+        filteredIcons = TABLER_ICONS;
+        renderIconGrid();
+        document.getElementById('iconSearchInput').value = '';
+        bsModal('iconPickerModal').show();
+    }
+
+    function renderIconGrid() {
+        const grid = document.getElementById('iconGrid');
+        grid.innerHTML = filteredIcons.map(icon => `
+            <button type="button" class="btn btn-outline-secondary p-3"
+                    onclick="selectIcon('${esc(icon)}'); return false;"
+                    title="${esc(icon)}">
+                <i class="${esc(icon)}" style="font-size:1.5rem"></i>
+            </button>
+        `).join('');
+    }
+
+    function filterIcons() {
+        const search = document.getElementById('iconSearchInput').value.toLowerCase();
+        filteredIcons = TABLER_ICONS.filter(i => i.includes(search));
+        renderIconGrid();
+    }
+
+    function selectIcon(icon) {
+        document.getElementById('formIcon').value = icon;
+        updateIconPreview(icon);
+        bsModal('iconPickerModal').hide();
+    }
+
+    function updateIconPreview(icon) {
+        const preview = document.getElementById('iconPreview');
+        preview.innerHTML = `<i class="${esc(icon)}"></i><br><small class="text-muted">${esc(icon)}</small>`;
+    }
+
+    function randomizeIcon() {
+        const icon = getRandomIcon();
+        selectIcon(icon);
     }
 
     // ============================================================

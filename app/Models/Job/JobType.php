@@ -2,6 +2,7 @@
 
 namespace App\Models\Job;
 
+use App\Models\Auth\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -18,7 +19,8 @@ class JobType extends Model
         'meta_description',
         'icon',
         'is_active',
-        'sort_order'
+        'sort_order',
+        'created_by'
     ];
 
     protected $casts = [
@@ -38,6 +40,9 @@ class JobType extends Model
             }
             if (empty($jobType->meta_description)) {
                 $jobType->meta_description = "Find {$jobType->name} in Uganda. Browse employment opportunities and career positions across various industries.";
+            }
+            if (empty($jobType->created_by) && auth()->check()) {
+                $jobType->created_by = auth()->id();
             }
         });
     }
@@ -64,5 +69,10 @@ class JobType extends Model
     public function getUrlAttribute()
     {
         return url("/{$this->slug}");
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

@@ -2,6 +2,7 @@
 
     const API_BASE      = '/api/v1/companies';
     const INDUSTRY_API  = '/api/v1/industries';
+    const LOCATIONS_API = '/api/v1/job-locations';
     const CSRF_TOKEN    = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
     let currentPage      = 1;
     let currentId        = null;
@@ -38,6 +39,15 @@
             const options = items.map(i => `<option value="${i.id}">${esc(i.name)}</option>`).join('');
             document.getElementById('filterIndustry').innerHTML = '<option value="">All Industries</option>' + options;
             document.getElementById('formIndustryId').innerHTML = '<option value="">— Select Industry —</option>' + options;
+        } catch (e) { /* silent */ }
+    }
+
+    async function loadLocations() {
+        try {
+            const res = await apiFetch(`${LOCATIONS_API}?per_page=100&is_active=1`);
+            const items = res.data ?? [];
+            const options = items.map(i => `<option value="${i.id}">${esc(i.country)} - ${esc(i.district)}</option>`).join('');
+            document.getElementById('formLocationId').innerHTML = '<option value="">— Select Location —</option>' + options;
         } catch (e) { /* silent */ }
     }
 
@@ -186,9 +196,11 @@
         document.getElementById('formId').value = '';
         document.getElementById('formName').value = '';
         document.getElementById('formIndustryId').value = '';
+        document.getElementById('formLocationId').value = '';
         document.getElementById('formDescription').value = '';
         document.getElementById('formWebsite').value = '';
-        document.getElementById('formLogo').value = '';
+        document.getElementById('formLogoFile').value = '';
+        document.getElementById('logoPreview').innerHTML = '';
         document.getElementById('formContactName').value = '';
         document.getElementById('formContactEmail').value = '';
         document.getElementById('formContactPhone').value = '';
@@ -211,9 +223,15 @@
             document.getElementById('formId').value = item.id;
             document.getElementById('formName').value = item.name ?? '';
             document.getElementById('formIndustryId').value = item.industry_id ?? '';
+            document.getElementById('formLocationId').value = item.location_id ?? '';
             document.getElementById('formDescription').value = item.description ?? '';
             document.getElementById('formWebsite').value = item.website ?? '';
-            document.getElementById('formLogo').value = item.logo ?? '';
+            document.getElementById('formLogoFile').value = '';
+            if (item.logo_url) {
+                document.getElementById('logoPreview').innerHTML = `<img src="${esc(item.logo_url)}" class="img-thumbnail" style="max-height:100px" alt="Current Logo">`;
+            } else {
+                document.getElementById('logoPreview').innerHTML = '';
+            }
             document.getElementById('formContactName').value = item.contact_name ?? '';
             document.getElementById('formContactEmail').value = item.contact_email ?? '';
             document.getElementById('formContactPhone').value = item.contact_phone ?? '';
@@ -227,29 +245,43 @@
     async function submitSave() {
         const btn = document.getElementById('formSaveBtn'), spinner = document.getElementById('formBtnSpinner');
         btn.disabled = true; spinner.classList.remove('d-none');
-        const industryId = document.getElementById('formIndustryId').value;
-        const payload = {
-            name:          document.getElementById('formName').value.trim(),
-            industry_id:   industryId ? parseInt(industryId) : null,
-            description:   document.getElementById('formDescription').value.trim() || null,
-            website:       document.getElementById('formWebsite').value.trim() || null,
-            logo:          document.getElementById('formLogo').value.trim() || null,
-            contact_name:  document.getElementById('formContactName').value.trim() || null,
-            contact_email: document.getElementById('formContactEmail').value.trim() || null,
-            contact_phone: document.getElementById('formContactPhone').value.trim() || null,
-            address1:      document.getElementById('formAddress1').value.trim() || null,
-            company_size:  document.getElementById('formCompanySize').value.trim() || null,
-            is_active:     document.getElementById('formIsActive').checked,
-            is_verified:   document.getElementById('formIsVerified').checked,
-        };
+
         try {
-            if (currentId) {
-                await apiFetch(`${API_BASE}/${currentId}`, { method: 'PATCH', body: JSON.stringify(payload) });
-                toast('Company updated successfully.');
-            } else {
-                await apiFetch(API_BASE, { method: 'POST', body: JSON.stringify(payload) });
-                toast('Company created successfully.');
-            }
+            const payload = {
+                name:          document.getElementById('formName').value.trim(),
+                industry_id:   document.getElementById('formIndustryId').value || null,
+                location_id:   document.getElementById('formLocationId').value || null,
+                description:   document.getElementById('formDescription').value.trim() || null,
+                website:       document.getElementById('formWebsite').value.trim() || null,
+                contact_name:  document.getElementById('formContactName').value.trim() || null,
+                contact_email: document.getElementById('formContactEmail').value.trim() || null,
+                contact_phone: document.getElementById('formContactPhone').value.trim() || null,
+                address1:      document.getElementById('formAddress1').value.trim() || null,
+                company_size:  document.getElementById('formCompanySize').value.trim() || null,
+                is_active:     document.getElementById('formIsActive').checked,
+                is_verified:   document.getElementById('formIsVerified').checked,
+            };
+
+            const formData = new FormData();
+            Object.entries(payload).forEach(([key, value]) => {
+                if (value !== null && value !== '') formData.append(key, value);
+            });
+
+            const logoFile = document.getElementById('formLogoFile').files[0];
+            if (logoFile) formData.append('logo', logoFile);
+
+            const method = currentId ? 'PATCH' : 'POST';
+            const url = currentId ? `${API_BASE}/${currentId}` : API_BASE;
+
+            const res = await fetch(url, {
+                method,
+                body: formData,
+                headers: { 'Accept':'application/json', 'X-CSRF-TOKEN':CSRF_TOKEN },
+            });
+            const data = await res.json();
+            if (!res.ok) throw data;
+
+            toast(currentId ? 'Company updated successfully.' : 'Company created successfully.');
             bsModal('formModal').hide();
             loadItems(currentPage);
         } catch (e) {
@@ -280,10 +312,31 @@
     }
 
     // ============================================================
+    // LOGO PREVIEW HELPERS
+    // ============================================================
+    function previewLogo() {
+        const file = document.getElementById('formLogoFile').files[0];
+        const preview = document.getElementById('logoPreview');
+        if (!file) { preview.innerHTML = ''; return; }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            preview.innerHTML = `<img src="${e.target.result}" class="img-thumbnail" style="max-height:100px" alt="Logo Preview">`;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function clearLogo() {
+        document.getElementById('formLogoFile').value = '';
+        document.getElementById('logoPreview').innerHTML = '';
+    }
+
+    // ============================================================
     // INIT
     // ============================================================
     document.addEventListener('DOMContentLoaded', () => {
         loadIndustries();
+        loadLocations();
         loadItems(1);
     });
 

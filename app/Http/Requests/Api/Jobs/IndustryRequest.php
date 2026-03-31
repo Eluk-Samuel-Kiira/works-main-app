@@ -26,6 +26,8 @@ class IndustryRequest extends FormRequest
             'icon'             => 'nullable|string|max:100',
             'is_active'        => 'nullable|boolean',
             'sort_order'       => 'nullable|integer|min:0',
+            'estimated_salary' => 'nullable|numeric|min:0|max:999999.99',
+            'created_by'       => 'nullable|integer|exists:users,id',
         ];
     }
 

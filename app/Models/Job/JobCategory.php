@@ -2,6 +2,7 @@
 
 namespace App\Models\Job;
 
+use App\Models\Auth\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -18,7 +19,8 @@ class JobCategory extends Model
         'meta_description',
         'icon',
         'is_active',
-        'sort_order'
+        'sort_order',
+        'created_by'
     ];
 
     protected $casts = [
@@ -38,6 +40,9 @@ class JobCategory extends Model
             }
             if (empty($category->meta_description)) {
                 $category->meta_description = "Browse latest {$category->name} job vacancies in Uganda. Find your dream career in {$category->name} sector.";
+            }
+            if (empty($category->created_by) && auth()->check()) {
+                $category->created_by = auth()->id();
             }
         });
 
@@ -75,5 +80,10 @@ class JobCategory extends Model
     public function jobs()
     {
         return $this->hasMany(Job::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

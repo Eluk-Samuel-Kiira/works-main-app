@@ -2,6 +2,7 @@
 
 namespace App\Models\Job;
 
+use App\Models\Auth\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
@@ -22,6 +23,7 @@ class ExperienceLevel extends Model
         'meta_description',
         'is_active',
         'sort_order',
+        'created_by',
     ];
 
     /**
@@ -46,6 +48,9 @@ class ExperienceLevel extends Model
         static::creating(function ($experienceLevel) {
             if (empty($experienceLevel->slug)) {
                 $experienceLevel->slug = Str::slug($experienceLevel->name);
+            }
+            if (empty($experienceLevel->created_by) && auth()->check()) {
+                $experienceLevel->created_by = auth()->id();
             }
         });
 
@@ -194,6 +199,14 @@ class ExperienceLevel extends Model
     public function jobs()
     {
         return $this->hasMany(JobPost::class, 'experience_level_id');
+    }
+
+    /**
+     * Get the creator of this experience level.
+     */
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     /**

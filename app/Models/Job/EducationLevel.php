@@ -2,6 +2,7 @@
 
 namespace App\Models\Job;
 
+use App\Models\Auth\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -17,7 +18,8 @@ class EducationLevel extends Model
         'meta_title',
         'meta_description',
         'is_active',
-        'sort_order'
+        'sort_order',
+        'created_by'
     ];
 
     protected $casts = [
@@ -34,6 +36,9 @@ class EducationLevel extends Model
             }
             if (empty($educationLevel->meta_title)) {
                 $educationLevel->meta_title = "{$educationLevel->name} Jobs in Uganda - Education Requirements";
+            }
+            if (empty($educationLevel->created_by) && auth()->check()) {
+                $educationLevel->created_by = auth()->id();
             }
         });
     }
@@ -55,5 +60,10 @@ class EducationLevel extends Model
     public function getUrlAttribute()
     {
         return url("/education/{$this->slug}");
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

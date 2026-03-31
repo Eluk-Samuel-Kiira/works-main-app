@@ -2,6 +2,7 @@
 
 namespace App\Models\Job;
 
+use App\Models\Auth\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -23,8 +24,10 @@ class Company extends Model
         'address1',
         'company_size',
         'industry_id',
+        'location_id',
         'is_active',
-        'is_verified'
+        'is_verified',
+        'created_by'
     ];
 
     protected $casts = [
@@ -40,6 +43,9 @@ class Company extends Model
             if (empty($company->slug)) {
                 $company->slug = Str::slug($company->name);
             }
+            if (empty($company->created_by) && auth()->check()) {
+                $company->created_by = auth()->id();
+            }
         });
 
         static::updating(function ($company) {
@@ -52,6 +58,16 @@ class Company extends Model
     public function industry()
     {
         return $this->belongsTo(Industry::class);
+    }
+
+    public function location()
+    {
+        return $this->belongsTo(JobLocation::class, 'location_id');
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function jobs()

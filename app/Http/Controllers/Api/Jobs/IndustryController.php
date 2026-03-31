@@ -24,7 +24,7 @@ class IndustryController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Industry::query();
+        $query = Industry::with('creator');
 
         if ($request->filled('search')) {
             $query->where('name', 'like', "%{$request->search}%");
@@ -49,7 +49,7 @@ class IndustryController extends Controller
     {
         $industry = Industry::create($request->validated());
 
-        return $this->created($industry, 'Industry created successfully');
+        return $this->created($industry->load('creator'), 'Industry created successfully');
     }
 
     /**
@@ -58,7 +58,7 @@ class IndustryController extends Controller
      */
     public function show(Industry $industry): JsonResponse
     {
-        return $this->success($industry, 'Industry retrieved successfully');
+        return $this->success($industry->load('creator'), 'Industry retrieved successfully');
     }
 
     /**
