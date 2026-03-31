@@ -127,8 +127,17 @@
                             <input type="text" class="form-control" id="formName" required>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Icon</label>
-                            <input type="text" class="form-control" id="formIcon" placeholder="e.g. ti ti-building">
+                            <label class="form-label">Icon <span class="text-muted">(Select or Random)</span></label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="formIcon" readonly style="background-color:#f8f9fa">
+                                <button class="btn btn-outline-secondary" type="button" onclick="openIconPicker()">
+                                    <i class="ti ti-palette me-1"></i>Pick
+                                </button>
+                                <button class="btn btn-outline-info" type="button" onclick="randomizeIcon()">
+                                    <i class="ti ti-dice me-1"></i>Random
+                                </button>
+                            </div>
+                            <div id="iconPreview" class="mt-2 text-center" style="font-size:2rem;min-height:60px"></div>
                         </div>
                         <div class="col-12">
                             <label class="form-label">Description</label>
@@ -145,6 +154,10 @@
                         <div class="col-md-6">
                             <label class="form-label">Sort Order</label>
                             <input type="number" class="form-control" id="formSortOrder" value="0" min="0">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Estimated Salary (UGX)</label>
+                            <input type="number" class="form-control" id="formEstimatedSalary" placeholder="0.00" min="0" step="0.01">
                         </div>
                         <div class="col-md-6">
                             <div class="form-check form-switch mt-4">
@@ -184,6 +197,22 @@
                     <span id="deleteBtnText">Delete</span>
                     <span id="deleteBtnSpinner" class="spinner-border spinner-border-sm ms-1 d-none"></span>
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- ============================================================ ICON PICKER MODAL ============================================================ --}}
+<div class="modal fade" id="iconPickerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="ti ti-palette me-2"></i>Select Icon</h5>
+                <input type="text" id="iconSearchInput" class="form-control form-control-sm ms-3" placeholder="Search icons..." style="max-width:200px" oninput="filterIcons()">
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="iconGrid" class="d-grid gap-2" style="grid-template-columns: repeat(auto-fill, minmax(60px, 1fr))"></div>
             </div>
         </div>
     </div>

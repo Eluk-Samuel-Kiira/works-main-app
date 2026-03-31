@@ -2,6 +2,7 @@
 
 namespace App\Models\Job;
 
+use App\Models\Auth\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -18,7 +19,8 @@ class JobLocation extends Model
         'meta_title',
         'meta_description',
         'is_active',
-        'sort_order'
+        'sort_order',
+        'created_by'
     ];
 
     protected $casts = [
@@ -38,6 +40,9 @@ class JobLocation extends Model
             }
             if (empty($location->meta_description)) {
                 $location->meta_description = "Find latest jobs in {$location->name} Uganda. Browse career opportunities, vacancies, and employment in {$location->name}.";
+            }
+            if (empty($location->created_by) && auth()->check()) {
+                $location->created_by = auth()->id();
             }
         });
     }
@@ -69,5 +74,10 @@ class JobLocation extends Model
     public function getUrlAttribute()
     {
         return url("/jobs-in-{$this->slug}");
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

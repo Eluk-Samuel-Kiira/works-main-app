@@ -2,6 +2,7 @@
 
 namespace App\Models\Job;
 
+use App\Models\Auth\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -18,11 +19,14 @@ class Industry extends Model
         'meta_description',
         'icon',
         'is_active',
-        'sort_order'
+        'sort_order',
+        'estimated_salary',
+        'created_by'
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'estimated_salary' => 'decimal:2',
     ];
 
     protected static function boot()
@@ -38,6 +42,9 @@ class Industry extends Model
             }
             if (empty($industry->meta_description)) {
                 $industry->meta_description = "Find {$industry->name} industry jobs in Uganda. Browse career opportunities in {$industry->name} sector and apply for positions.";
+            }
+            if (empty($industry->created_by) && auth()->check()) {
+                $industry->created_by = auth()->id();
             }
         });
 
@@ -56,6 +63,11 @@ class Industry extends Model
     public function scopePopular($query)
     {
         return $query->where('sort_order', '<=', 15);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function getSeoAttributes()

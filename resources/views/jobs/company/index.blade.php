@@ -135,10 +135,16 @@
                             <label class="form-label">Company Name <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="formName" required>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-2">
                             <label class="form-label">Industry</label>
                             <select class="form-select" id="formIndustryId">
                                 <option value="">— Select Industry —</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Location</label>
+                            <select class="form-select" id="formLocationId">
+                                <option value="">— Select Location —</option>
                             </select>
                         </div>
                         <div class="col-12">
@@ -150,8 +156,13 @@
                             <input type="url" class="form-control" id="formWebsite" placeholder="https://example.com">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Logo URL</label>
-                            <input type="text" class="form-control" id="formLogo" placeholder="URL or path to logo">
+                            <label class="form-label">Company Logo</label>
+                            <div class="input-group">
+                                <input type="file" id="formLogoFile" class="form-control" accept="image/jpeg,image/png,image/gif,image/webp" onchange="previewLogo()">
+                                <button class="btn btn-outline-secondary" type="button" onclick="clearLogo()">Clear</button>
+                            </div>
+                            <small class="form-text text-muted">Max 2MB • Formats: JPG, PNG, GIF, WebP</small>
+                            <div id="logoPreview" class="mt-2"></div>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Contact Name</label>

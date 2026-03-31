@@ -2,6 +2,7 @@
 
 namespace App\Models\Job;
 
+use App\Models\Auth\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
@@ -17,7 +18,8 @@ class SalaryRange extends Model
         'meta_title',
         'meta_description',
         'is_active',
-        'sort_order'
+        'sort_order',
+        'created_by'
     ];
 
     protected $casts = [
@@ -33,6 +35,9 @@ class SalaryRange extends Model
         static::creating(function ($salaryRange) {
             if (empty($salaryRange->slug)) {
                 $salaryRange->slug = Str::slug($salaryRange->name);
+            }
+            if (empty($salaryRange->created_by) && auth()->check()) {
+                $salaryRange->created_by = auth()->id();
             }
         });
     }
@@ -62,5 +67,10 @@ class SalaryRange extends Model
     public function getUrlAttribute()
     {
         return url("/salary/{$this->slug}");
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

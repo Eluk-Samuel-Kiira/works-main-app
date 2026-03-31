@@ -26,7 +26,7 @@ class CompanyController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Company::with('industry');
+        $query = Company::with(['industry', 'location', 'creator']);
 
         if ($request->filled('search')) {
             $query->where('name', 'like', "%{$request->search}%");
@@ -56,9 +56,15 @@ class CompanyController extends Controller
      */
     public function store(CompanyRequest $request): JsonResponse
     {
-        $company = Company::create($request->validated());
+        $validated = $request->validated();
 
-        return $this->created($company->load('industry'), 'Company created successfully');
+        if ($request->hasFile('logo')) {
+            $validated['logo'] = $request->file('logo')->store('logos', 'public');
+        }
+
+        $company = Company::create($validated);
+
+        return $this->created($company->load(['industry', 'location', 'creator']), 'Company created successfully');
     }
 
     /**
@@ -67,7 +73,7 @@ class CompanyController extends Controller
      */
     public function show(Company $company): JsonResponse
     {
-        return $this->success($company->load('industry'), 'Company retrieved successfully');
+        return $this->success($company->load(['industry', 'location', 'creator']), 'Company retrieved successfully');
     }
 
     /**
@@ -76,9 +82,15 @@ class CompanyController extends Controller
      */
     public function update(CompanyRequest $request, Company $company): JsonResponse
     {
-        $company->update($request->validated());
+        $validated = $request->validated();
 
-        return $this->success($company->fresh()->load('industry'), 'Company updated successfully');
+        if ($request->hasFile('logo')) {
+            $validated['logo'] = $request->file('logo')->store('logos', 'public');
+        }
+
+        $company->update($validated);
+
+        return $this->success($company->fresh()->load(['industry', 'location', 'creator']), 'Company updated successfully');
     }
 
     /**
