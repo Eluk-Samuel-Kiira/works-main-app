@@ -32,9 +32,9 @@ Schedule::call(function () {
         ->where('featured_until', '<', now())
         ->update(['is_featured' => false, 'featured_until' => null]);
     
-    if ($expired > 0) {
-        \Log::info("Cleaned up {$expired} expired featured jobs");
-    }
+if ($expired > 0) {
+    \Log::info("Cleaned up {$expired} expired featured jobs");
+}
 })->hourly()->name('clean-expired-featured');
 
 // 2. Force delete jobs older than 2 months (60 days) - run daily at 2 AM
