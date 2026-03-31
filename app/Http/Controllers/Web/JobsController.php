@@ -279,6 +279,7 @@ class JobsController extends Controller
                     'industry' => $job->industry ? [
                         'id' => $job->industry->id,
                         'name' => $job->industry->name ?? '',
+                        'estimated_salary' => $job->industry->estimated_salary ?? '',
                     ] : null,
                     'poster' => $job->poster ? [
                         'id' => $job->poster->id,
@@ -535,6 +536,7 @@ class JobsController extends Controller
                 'industry' => $job->industry ? [
                     'id' => $job->industry->id,
                     'name' => $job->industry->name,
+                    'estimated_salary' => $job->industry->estimated_salary,
                 ] : null,
                 
                 'job_type' => $job->jobType ? [
