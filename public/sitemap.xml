@@ -1,709 +1,709 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
-    <url>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
     <loc>http://127.0.0.1:8001</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs</loc>
     <changefreq>hourly</changefreq>
     <priority>0.9</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/dancer-manager-G1q5Hx</loc>
     <lastmod>2026-03-31T18:50:52+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/valve-repairer-or-regulator-repairer-officer-x8Vtxy</loc>
     <lastmod>2026-03-31T18:50:39+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/school-bus-driver-manager-DNdUDz</loc>
     <lastmod>2026-03-31T18:51:03+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/pile-driver-operator-manager-JoaohU</loc>
     <lastmod>2026-03-31T18:50:52+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/special-forces-officer-specialist-yUgtOd</loc>
     <lastmod>2026-03-31T18:50:39+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/freight-inspector-officer-cyQbEt</loc>
     <lastmod>2026-03-31T18:51:07+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/stone-sawyer-supervisor-A0K6hm</loc>
     <lastmod>2026-03-31T18:51:06+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/aircraft-launch-specialist-officer-UHXdYG</loc>
     <lastmod>2026-03-31T18:51:03+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/talent-acquisition-specialist-pIoRaI</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/railroad-switch-operator-supervisor-R1usAC</loc>
     <lastmod>2026-03-31T18:50:58+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/radiologic-technician-officer-Mv0H8z</loc>
     <lastmod>2026-03-31T18:50:39+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/automotive-glass-installers-manager-C2umhG</loc>
     <lastmod>2026-03-31T18:50:34+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/preschool-teacher-officer-EXnew8</loc>
     <lastmod>2026-03-31T18:50:39+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/courier-coordinator-kUa306</loc>
     <lastmod>2026-03-31T18:50:51+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/software-engineer-lg5LzE</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/title-searcher-assistant-n6mJFY</loc>
     <lastmod>2026-03-31T18:50:55+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/precision-aircraft-systems-assemblers-consultant-chVs3N</loc>
     <lastmod>2026-03-31T18:51:03+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/marketing-manager-consultant-Jxp8x7</loc>
     <lastmod>2026-03-31T18:50:55+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/logistician-manager-Z5v0Yq</loc>
     <lastmod>2026-03-31T18:50:39+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/computer-controlled-machine-tool-operator-assistant-iI6kkS</loc>
     <lastmod>2026-03-31T18:51:08+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/job-printer-manager-8b5IoZ</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/photographic-processing-machine-operator-specialist-AHj20X</loc>
     <lastmod>2026-03-31T18:50:45+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/senior-accountant-0drLZs</loc>
     <lastmod>2026-03-31T18:50:39+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/cost-estimator-officer-lshUQS</loc>
     <lastmod>2026-03-31T18:50:39+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/press-machine-setter-operator-specialist-RDPebV</loc>
     <lastmod>2026-03-31T18:50:30+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/roofer-officer-0IUbuC</loc>
     <lastmod>2026-03-31T18:50:39+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/directory-assistance-operator-officer-GAZjMK</loc>
     <lastmod>2026-03-31T18:51:03+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/garment-supervisor-kcq7i3</loc>
     <lastmod>2026-03-31T18:51:03+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/record-clerk-specialist-KUqLiG</loc>
     <lastmod>2026-03-31T18:50:45+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/command-control-center-officer-assistant-6zuXh6</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/food-preparation-worker-consultant-TD6ZoU</loc>
     <lastmod>2026-03-31T18:50:39+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/tire-builder-manager-nsGF3J</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/hazardous-materials-removal-worker-coordinator-7QvI7z</loc>
     <lastmod>2026-03-31T18:51:03+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/coremaking-machine-operator-officer-CyDODU</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/optical-instrument-assembler-officer-8qsy3t</loc>
     <lastmod>2026-03-31T18:50:55+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/program-director-officer-7wKtrc</loc>
     <lastmod>2026-03-31T18:50:34+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/dietetic-technician-specialist-MQHrpv</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/grinding-machine-operator-manager-9NY3Pe</loc>
     <lastmod>2026-03-31T18:50:39+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/devops-engineer-TdTgNT</loc>
     <lastmod>2026-03-31T18:51:07+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/plumber-assistant-9uAtGU</loc>
     <lastmod>2026-03-31T18:50:52+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/conservation-scientist-coordinator-Qf7Nzo</loc>
     <lastmod>2026-03-31T18:50:52+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/production-laborer-manager-b5ookD</loc>
     <lastmod>2026-03-31T18:51:03+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/recreational-vehicle-service-technician-specialist-tpzSsy</loc>
     <lastmod>2026-03-31T18:50:56+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/exhibit-designer-supervisor-9HBnSV</loc>
     <lastmod>2026-03-31T18:50:56+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/surveying-technician-coordinator-ir4p1e</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/scientific-photographer-supervisor-GrDvfW</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/animal-breeder-manager-32U8g2</loc>
     <lastmod>2026-03-31T18:50:56+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/food-cooking-machine-operators-specialist-USENKE</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/production-planner-assistant-KumXBn</loc>
     <lastmod>2026-03-31T18:50:55+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/rail-car-repairer-coordinator-BvL9ks</loc>
     <lastmod>2026-03-31T18:51:03+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/baker-assistant-1PShmc</loc>
     <lastmod>2026-03-31T18:50:52+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/locksmith-supervisor-Y1gvBM</loc>
     <lastmod>2026-03-31T18:51:06+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/transportation-and-material-moving-specialist-MktbRV</loc>
     <lastmod>2026-03-31T18:50:56+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/obstetrician-specialist-wGXDMb</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/aircraft-mechanics-or-aircraft-service-technician-manager-7IkMxE</loc>
     <lastmod>2026-03-31T18:50:45+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/senior-developer-MQoRGv</loc>
     <lastmod>2026-03-31T18:50:56+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/statement-clerk-officer-sGGdem</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/public-transportation-inspector-specialist-aUXMWY</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/photographic-developer-supervisor-gn3koP</loc>
     <lastmod>2026-03-31T18:50:30+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/railroad-yard-worker-manager-IfagXV</loc>
     <lastmod>2026-03-31T18:50:56+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/sailor-officer-VuIxbr</loc>
     <lastmod>2026-03-31T18:50:52+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/environmental-scientist-consultant-GkKGY8</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/city-planning-aide-manager-rwFQoB</loc>
     <lastmod>2026-03-31T18:51:08+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/sawing-machine-operator-officer-ze5gq8</loc>
     <lastmod>2026-03-31T18:50:45+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/architect-consultant-5RByOy</loc>
     <lastmod>2026-03-31T18:50:52+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/soil-scientist-coordinator-R7cT0z</loc>
     <lastmod>2026-03-31T18:50:56+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/amusement-attendant-consultant-YeICf3</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/portable-power-tool-repairer-officer-uWT2yd</loc>
     <lastmod>2026-03-31T18:51:08+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/financial-controller-pUeHWT</loc>
     <lastmod>2026-03-31T18:50:51+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/office-machine-and-cash-register-servicer-specialist-9gJQ5J</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/hoist-and-winch-operator-consultant-ZtAnoA</loc>
     <lastmod>2026-03-31T18:50:57+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/precision-devices-inspector-officer-GLgbOi</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/aviation-inspector-coordinator-J9gWYV</loc>
     <lastmod>2026-03-31T18:51:03+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/animal-care-workers-officer-R9XDD2</loc>
     <lastmod>2026-03-31T18:51:03+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/instrument-sales-representative-assistant-LJ871o</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/printing-machine-operator-assistant-mAdaMw</loc>
     <lastmod>2026-03-31T18:50:45+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/talent-acquisition-specialist-yPTe0C</loc>
     <lastmod>2026-03-31T18:50:52+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/home-appliance-repairer-manager-uYUjPU</loc>
     <lastmod>2026-03-31T18:51:08+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/file-clerk-officer-agdwfS</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/insurance-claims-clerk-manager-NZqLoe</loc>
     <lastmod>2026-03-31T18:50:58+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/marketing-vp-consultant-YhK3aV</loc>
     <lastmod>2026-03-31T18:50:56+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/machine-tool-operator-officer-N6N9kH</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/farm-and-home-management-advisor-assistant-M4pNNU</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/portable-power-tool-repairer-specialist-ym6sKC</loc>
     <lastmod>2026-03-31T18:50:57+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/digital-marketing-specialist-yLeeC2</loc>
     <lastmod>2026-03-31T18:50:30+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/brokerage-clerk-specialist-wCoTJr</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/spraying-machine-operator-assistant-rGYIfU</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/computer-science-teacher-supervisor-R2E767</loc>
     <lastmod>2026-03-31T18:50:51+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/forest-fire-fighter-officer-mKuNDY</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/computer-officer-pnjGIZ</loc>
     <lastmod>2026-03-31T18:50:52+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/radio-operator-coordinator-ZbAQoI</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/diesel-engine-specialist-coordinator-RSeWDO</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/reporters-or-correspondent-manager-F6CYYB</loc>
     <lastmod>2026-03-31T18:50:34+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/explosives-expert-coordinator-UkBATf</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/plumber-consultant-JI1eji</loc>
     <lastmod>2026-03-31T18:50:30+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/chef-coordinator-peMwhP</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/metal-worker-assistant-H0yMNc</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/audio-and-video-equipment-technician-manager-cGZxF9</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/business-teacher-specialist-5wAiQo</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/gaming-manager-specialist-kq2RGb</loc>
     <lastmod>2026-03-31T18:51:08+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/aircraft-launch-specialist-coordinator-AaNgTc</loc>
     <lastmod>2026-03-31T18:50:56+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/maintenance-worker-coordinator-MGZf7N</loc>
     <lastmod>2026-03-31T18:50:51+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/stationary-engineer-or-boiler-operator-officer-Gnq8UJ</loc>
     <lastmod>2026-03-31T18:50:55+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/gas-plant-operator-coordinator-1T24y5</loc>
     <lastmod>2026-03-31T18:51:08+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/art-teacher-consultant-7zzEsV</loc>
     <lastmod>2026-03-31T18:51:08+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/senior-developer-G6jNdJ</loc>
     <lastmod>2026-03-31T18:50:30+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/communications-equipment-operator-specialist-TO1zJp</loc>
     <lastmod>2026-03-31T18:51:07+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/statistician-consultant-uClBLv</loc>
     <lastmod>2026-03-31T18:51:03+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/power-plant-operator-supervisor-pcQLC5</loc>
     <lastmod>2026-03-31T18:50:52+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/answering-service-consultant-jg0JJT</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/plant-and-system-operator-coordinator-axTe3e</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/architect-coordinator-teLYU9</loc>
     <lastmod>2026-03-31T18:50:30+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/bicycle-repairer-specialist-cimbAX</loc>
     <lastmod>2026-03-31T18:50:56+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/jewelry-model-or-mold-makers-specialist-YsXPLN</loc>
     <lastmod>2026-03-31T18:50:30+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/set-and-exhibit-designer-assistant-lKuVGj</loc>
     <lastmod>2026-03-31T18:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
-    <url>
+  </url>
+  <url>
     <loc>http://127.0.0.1:8001/jobs/food-service-manager-specialist-bHXaHz</loc>
     <lastmod>2026-03-31T18:50:52+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-            </url>
+  </url>
 </urlset>

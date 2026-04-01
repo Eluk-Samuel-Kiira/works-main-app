@@ -1,11 +1,9 @@
 <?php
-
 namespace App\Console\Commands;
 
 use App\Models\Job\JobPost;
 use Illuminate\Console\Command;
-use Spatie\Sitemap\Sitemap;
-use Spatie\Sitemap\Tags\Url;
+use Illuminate\Support\Facades\Http;
 
 class GenerateSitemap extends Command
 {
@@ -14,49 +12,64 @@ class GenerateSitemap extends Command
 
     public function handle(): void
     {
-        // Use the web_app URL from config/api.php
         $webUrl = rtrim(config('api.web_app.url'), '/');
-        
+
         $this->info("Generating sitemap for frontend: {$webUrl}");
-        
-        $sitemap = Sitemap::create();
-        
+
+        // Build XML manually — no Spatie view dependency
+        $urls = [];
 
         // Homepage
-        $sitemap->add(Url::create($webUrl)
-            ->setChangeFrequency('daily')
-            ->setPriority(1.0));
+        $urls[] = $this->makeUrl($webUrl, 'daily', '1.0');
 
-        // Jobs listing page
-        $sitemap->add(Url::create($webUrl . '/jobs')
-            ->setChangeFrequency('hourly')
-            ->setPriority(0.9));
+        // Jobs listing
+        $urls[] = $this->makeUrl($webUrl . '/jobs', 'hourly', '0.9');
 
-        // Individual job posts — active and not expired
+        // Individual jobs
         $jobCount = JobPost::where('is_active', true)
             ->where('deadline', '>=', now())
             ->count();
-        
+
         $this->info("Adding {$jobCount} jobs to sitemap...");
-        
+
         JobPost::select(['slug', 'updated_at', 'published_at', 'deadline', 'is_featured'])
             ->where('is_active', true)
             ->where('deadline', '>=', now())
             ->orderBy('published_at', 'desc')
-            ->chunk(500, function ($jobs) use ($sitemap, $webUrl) {
+            ->chunk(500, function ($jobs) use (&$urls, $webUrl) {
                 foreach ($jobs as $job) {
-                    $sitemap->add(
-                        Url::create($webUrl . '/jobs/' . $job->slug)
-                            ->setLastModificationDate($job->updated_at)
-                            ->setChangeFrequency('weekly')
-                            ->setPriority($job->is_featured ? 0.9 : 0.8)
+                    $urls[] = $this->makeUrl(
+                        $webUrl . '/jobs/' . $job->slug,
+                        'weekly',
+                        $job->is_featured ? '0.9' : '0.8',
+                        $job->updated_at?->toAtomString()
                     );
                 }
             });
 
-        $sitemap->writeToFile(public_path('sitemap.xml'));
+        // Build XML string directly
+        $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+        $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
+        $xml .= implode('', $urls);
+        $xml .= '</urlset>';
+
+        // Write to public/ for the proxy route to serve
+        file_put_contents(public_path('sitemap.xml'), $xml);
 
         $this->info('✓ Sitemap generated successfully at: ' . public_path('sitemap.xml'));
         $this->info('✓ Sitemap URL: ' . $webUrl . '/sitemap.xml');
+    }
+
+    private function makeUrl(string $loc, string $changefreq, string $priority, ?string $lastmod = null): string
+    {
+        $tag  = "  <url>\n";
+        $tag .= "    <loc>" . htmlspecialchars($loc) . "</loc>\n";
+        if ($lastmod) {
+            $tag .= "    <lastmod>{$lastmod}</lastmod>\n";
+        }
+        $tag .= "    <changefreq>{$changefreq}</changefreq>\n";
+        $tag .= "    <priority>{$priority}</priority>\n";
+        $tag .= "  </url>\n";
+        return $tag;
     }
 }
