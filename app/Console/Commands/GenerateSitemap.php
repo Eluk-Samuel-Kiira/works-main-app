@@ -16,18 +16,15 @@ class GenerateSitemap extends Command
 
         $this->info("Generating sitemap for frontend: {$webUrl}");
 
-        // Build XML manually — no Spatie view dependency
         $urls = [];
 
-        // Homepage
         $urls[] = $this->makeUrl($webUrl, 'daily', '1.0');
-
-        // Jobs listing
         $urls[] = $this->makeUrl($webUrl . '/jobs', 'hourly', '0.9');
 
-        // Individual jobs
         $jobCount = JobPost::where('is_active', true)
             ->where('deadline', '>=', now())
+            ->whereNotNull('slug')       // ← skip null slugs
+            ->where('slug', '!=', '')    // ← skip empty slugs
             ->count();
 
         $this->info("Adding {$jobCount} jobs to sitemap...");
@@ -35,6 +32,8 @@ class GenerateSitemap extends Command
         JobPost::select(['slug', 'updated_at', 'published_at', 'deadline', 'is_featured'])
             ->where('is_active', true)
             ->where('deadline', '>=', now())
+            ->whereNotNull('slug')       // ← skip null slugs
+            ->where('slug', '!=', '')    // ← skip empty slugs
             ->orderBy('published_at', 'desc')
             ->chunk(500, function ($jobs) use (&$urls, $webUrl) {
                 foreach ($jobs as $job) {
@@ -47,23 +46,30 @@ class GenerateSitemap extends Command
                 }
             });
 
-        // Build XML string directly
-        $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+        // Filter out any empty strings from invalid URLs
+        $urls = array_filter($urls);
+
+        // Correct XML — declaration + namespace on same line, no whitespace
+        $xml  = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
         $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
         $xml .= implode('', $urls);
         $xml .= '</urlset>';
 
-        // Write to public/ for the proxy route to serve
         file_put_contents(public_path('sitemap.xml'), $xml);
 
-        $this->info('✓ Sitemap generated successfully at: ' . public_path('sitemap.xml'));
+        $this->info('✓ Sitemap generated: ' . public_path('sitemap.xml'));
         $this->info('✓ Sitemap URL: ' . $webUrl . '/sitemap.xml');
     }
 
     private function makeUrl(string $loc, string $changefreq, string $priority, ?string $lastmod = null): string
     {
+        // Skip empty URLs entirely
+        if (empty(trim($loc)) || !filter_var($loc, FILTER_VALIDATE_URL)) {
+            return '';
+        }
+
         $tag  = "  <url>\n";
-        $tag .= "    <loc>" . htmlspecialchars($loc) . "</loc>\n";
+        $tag .= "    <loc>" . htmlspecialchars(trim($loc)) . "</loc>\n";
         if ($lastmod) {
             $tag .= "    <lastmod>{$lastmod}</lastmod>\n";
         }
