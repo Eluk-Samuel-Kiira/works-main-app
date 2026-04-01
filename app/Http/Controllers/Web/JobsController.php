@@ -108,14 +108,21 @@ class JobsController extends Controller
             $jobs = $query->paginate(20);
             
             // Log::info('Jobs fetched successfully: ' . $jobs->total() . ' total, showing ' . $jobs->count());
-            
+            $total = $jobs->total();
             // Transform the data to include formatted fields
             $jobs->getCollection()->transform(function ($job) {
                 return $this->formatJobData($job);
             });
-            // Log::info($jobs);
-            
-            return response()->json($jobs);
+
+            return response()->json([
+                'data'       => $jobs->items(),
+                'total'      => $total,
+                'current_page' => $jobs->currentPage(),
+                'last_page'  => $jobs->lastPage(),
+                'per_page'   => $jobs->perPage(),
+                'from'       => $jobs->firstItem(),
+                'to'         => $jobs->lastItem(),
+            ]);
             
         } catch (\Exception $e) {
             Log::error('Error fetching jobs: ' . $e->getMessage());
@@ -452,8 +459,12 @@ class JobsController extends Controller
             ->first();
             
             if (!$job) {
-                return response()->json(['error' => 'Job not found'], 404);
+                return response()->json(['error' => 'Job not found', 'status' => 'not_found'], 404);
             }
+
+            // Add expiry status to response — don't block the request
+            $isExpired = $job->deadline && $job->deadline->isPast();
+            $isInactive = !$job->is_active;
             
             // Safely increment view count
             \DB::table('job_posts')->where('id', $job->id)->increment('view_count');
@@ -463,6 +474,9 @@ class JobsController extends Controller
             
             // Build the formatted response with ALL fields
             $response = [
+                'is_expired'  => $isExpired,
+                'is_inactive' => $isInactive,
+                
                 'id' => $job->id,
                 'job_title' => $job->job_title,
                 'slug' => $job->slug,
