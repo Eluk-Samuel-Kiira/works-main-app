@@ -64,11 +64,9 @@ return new class extends Migration
             
             // Advanced SEO Features
             $table->boolean('is_pinged')->default(false);
-            $table->timestamp('last_pinged_at')->nullable();
             $table->boolean('is_indexed')->default(false);
             $table->boolean('is_whatsapp_contact')->default(false);
             $table->boolean('is_telephone_call')->default(false);
-            $table->timestamp('last_indexed_at')->nullable();
             $table->boolean('is_featured')->default(false);
             $table->boolean('is_urgent')->default(false);
             $table->boolean('is_active')->default(true);
@@ -106,8 +104,10 @@ return new class extends Migration
             $table->json('social_metrics')->nullable();
             
             $table->timestamps();
-            $table->timestamp('published_at')->nullable();
-            $table->timestamp('featured_until')->nullable();
+            $table->timestamp('published_at')->nullable();            
+            $table->datetime('featured_until')->nullable();
+            $table->datetime('last_pinged_at')->nullable();
+            $table->datetime('last_indexed_at')->nullable();
             $table->softDeletes();
 
             // Advanced Indexes for AI & SEO Performance
