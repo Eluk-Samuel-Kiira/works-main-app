@@ -247,37 +247,70 @@
         btn.disabled = true; spinner.classList.remove('d-none');
 
         try {
-            const payload = {
-                name:          document.getElementById('formName').value.trim(),
-                industry_id:   document.getElementById('formIndustryId').value || null,
-                location_id:   document.getElementById('formLocationId').value || null,
-                description:   document.getElementById('formDescription').value.trim() || null,
-                website:       document.getElementById('formWebsite').value.trim() || null,
-                contact_name:  document.getElementById('formContactName').value.trim() || null,
-                contact_email: document.getElementById('formContactEmail').value.trim() || null,
-                contact_phone: document.getElementById('formContactPhone').value.trim() || null,
-                address1:      document.getElementById('formAddress1').value.trim() || null,
-                company_size:  document.getElementById('formCompanySize').value.trim() || null,
-                is_active:     document.getElementById('formIsActive').checked,
-                is_verified:   document.getElementById('formIsVerified').checked,
-            };
-
             const formData = new FormData();
-            Object.entries(payload).forEach(([key, value]) => {
-                if (value !== null && value !== '') formData.append(key, value);
-            });
-
+            
+            // Text fields
+            const name = document.getElementById('formName').value.trim();
+            if (name) formData.append('name', name);
+            
+            const industryId = document.getElementById('formIndustryId').value;
+            if (industryId) formData.append('industry_id', industryId);
+            
+            const locationId = document.getElementById('formLocationId').value;
+            if (locationId) formData.append('location_id', locationId);
+            
+            const description = document.getElementById('formDescription').value.trim();
+            if (description) formData.append('description', description);
+            
+            const website = document.getElementById('formWebsite').value.trim();
+            if (website) formData.append('website', website);
+            
+            const contactName = document.getElementById('formContactName').value.trim();
+            if (contactName) formData.append('contact_name', contactName);
+            
+            const contactEmail = document.getElementById('formContactEmail').value.trim();
+            if (contactEmail) formData.append('contact_email', contactEmail);
+            
+            const contactPhone = document.getElementById('formContactPhone').value.trim();
+            if (contactPhone) formData.append('contact_phone', contactPhone);
+            
+            const address1 = document.getElementById('formAddress1').value.trim();
+            if (address1) formData.append('address1', address1);
+            
+            const companySize = document.getElementById('formCompanySize').value.trim();
+            if (companySize) formData.append('company_size', companySize);
+            
+            // Boolean fields
+            const isActive = document.getElementById('formIsActive').checked;
+            const isVerified = document.getElementById('formIsVerified').checked;
+            
+            formData.append('is_active', isActive ? '1' : '0');
+            formData.append('is_verified', isVerified ? '1' : '0');
+            
+            // Logo file - ONLY if a new file is selected
             const logoFile = document.getElementById('formLogoFile').files[0];
-            if (logoFile) formData.append('logo', logoFile);
+            if (logoFile) {
+                formData.append('logo', logoFile);
+            }
 
             const method = currentId ? 'PATCH' : 'POST';
             const url = currentId ? `${API_BASE}/${currentId}` : API_BASE;
 
-            const res = await fetch(url, {
-                method,
+            // For PATCH requests, Laravel needs _method field when using POST
+            // Or use the correct HTTP method directly
+            const fetchOptions = {
+                method: currentId ? 'POST' : 'POST', // Always use POST with _method for file uploads
                 body: formData,
-                headers: { 'Accept':'application/json', 'X-CSRF-TOKEN':CSRF_TOKEN },
-            });
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN },
+            };
+            
+            // Add _method for PATCH/PUT
+            if (currentId) {
+                formData.append('_method', 'PATCH');
+            }
+
+            const res = await fetch(url, fetchOptions);
+            
             const data = await res.json();
             if (!res.ok) throw data;
 
@@ -287,7 +320,16 @@
         } catch (e) {
             const msg = e.message ?? 'Validation failed.';
             toast(e.errors ? Object.values(e.errors).flat().join('<br>') : msg, 'error');
-        } finally { btn.disabled = false; spinner.classList.add('d-none'); }
+        } finally { 
+            btn.disabled = false; 
+            spinner.classList.add('d-none'); 
+        }
+    }
+
+    function clearLogo() {
+        const fileInput = document.getElementById('formLogoFile');
+        fileInput.value = '';
+        document.getElementById('logoPreview').innerHTML = '';
     }
 
     // ============================================================

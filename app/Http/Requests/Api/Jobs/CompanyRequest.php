@@ -30,8 +30,8 @@ class CompanyRequest extends FormRequest
             'company_size'  => 'nullable|string|max:50',
             'industry_id'   => 'nullable|integer|exists:industries,id',
             'location_id'   => 'nullable|integer|exists:job_locations,id',
-            'is_active'     => 'nullable|boolean',
-            'is_verified'   => 'nullable|boolean',
+            'is_active'     => 'nullable|in:true,false,1,0,on,off',
+            'is_verified'   => 'nullable|in:true,false,1,0,on,off',
             'created_by'    => 'nullable|integer|exists:users,id',
         ];
     }

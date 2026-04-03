@@ -16,11 +16,6 @@ class JobsController extends Controller
     public function index(Request $request)
     {
         try {
-            // Log request for debugging
-            // Log::info('Main App JobsController index called');
-            // Log::info('Request URL: ' . $request->fullUrl());
-            // Log::info('All request parameters:', $request->all());
-            
             // Start query with relationships
             $query = JobPost::with([
                 'company',

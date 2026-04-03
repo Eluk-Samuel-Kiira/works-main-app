@@ -8,6 +8,8 @@ use App\Http\Requests\Api\Jobs\CompanyRequest;
 use App\Models\Job\Company;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+
 
 class CompanyController extends Controller
 {
@@ -45,7 +47,7 @@ class CompanyController extends Controller
         }
 
         $companies = $query->orderBy('name')
-                           ->paginate($request->integer('per_page', 15));
+                            ->paginate($request->integer('per_page', 15));
 
         return $this->paginated($companies, 'Companies retrieved successfully');
     }
@@ -73,6 +75,7 @@ class CompanyController extends Controller
      */
     public function show(Company $company): JsonResponse
     {
+        // \Log::info($company);
         return $this->success($company->load(['industry', 'location', 'creator']), 'Company retrieved successfully');
     }
 
@@ -84,13 +87,30 @@ class CompanyController extends Controller
     {
         $validated = $request->validated();
 
+        // Handle logo upload
         if ($request->hasFile('logo')) {
-            $validated['logo'] = $request->file('logo')->store('logos', 'public');
+            // Delete old logo if exists
+            if ($company->logo && Storage::disk('public')->exists($company->logo)) {
+                Storage::disk('public')->delete($company->logo);
+            }
+            $path = $request->file('logo')->store('logos', 'public');
+            $validated['logo'] = $path;
+        } else {
+            // Don't touch logo if no new file
+            unset($validated['logo']);
         }
 
         $company->update($validated);
 
-        return $this->success($company->fresh()->load(['industry', 'location', 'creator']), 'Company updated successfully');
+        // Refresh and load relationships
+        $company->refresh();
+        $company->load(['industry', 'location', 'creator']);
+        
+        // Get the data with logo_url included
+        $data = $company->toArray();
+        $data['logo_url'] = $company->logo_url;
+
+        return $this->success($data, 'Company updated successfully');
     }
 
     /**

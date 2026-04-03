@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Storage;
 class Company extends Model
 {
     use HasFactory;
+    protected $appends = ['logo_url'];
 
     protected $fillable = [
         'name',
@@ -78,7 +79,8 @@ class Company extends Model
     public function getLogoUrlAttribute()
     {
         if (!$this->logo) {
-            return asset('images/default-company-logo.png');
+            // Use a proper default image URL
+            return url('/images/default-company-logo.png');
         }
 
         if (filter_var($this->logo, FILTER_VALIDATE_URL)) {
