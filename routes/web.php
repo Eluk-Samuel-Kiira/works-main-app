@@ -14,7 +14,7 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'dashboard'])->name('dashboard');
-    Route::get('/social-media-platforms', [DashboardController::class, 'socialMediaPlatform'])->name('social-media-platforms');
+    Route::get('/social-media-platforms', [DashboardController::class, 'socialMediaPlatform'])->name('social-media');
 });
 
 Route::middleware(['auth'])->prefix('admin')->group(function () {
