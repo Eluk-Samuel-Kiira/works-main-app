@@ -15,7 +15,7 @@ use App\Http\Controllers\Api\Jobs\{
 };
 
 // ─── Existing read-only data routes (consumed by works-web app) ─────────────
-use App\Http\Controllers\Web\{ DashboardController, JobsController };
+use App\Http\Controllers\Web\{ DashboardController, JobsController, JobsCategoryController };
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -33,6 +33,8 @@ Route::prefix('v2')->name('api.v1.')->group(function () {
     Route::get('/jobs-data-from-main/featured',      [JobsController::class, 'featured']);
     Route::get('/jobs-data-from-main/urgent',        [JobsController::class, 'urgent']);
     Route::get('/popular-searches',                  [JobsController::class, 'popularSearches']);
+    Route::get('/company-jobs',                      [JobsCategoryController::class, 'companyJobs']);
+    Route::get('/job-by-category',                   [JobsController::class, 'jobCategory']);
     Route::get('/jobs-data-from-main/{job}',         [JobsController::class, 'show']);
     Route::get('/jobs-data-from-main/id/{id}',       [JobsController::class, 'showById']);
     Route::post('/report-missing-link',              [JobsController::class, 'reportMissingLink'])->name('report.missing.link');

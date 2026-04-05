@@ -44,9 +44,11 @@ class GenerateSitemap extends Command
                         $job->updated_at?->toAtomString()
                     );
                 }
-            });
+        });
 
-        // Filter out any empty strings from invalid URLs
+        
+            // Filter out any empty strings from invalid URLs
+        
         $urls = array_filter($urls);
 
         // Correct XML — declaration + namespace on same line, no whitespace

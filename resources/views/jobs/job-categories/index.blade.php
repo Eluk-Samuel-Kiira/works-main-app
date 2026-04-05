@@ -123,7 +123,30 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Icon</label>
-                            <input type="text" class="form-control" id="formIcon" placeholder="e.g. ti ti-folder">
+                            <div class="dropdown w-100" id="iconDropdownWrapper">
+                                <button type="button"
+                                        class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-between"
+                                        id="iconDropdownBtn"
+                                        onclick="toggleIconPicker()">
+                                    <span class="d-flex align-items-center gap-2" id="iconPreview">
+                                        <i class="bi bi-folder2 fs-5" id="iconPreviewEl"></i>
+                                        <span id="iconPreviewText">bi bi-folder2</span>
+                                    </span>
+                                    <i class="bi bi-chevron-down"></i>
+                                </button>
+                                <input type="hidden" id="formIcon" value="bi bi-folder2">
+                                <div id="iconPickerPanel"
+                                    class="border rounded-3 shadow bg-body mt-1 p-2"
+                                    style="display:none;position:absolute;z-index:9999;width:340px;max-height:320px">
+                                    <input type="text" id="iconSearch" class="form-control form-control-sm mb-2"
+                                        placeholder="Search icons... e.g. building, person, briefcase"
+                                        oninput="filterIcons(this.value)">
+                                    <div id="iconGrid"
+                                        class="d-flex flex-wrap gap-1 overflow-auto"
+                                        style="max-height:240px">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-12">
                             <label class="form-label">Description</label>

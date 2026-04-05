@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Job\JobPost;
 
 class Company extends Model
 {
@@ -71,9 +72,9 @@ class Company extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function jobs()
+    public function jobPosts()
     {
-        return $this->hasMany(Job::class);
+        return $this->hasMany(JobPost::class);
     }
 
     public function getLogoUrlAttribute()

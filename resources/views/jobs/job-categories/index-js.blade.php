@@ -66,7 +66,11 @@
             <tr>
                 <td class="text-muted">${((currentPage - 1) * 15) + i + 1}</td>
                 <td><span class="fw-semibold">${esc(item.name)}</span></td>
-                <td>${item.icon ? `<i class="${esc(item.icon)} fs-5"></i>` : '<span class="text-muted">—</span>'}</td>
+                <td class="text-center">
+                    ${item.icon
+                        ? `<i class="${esc(item.icon)} fs-5 text-primary"></i>`
+                        : '<span class="text-muted">—</span>'}
+                </td>
                 <td>${item.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>'}</td>
                 <td>${item.sort_order ?? 0}</td>
                 <td>
@@ -151,7 +155,7 @@
             const item = res.data ?? res;
             document.getElementById('formId').value = item.id;
             document.getElementById('formName').value = item.name ?? '';
-            document.getElementById('formIcon').value = item.icon ?? '';
+            setIconPickerValue(item.icon || 'bi bi-folder2');
             document.getElementById('formDescription').value = item.description ?? '';
             document.getElementById('formMetaTitle').value = item.meta_title ?? '';
             document.getElementById('formMetaDescription').value = item.meta_description ?? '';
@@ -207,5 +211,110 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => loadItems(1));
+
+
+    // ── Bootstrap Icons list (job-relevant subset + common) ──────────────────
+    const BI_ICONS = [
+        'bi-briefcase','bi-briefcase-fill','bi-building','bi-building-fill',
+        'bi-person','bi-person-fill','bi-people','bi-people-fill',
+        'bi-laptop','bi-laptop-fill','bi-code-slash','bi-terminal',
+        'bi-heart-pulse','bi-hospital','bi-capsule','bi-activity',
+        'bi-book','bi-book-fill','bi-mortarboard','bi-mortarboard-fill',
+        'bi-cash-coin','bi-currency-dollar','bi-bank','bi-wallet2',
+        'bi-truck','bi-car-front','bi-bus-front','bi-bicycle',
+        'bi-hammer','bi-tools','bi-wrench','bi-gear','bi-gear-fill',
+        'bi-camera','bi-camera-fill','bi-palette','bi-brush',
+        'bi-shop','bi-shop-window','bi-cart','bi-bag',
+        'bi-telephone','bi-telephone-fill','bi-headset','bi-chat-dots',
+        'bi-tree','bi-flower1','bi-sun','bi-droplet',
+        'bi-shield','bi-shield-fill','bi-lock','bi-key',
+        'bi-graph-up','bi-bar-chart','bi-pie-chart','bi-calculator',
+        'bi-house','bi-house-fill','bi-buildings','bi-door-open',
+        'bi-airplane','bi-globe','bi-map','bi-geo-alt',
+        'bi-cpu','bi-server','bi-hdd','bi-phone',
+        'bi-newspaper','bi-megaphone','bi-broadcast','bi-tv',
+        'bi-scissors','bi-needle','bi-basket','bi-box',
+        'bi-music-note','bi-film','bi-controller','bi-joystick',
+        'bi-lightning','bi-plugin','bi-battery','bi-wifi',
+        'bi-star','bi-award','bi-trophy','bi-medal',
+        'bi-envelope','bi-chat','bi-bell','bi-flag',
+        'bi-clipboard','bi-file-text','bi-journal','bi-list-check',
+        'bi-person-workspace','bi-person-badge','bi-person-gear','bi-person-check',
+        'bi-robot','bi-cpu-fill','bi-diagram-3','bi-share',
+        'bi-search','bi-eye','bi-binoculars','bi-zoom-in',
+        'bi-folder2','bi-folder2-open','bi-archive','bi-inbox',
+        'bi-plus-circle','bi-dash-circle','bi-check-circle','bi-x-circle',
+    ];
+
+    let iconPickerOpen = false;
+
+    function renderIconGrid(filter = '') {
+        const grid = document.getElementById('iconGrid');
+        const filtered = filter
+            ? BI_ICONS.filter(i => i.includes(filter.toLowerCase().replace(/^bi-?/,'')))
+            : BI_ICONS;
+
+        if (filtered.length === 0) {
+            grid.innerHTML = '<p class="text-muted small p-2">No icons found.</p>';
+            return;
+        }
+
+        grid.innerHTML = filtered.map(icon => `
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary p-2 icon-option"
+                    style="width:44px;height:44px;border-radius:8px"
+                    title="bi ${icon}"
+                    onclick="selectIcon('bi ${icon}')">
+                <i class="bi ${icon} fs-5"></i>
+            </button>
+        `).join('');
+
+        // Highlight currently selected
+        const current = document.getElementById('formIcon').value;
+        grid.querySelectorAll('.icon-option').forEach(btn => {
+            if (btn.title === current) {
+                btn.classList.replace('btn-outline-secondary', 'btn-primary');
+            }
+        });
+    }
+
+    function filterIcons(val) {
+        renderIconGrid(val);
+    }
+
+    function toggleIconPicker() {
+        const panel = document.getElementById('iconPickerPanel');
+        iconPickerOpen = !iconPickerOpen;
+        panel.style.display = iconPickerOpen ? 'block' : 'none';
+        if (iconPickerOpen) {
+            document.getElementById('iconSearch').value = '';
+            renderIconGrid();
+            document.getElementById('iconSearch').focus();
+        }
+    }
+
+    function selectIcon(fullClass) {
+        // fullClass = "bi bi-briefcase"
+        document.getElementById('formIcon').value = fullClass;
+        document.getElementById('iconPreviewEl').className = fullClass + ' fs-5';
+        document.getElementById('iconPreviewText').textContent = fullClass;
+        document.getElementById('iconPickerPanel').style.display = 'none';
+        iconPickerOpen = false;
+    }
+
+    function setIconPickerValue(val) {
+        const icon = val || 'bi bi-folder2';
+        document.getElementById('formIcon').value = icon;
+        document.getElementById('iconPreviewEl').className = icon + ' fs-5';
+        document.getElementById('iconPreviewText').textContent = icon;
+    }
+
+    // Close picker when clicking outside
+    document.addEventListener('click', function(e) {
+        if (iconPickerOpen && !document.getElementById('iconDropdownWrapper').contains(e.target)) {
+            document.getElementById('iconPickerPanel').style.display = 'none';
+            iconPickerOpen = false;
+        }
+    });
 
 </script>
