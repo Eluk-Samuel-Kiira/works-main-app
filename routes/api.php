@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\Jobs\{
     JobLocationController,
     JobTypeController,
     SalaryRangeController,
+    SocialMediaController,
 };
 
 // ─── Existing read-only data routes (consumed by works-web app) ─────────────
@@ -41,6 +42,7 @@ Route::prefix('v2')->name('api.v1.')->group(function () {
     Route::post('/jobs/{job}/increment-share',       [JobsController::class, 'incrementShare'])->name('jobs.increment.share');
     Route::post('/jobs/{job}/increment-application', [JobsController::class, 'incrementApplication'])->name('jobs.increment.application');
 
+    Route::get('/social-media', [SocialMediaController::class, 'indexPublic']);
 });
 
 // ─── v1 CRUD API ─────────────────────────────────────────────────────────────
@@ -62,6 +64,13 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::apiResource('experience-levels', ExperienceLevelController::class);
     Route::apiResource('education-levels', EducationLevelController::class);
     Route::apiResource('salary-ranges',    SalaryRangeController::class);
+
+    // ── Static endpoints FIRST (before the resource so slugs don't clash) ──
+    Route::get('social-media/platforms',               [SocialMediaController::class, 'platforms']);
+    Route::get('social-media/by-location/{locationId}',[SocialMediaController::class, 'byLocation']);
+
+    Route::apiResource('social-media', SocialMediaController::class)
+         ->parameters(['social-media' => 'social_media_platform']);
 })->middleware('auth:sanctum');
 
 

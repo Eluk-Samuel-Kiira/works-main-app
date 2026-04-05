@@ -14,4 +14,9 @@ class DashboardController extends Controller
     public function dashboard(Request $request) {
         return view('home.dashboard');
     }
+
+    public function socialMediaPlatform()
+    {
+        return view('home.social-media.index');
+    }
 }

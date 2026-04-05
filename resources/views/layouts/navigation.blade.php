@@ -124,6 +124,14 @@
                     </ul>
                 </li>
 
+                
+                <li class="sidebar-item">
+                    <a class="sidebar-link" href="{{ route('social-media-platforms') }}">
+                        <iconify-icon icon="solar:box-minimalistic-linear" class="aside-icon"></iconify-icon>
+                        <span class="hide-menu">{{__('SM Platforms')}}</span>
+                    </a>
+                </li>
+
                 <li class="nav-small-cap">
                     <iconify-icon icon="solar:menu-dots-bold" class="nav-small-cap-icon fs-4"></iconify-icon>
                     <span class="hide-menu">{{__('User Management')}}</span>
