@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\Job\{ JobPost };
+use App\Models\Job\{ JobPost, JobCategory };
 use App\Models\{ Notification };
 use Illuminate\Support\Facades\{ Log, Http, DB, Mail  };
 
@@ -34,31 +34,27 @@ class JobsController extends Controller
             // Apply keyword search if provided
             if ($request->has('keyword') && !empty($request->keyword)) {
                 $keyword = $request->keyword;
-                // Log::info('Searching for keyword: ' . $keyword);
-                
+
                 $query->where(function($q) use ($keyword) {
                     $q->where('job_title', 'LIKE', "%{$keyword}%")
-                      ->orWhere('job_description', 'LIKE', "%{$keyword}%")
-                      ->orWhere('skills', 'LIKE', "%{$keyword}%")
-                      ->orWhere('qualifications', 'LIKE', "%{$keyword}%")
-                      ->orWhere('responsibilities', 'LIKE', "%{$keyword}%")
-                      // Search in company name (from Company model)
-                      ->orWhereHas('company', function($companyQuery) use ($keyword) {
-                          $companyQuery->where('name', 'LIKE', "%{$keyword}%");
-                      })
-                      // Search in job location (from JobLocation model)
-                      ->orWhereHas('jobLocation', function($locationQuery) use ($keyword) {
-                          $locationQuery->where('country', 'LIKE', "%{$keyword}%")
-                                       ->orWhere('district', 'LIKE', "%{$keyword}%");
-                      })
-                      // Search in job category
-                      ->orWhereHas('jobCategory', function($categoryQuery) use ($keyword) {
-                          $categoryQuery->where('name', 'LIKE', "%{$keyword}%");
-                      })
-                      // Search in industry
-                      ->orWhereHas('industry', function($industryQuery) use ($keyword) {
-                          $industryQuery->where('name', 'LIKE', "%{$keyword}%");
-                      });
+                    ->orWhere('job_description', 'LIKE', "%{$keyword}%")
+                    ->orWhere('skills', 'LIKE', "%{$keyword}%")
+                    ->orWhere('qualifications', 'LIKE', "%{$keyword}%")
+                    ->orWhere('responsibilities', 'LIKE', "%{$keyword}%")
+                    ->orWhereHas('company', function($q) use ($keyword) {
+                        $q->where('name', 'LIKE', "%{$keyword}%")
+                            ->orWhere('slug', 'LIKE', "%{$keyword}%"); // ← add slug search
+                    })
+                    ->orWhereHas('jobLocation', function($q) use ($keyword) {
+                        $q->where('country', 'LIKE', "%{$keyword}%")
+                            ->orWhere('district', 'LIKE', "%{$keyword}%");
+                    })
+                    ->orWhereHas('jobCategory', function($q) use ($keyword) {
+                        $q->where('name', 'LIKE', "%{$keyword}%");
+                    })
+                    ->orWhereHas('industry', function($q) use ($keyword) {
+                        $q->where('name', 'LIKE', "%{$keyword}%");
+                    });
                 });
             }
             
@@ -75,11 +71,7 @@ class JobsController extends Controller
                       });
                 });
             }
-            
-            // Log the SQL query for debugging
-            // Log::info('SQL Query: ' . $query->toSql());
-            // Log::info('Query Bindings: ', $query->getBindings());
-            
+
             // Apply sorting
             if ($request->has('sort')) {
                 switch ($request->sort) {
@@ -97,6 +89,50 @@ class JobsController extends Controller
                 }
             } else {
                 $query->orderBy('created_at', 'desc');
+            }
+
+            // Filter by category slug
+            if ($request->has('category') && !empty($request->category)) {
+                $query->whereHas('jobCategory', function ($q) use ($request) {
+                    $q->where('slug', $request->category)
+                    ->orWhere('id', $request->category); // fallback for id-based links
+                });
+            }
+
+            // Filter by industry slug
+            if ($request->has('industry') && !empty($request->industry)) {
+                $query->whereHas('industry', function ($q) use ($request) {
+                    $q->where('slug', $request->industry)
+                    ->orWhere('id', $request->industry);
+                });
+            }
+
+            // Filter by company slug
+            if ($request->has('company') && !empty($request->company)) {
+                $query->whereHas('company', function ($q) use ($request) {
+                    $q->where('slug', $request->company)
+                    ->orWhere('id', $request->company);
+                });
+            }
+
+            // Filter by location slug/district
+            if ($request->has('location_slug') && !empty($request->location_slug)) {
+                $query->whereHas('jobLocation', function ($q) use ($request) {
+                    $q->where('slug', $request->location_slug)
+                    ->orWhere('district', 'LIKE', '%' . $request->location_slug . '%');
+                });
+            }
+
+            // Filter by featured
+            if ($request->has('featured') && $request->featured) {
+                $query->where('is_featured', true);
+            }
+
+            // Filter by job type
+            if ($request->has('type') && !empty($request->type)) {
+                $query->whereHas('jobType', function ($q) use ($request) {
+                    $q->where('slug', $request->type);
+                });
             }
             
             // Paginate results
@@ -430,7 +466,27 @@ class JobsController extends Controller
             return response()->json(['Remote', 'Full Stack', 'Manager', 'Developer', 'Engineer', 'Analyst']); // Fallback
         }
     }
+        
+    public function jobCategory(Request $request)
+    {
+        $categories = JobCategory::where('is_active', true)
+            ->withCount([
+                'jobPosts' => fn($q) => $q  // ← now matches the relationship name
+                    ->where('is_active', true)
+                    ->where('deadline', '>=', now())
+            ])
+            ->orderBy('sort_order')
+            ->get()
+            ->map(fn($cat) => [
+                'id'         => $cat->id,
+                'name'       => $cat->name,
+                'slug'       => $cat->slug,
+                'icon'       => $cat->icon,
+                'jobs_count' => $cat->job_posts_count,
+            ]);
 
+        return response()->json($categories);
+    }
     
     /**
      * Get a single job by slug - COMPLETE WORKING VERSION

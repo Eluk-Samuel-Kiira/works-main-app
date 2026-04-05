@@ -12,10 +12,11 @@ use App\Http\Controllers\Api\Jobs\{
     JobLocationController,
     JobTypeController,
     SalaryRangeController,
+    SocialMediaController,
 };
 
 // ─── Existing read-only data routes (consumed by works-web app) ─────────────
-use App\Http\Controllers\Web\{ DashboardController, JobsController };
+use App\Http\Controllers\Web\{ DashboardController, JobsController, JobsCategoryController };
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -33,12 +34,15 @@ Route::prefix('v2')->name('api.v1.')->group(function () {
     Route::get('/jobs-data-from-main/featured',      [JobsController::class, 'featured']);
     Route::get('/jobs-data-from-main/urgent',        [JobsController::class, 'urgent']);
     Route::get('/popular-searches',                  [JobsController::class, 'popularSearches']);
+    Route::get('/company-jobs',                      [JobsCategoryController::class, 'companyJobs']);
+    Route::get('/job-by-category',                   [JobsController::class, 'jobCategory']);
     Route::get('/jobs-data-from-main/{job}',         [JobsController::class, 'show']);
     Route::get('/jobs-data-from-main/id/{id}',       [JobsController::class, 'showById']);
     Route::post('/report-missing-link',              [JobsController::class, 'reportMissingLink'])->name('report.missing.link');
     Route::post('/jobs/{job}/increment-share',       [JobsController::class, 'incrementShare'])->name('jobs.increment.share');
     Route::post('/jobs/{job}/increment-application', [JobsController::class, 'incrementApplication'])->name('jobs.increment.application');
 
+    Route::get('/social-media', [SocialMediaController::class, 'indexPublic']);
 });
 
 // ─── v1 CRUD API ─────────────────────────────────────────────────────────────
@@ -60,6 +64,13 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::apiResource('experience-levels', ExperienceLevelController::class);
     Route::apiResource('education-levels', EducationLevelController::class);
     Route::apiResource('salary-ranges',    SalaryRangeController::class);
+
+    // ── Static endpoints FIRST (before the resource so slugs don't clash) ──
+    Route::get('social-media/platforms',               [SocialMediaController::class, 'platforms']);
+    Route::get('social-media/by-location/{locationId}',[SocialMediaController::class, 'byLocation']);
+
+    Route::apiResource('social-media', SocialMediaController::class)
+         ->parameters(['social-media' => 'social_media_platform']);
 })->middleware('auth:sanctum');
 
 

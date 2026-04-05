@@ -6,6 +6,7 @@ use App\Models\Auth\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use App\Models\Job\JobPost;
 
 class JobCategory extends Model
 {
@@ -77,9 +78,9 @@ class JobCategory extends Model
         return url("/jobs/{$this->slug}");
     }
 
-    public function jobs()
+    public function jobPosts()
     {
-        return $this->hasMany(Job::class);
+        return $this->hasMany(JobPost::class);
     }
 
     public function creator()
