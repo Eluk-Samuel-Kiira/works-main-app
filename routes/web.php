@@ -28,7 +28,10 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-
+Route::get('/clear-cache-temp', function () {
+    Artisan::call('optimize:clear');
+    return 'Done';
+});
 
 
 // Fallback Route (404)
