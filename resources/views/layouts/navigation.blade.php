@@ -126,7 +126,7 @@
 
                 
                 <li class="sidebar-item">
-                    <a class="sidebar-link" href="{{ route('social-media-platforms') }}">
+                    <a class="sidebar-link" href="{{ route('social-media') }}">
                         <iconify-icon icon="solar:box-minimalistic-linear" class="aside-icon"></iconify-icon>
                         <span class="hide-menu">{{__('SM Platforms')}}</span>
                     </a>
