@@ -2,7 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\{ UserController };
 use App\Http\Controllers\Api\Jobs\{
     CompanyController,
     EducationLevelController,
@@ -100,3 +100,5 @@ Route::prefix('v1')->middleware('api')->group(function () {
     Route::get('v1/users/list', [UserController::class, 'list']);
  
 })->middleware('auth:sanctum');
+
+
