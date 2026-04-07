@@ -29,8 +29,9 @@
             <button class="btn btn-outline-primary" onclick="openAiExtractModal()">
                 <i class="ti ti-sparkles me-1"></i> AI Extract
             </button>
-            <button class="btn btn-primary" onclick="submitJobPost()">
-                <i class="ti ti-send me-1"></i> Post Job
+            <button class="btn btn-primary" id="submitJobBtn" onclick="submitJobPost()">
+                <span id="submitJobBtnText"><i class="ti ti-send me-1"></i> Post Job</span>
+                <span id="submitJobBtnSpinner" class="spinner-border spinner-border-sm ms-2 d-none"></span>
             </button>
         </div>
     </div>
@@ -69,15 +70,20 @@
                            placeholder="e.g. Senior Software Engineer">
                 </div>
 
-                <div class="col-md-6">
+                <div class="col-md-7">
                     <label class="form-label fw-semibold">Company <span class="text-danger">*</span></label>
                     <div class="position-relative">
-                        <input type="text" id="f_company_input" class="form-control" placeholder="Type to search..." autocomplete="off">
+                        <div class="input-group">
+                            <input type="text" id="f_company_input" class="form-control" placeholder="Type to search..." autocomplete="off">
+                            <button class="btn btn-outline-primary" type="button" onclick="openQuickCompanyModal('f_company_input', 'f_company_id')" title="Add new company">
+                                <i class="ti ti-plus"></i>
+                            </button>
+                        </div>
                         <input type="hidden" name="company_id" id="f_company_id">
                         <ul class="dropdown-menu w-100" id="f_company_list" style="max-height:220px;overflow-y:auto"></ul>
                     </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-5">
                     <label class="form-label fw-semibold">Category <span class="text-danger">*</span></label>
                     <div class="position-relative">
                         <input type="text" id="f_category_input" class="form-control" placeholder="Type to search..." autocomplete="off">
@@ -158,8 +164,7 @@
             </button>
         </div>
         <div class="card-body">
-            <x-rich-editor id="f_job_description_editor" name="job_description_display" :height="220"/>
-            <input type="hidden" name="job_description" id="f_job_description">
+            <x-rich-editor id="f_job_description_editor" name="job_description" :height="220"/>
             <div class="d-flex justify-content-between mt-2">
                 <small class="text-muted">Describe the role, company culture, and what makes this opportunity special.</small>
                 <small id="descCharCount" class="text-muted">0 chars</small>
@@ -513,11 +518,13 @@
 
     {{-- ── SUBMIT ── --}}
     <div class="d-grid gap-2">
-        <button type="button" class="btn btn-primary btn-lg fw-semibold" onclick="submitJobPost()">
-            <i class="ti ti-send me-2"></i>Post Job Now
+        <button type="button" class="btn btn-primary btn-lg fw-semibold" id="submitJobBtn" onclick="submitJobPost()">
+            <span id="submitJobBtnText"><i class="ti ti-send me-2"></i>Post Job Now</span>
+            <span id="submitJobBtnSpinner" class="spinner-border spinner-border-sm ms-2 d-none"></span>
         </button>
-        <button type="button" class="btn btn-outline-secondary" onclick="submitJobPost('draft')">
-            <i class="ti ti-device-floppy me-2"></i>Save as Draft
+        <button type="button" class="btn btn-outline-secondary" id="submitDraftBtn" onclick="submitJobPost('draft')">
+            <span id="submitDraftBtnText"><i class="ti ti-device-floppy me-2"></i>Save as Draft</span>
+            <span id="submitDraftBtnSpinner" class="spinner-border spinner-border-sm ms-2 d-none"></span>
         </button>
     </div>
 
@@ -554,12 +561,12 @@
                             <div class="row g-2" id="modelSelector">
                                 @php
                                 $models = [
-                                    ['id'=>'claude','label'=>'Claude','icon'=>'ti-robot','color'=>'#d97757'],
-                                    ['id'=>'openai','label'=>'OpenAI GPT','icon'=>'ti-brand-openai','color'=>'#10a37f'],
-                                    ['id'=>'gemini','label'=>'Gemini','icon'=>'ti-sparkles','color'=>'#4285f4'],
-                                    ['id'=>'grok','label'=>'Grok','icon'=>'ti-brain','color'=>'#1da1f2'],
-                                    ['id'=>'cohere','label'=>'Cohere','icon'=>'ti-cpu','color'=>'#d4a017'],
-                                    ['id'=>'mistral','label'=>'Mistral','icon'=>'ti-wind','color'=>'#ff7000'],
+                                    ['id'=>'claude','label'=>'Claude','icon'=>'ti-message-2','color'=>'#d97757'],  
+                                    ['id'=>'openai','label'=>'OpenAI GPT','icon'=>'ti-cpu','color'=>'#10a37f'],    
+                                    ['id'=>'gemini','label'=>'Gemini','icon'=>'ti-planet','color'=>'#4285f4'],     
+                                    ['id'=>'grok','label'=>'Grok','icon'=>'ti-rocket','color'=>'#1da1f2'],         
+                                    ['id'=>'cohere','label'=>'Cohere','icon'=>'ti-palette','color'=>'#d4a017'],   
+                                    ['id'=>'mistral','label'=>'Mistral','icon'=>'ti-cloud','color'=>'#ff7000'],     
                                 ];
                                 @endphp
                                 @foreach($models as $m)
@@ -577,7 +584,7 @@
                             <input type="hidden" id="selectedModel" value="claude">
                         </div>
 
-                        {{-- API Key --}}
+                        {{-- API Key 
                         <div class="mb-3" id="apiKeyRow">
                             <label class="form-label fw-semibold small">API Key <span class="text-muted">(not stored)</span></label>
                             <div class="input-group">
@@ -590,6 +597,7 @@
                             </div>
                             <small class="text-muted">Your key is never saved — used only for this session.</small>
                         </div>
+                        --}}
 
                         {{-- Source type tabs --}}
                         <div class="mb-3">
@@ -610,19 +618,20 @@
                         <div id="textSourcePanel">
                             <label class="form-label fw-semibold small">Paste Job Content</label>
                             <textarea id="aiSourceText" class="form-control" rows="12"
-                                      placeholder="Paste the full job posting text here — from a website, email, PDF, WhatsApp message, or anywhere.
+                                placeholder="Paste the full job posting text here — from a website, email, PDF, WhatsApp message, or anywhere.
 
-The AI will extract:
-• Job title
-• Company name
-• Description
-• Responsibilities
-• Qualifications
-• Skills
-• Salary
-• Deadline
-• Contact details
-• Application procedure"></textarea>
+                                The AI will extract:
+                                • Job title
+                                • Company name
+                                • Description
+                                • Responsibilities
+                                • Qualifications
+                                • Skills
+                                • Salary
+                                • Deadline
+                                • Contact details
+                                • Application procedure">
+                            </textarea>
                         </div>
 
                         {{-- URL input --}}
@@ -668,88 +677,49 @@ The AI will extract:
         </div>
     </div>
 </div>
+<script>
+    /* Text wrapping utilities */
+    .text-break {
+        word-break: break-word;
+        overflow-wrap: break-word;
+    }
 
-{{-- ═══════════════════════════════════════════════════════════════════
-     IMAGE EXTRACT MODAL
-═══════════════════════════════════════════════════════════════════ --}}
-<div class="modal fade" id="imageExtractModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title d-flex align-items-center gap-2">
-                    <i class="ti ti-photo"></i> Image Job Extractor
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="row g-4">
-                    <div class="col-md-5">
-                        {{-- Image upload --}}
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Upload Image</label>
-                            <div id="imgDropZone"
-                                 class="border-2 border-dashed rounded-3 p-4 text-center bg-body-secondary"
-                                 style="border-style:dashed!important;cursor:pointer;min-height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center"
-                                 onclick="document.getElementById('imgFileInput').click()"
-                                 ondrop="handleImgDrop(event)" ondragover="event.preventDefault()">
-                                <i class="ti ti-cloud-upload fs-1 text-muted mb-2"></i>
-                                <p class="mb-1 fw-semibold">Drop image here or click to browse</p>
-                                <p class="text-muted small mb-0">JPG, PNG, WEBP — max 5MB</p>
-                            </div>
-                            <input type="file" id="imgFileInput" accept="image/*" style="display:none"
-                                   onchange="handleImgSelect(event)">
-                        </div>
+    .word-wrap {
+        word-wrap: break-word;
+        white-space: normal;
+    }
 
-                        {{-- Image preview --}}
-                        <div id="imgPreviewWrap" style="display:none">
-                            <label class="form-label fw-semibold small">Image Preview</label>
-                            <img id="imgPreview" class="img-fluid rounded-2 border" alt="Preview">
-                            <button class="btn btn-sm btn-outline-danger mt-2 w-100" onclick="clearImage()">
-                                <i class="ti ti-x me-1"></i>Remove Image
-                            </button>
-                        </div>
+    /* For the preview panel */
+    #aiPreviewPanel .bg-body-rounded {
+        transition: all 0.2s ease;
+    }
 
-                        <div class="mt-3">
-                            <label class="form-label fw-semibold small">AI Model for Image</label>
-                            <select id="imgModel" class="form-select form-select-sm">
-                                <option value="claude">Claude (Anthropic)</option>
-                                <option value="openai">GPT-4 Vision (OpenAI)</option>
-                                <option value="gemini">Gemini Vision (Google)</option>
-                            </select>
-                        </div>
-                        <div class="mt-2">
-                            <label class="form-label fw-semibold small">API Key</label>
-                            <input type="password" id="imgApiKey" class="form-control form-control-sm"
-                                   placeholder="Paste API key...">
-                        </div>
-                    </div>
+    #aiPreviewPanel .bg-body-rounded:hover {
+        background-color: #f8f9fa;
+    }
 
-                    <div class="col-md-7">
-                        <label class="form-label fw-semibold">Extracted Data</label>
-                        <div id="imgPreviewPanel"
-                             class="border rounded-2 p-3 bg-body-secondary"
-                             style="min-height:360px;max-height:480px;overflow-y:auto">
-                            <div class="text-center text-muted py-5">
-                                <i class="ti ti-photo-scan d-block fs-1 mb-3 opacity-25"></i>
-                                <p>Upload an image of a job posting flyer, screenshot, or PDF page and AI will extract all fields.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button class="btn btn-outline-primary" onclick="extractFromImage()" id="imgExtractBtn">
-                    <span id="imgExtractBtnText"><i class="ti ti-photo me-1"></i>Extract from Image</span>
-                    <span id="imgExtractBtnSpinner" class="spinner-border spinner-border-sm ms-1 d-none"></span>
-                </button>
-                <button class="btn btn-primary" id="applyImgBtn" onclick="applyImageData()" style="display:none">
-                    <i class="ti ti-check me-1"></i>Apply to Form
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+    /* Ensure long words break properly */
+    .min-w-0 {
+        min-width: 0;
+    }
+
+    .flex-grow-1 {
+        flex-grow: 1;
+    }
+
+    /* For the description text */
+    .description-text {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</script>
+
+
+@include('jobs.job-posts.image-extraction')
 
 @include('jobs.job-posts.ai-posting-js')
+@include('jobs.job-posts.quick-company')
 @endsection
