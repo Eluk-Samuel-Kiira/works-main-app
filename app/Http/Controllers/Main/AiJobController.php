@@ -25,6 +25,7 @@ class AiJobController extends Controller
      */
     public function extractJobData(Request $request)
     {
+        // Log::info($request->all());
         $request->validate([
             'model' => 'required|in:openai,claude,gemini,cohere,grok,mistral',
             'content' => 'required|string',

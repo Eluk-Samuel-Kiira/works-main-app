@@ -45,7 +45,12 @@
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Company <span class="text-danger">*</span></label>
                             <div class="position-relative">
-                                <input type="text" id="c_company_input" class="form-control" placeholder="Type to search company..." autocomplete="off">
+                                <div class="input-group">
+                                    <input type="text" id="c_company_input" class="form-control" placeholder="Type to search company..." autocomplete="off">
+                                    <button class="btn btn-outline-primary" type="button" onclick="openQuickCompanyModal('c_company_input', 'c_company_id')" title="Add new company">
+                                        <i class="ti ti-plus"></i>
+                                    </button>
+                                </div>
                                 <input type="hidden" name="company_id" id="c_company_id">
                                 <ul class="dropdown-menu w-100" id="c_company_list" style="max-height: 250px; overflow-y: auto;"></ul>
                             </div>
@@ -209,3 +214,4 @@
     </div>
 </div>
 @include('jobs.job-posts.simple-post-js')
+@include('jobs.job-posts.quick-company')
