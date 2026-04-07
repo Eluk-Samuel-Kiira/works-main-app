@@ -19,4 +19,9 @@ class DashboardController extends Controller
     {
         return view('home.social-media.index');
     }
+
+    public function aiPosting()
+    {
+        return view('jobs.job-posts.ai-posting');
+    }
 }

@@ -35,4 +35,24 @@ return [
         ],
     ],
 
+        'openai' => [
+        'api_key' => env('OPENAI_API_KEY'),
+        'api_key_dev' => env('OPENAI_API_KEY_DEV'),
+    ],
+    
+    'anthropic' => [
+        'api_key' => env('ANTHROPIC_API_KEY'),
+        'api_key_dev' => env('ANTHROPIC_API_KEY_DEV'),
+    ],
+    
+    'gemini' => [
+        'api_key' => env('GEMINI_API_KEY'),
+        'api_key_dev' => env('GEMINI_API_KEY_DEV'),
+    ],
+    
+    'cohere' => [
+        'api_key' => env('COHERE_API_KEY'),
+        'api_key_dev' => env('COHERE_API_KEY_DEV'),
+    ],
+
 ];

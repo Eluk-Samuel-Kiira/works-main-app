@@ -14,6 +14,7 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'dashboard'])->name('dashboard');
+    Route::get('/ai-posting', [DashboardController::class, 'aiPosting'])->name('ai-posting');
     Route::get('/social-media-platforms', [DashboardController::class, 'socialMediaPlatform'])->name('social-media');
 });
 
@@ -26,6 +27,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+use App\Http\Controllers\Main\{ AiJobController };
+
+Route::middleware(['auth'])->group(function () {
+    Route::post('/ai/extract-job', [AiJobController::class, 'extractJobData'])->name('ai.extract-job');
+    Route::post('/ai/extract-image', [AiJobController::class, 'extractFromImage'])->name('ai.extract-image');
+    Route::post('/ai/enhance-field', [AiJobController::class, 'enhanceField'])->name('ai.enhance-field');
+    Route::post('/ai/generate-from-title', [AiJobController::class, 'generateFromTitle'])->name('ai.generate-from-title');
 });
 
 Route::get('/clear-cache-temp', function () {

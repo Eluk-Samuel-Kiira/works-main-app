@@ -45,6 +45,14 @@
                             </a>
                         </li>
                         <li class="sidebar-item">
+                            <a href="{{ route('ai-posting') }}" class="sidebar-link sublink">
+                                <div class="round-16 d-flex align-items-center justify-content-center">
+                                <iconify-icon icon="solar:stop-circle-line-duotone"></iconify-icon>
+                                </div>
+                                <span class="hide-menu">{{__('AI-Job Posting')}}</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
                             <a href="{{ route('company.index') }}" class="sidebar-link sublink">
                                 <div class="round-16 d-flex align-items-center justify-content-center">
                                 <iconify-icon icon="solar:stop-circle-line-duotone"></iconify-icon>
