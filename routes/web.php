@@ -16,6 +16,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'dashboard'])->name('dashboard');
     Route::get('/ai-posting', [DashboardController::class, 'aiPosting'])->name('ai-posting');
     Route::get('/social-media-platforms', [DashboardController::class, 'socialMediaPlatform'])->name('social-media');
+    Route::get('/whatsapp-docs', [DashboardController::class, 'whatsappDocs'])->name('whatsapp-docs');
+    
+    // API endpoints for counts (Note: These are NOT prefixed with /api)
+    Route::get('/job-categories/with-counts', [DashboardController::class, 'getCategoryJobCounts']);
+    Route::get('/job-countries/with-counts', [DashboardController::class, 'getCountryJobCounts']);
+});
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/whatsapp-docs', function () {
+        return view('home.whatsapp-docs.index');
+    })->name('whatsapp-docs');
 });
 
 Route::middleware(['auth'])->prefix('admin')->group(function () {

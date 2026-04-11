@@ -135,8 +135,15 @@
                 
                 <li class="sidebar-item">
                     <a class="sidebar-link" href="{{ route('social-media') }}">
-                        <iconify-icon icon="solar:box-minimalistic-linear" class="aside-icon"></iconify-icon>
+                        <iconify-icon icon="solar:share-linear" class="aside-icon"></iconify-icon>
                         <span class="hide-menu">{{__('SM Platforms')}}</span>
+                    </a>
+                </li>
+
+                <li class="sidebar-item">
+                    <a class="sidebar-link" href="{{ route('whatsapp-docs') }}">
+                        <i class="ti ti-brand-whatsapp"></i>
+                        <span class="hide-menu">{{__('WhatsApp Docs')}}</span>
                     </a>
                 </li>
 

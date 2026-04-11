@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Main\Jobs;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Models\Job\{ JobPost, Company };
 
 class JobPostsController extends Controller
 {
@@ -62,4 +63,5 @@ class JobPostsController extends Controller
     {
         //
     }
+
 }
