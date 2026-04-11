@@ -800,14 +800,30 @@ function syncAllRichEditors() {
 // ============================================================
 async function submitJobPost(mode = 'live') {
     const isDraft = mode === 'draft';
+    
+    // Get the correct button based on mode
     const submitBtn = document.getElementById(isDraft ? 'submitDraftBtn' : 'submitJobBtn');
+    
+    // Get the text and spinner elements - NOTE: IDs match your HTML
     const btnText = document.getElementById(isDraft ? 'submitDraftBtnText' : 'submitJobBtnText');
     const btnSpinner = document.getElementById(isDraft ? 'submitDraftBtnSpinner' : 'submitJobBtnSpinner');
     
+    // Check if elements exist
+    if (!submitBtn) {
+        console.error('Submit button not found for mode:', mode);
+        return;
+    }
+    
+    // Disable button and show spinner
     submitBtn.disabled = true;
-    btnSpinner.classList.remove('d-none');
-    const originalText = btnText.innerHTML;
-    btnText.innerHTML = isDraft ? '<i class="ti ti-device-floppy me-2"></i>Saving...' : '<i class="ti ti-send me-2"></i>Posting...';
+    if (btnSpinner) btnSpinner.classList.remove('d-none');
+    
+    // Store original button text
+    let originalText = '';
+    if (btnText) {
+        originalText = btnText.innerHTML;
+        btnText.innerHTML = isDraft ? '<i class="ti ti-device-floppy me-2"></i>Saving...' : '<i class="ti ti-send me-2"></i>Posting...';
+    }
     
     syncAllRichEditors();
     
@@ -884,9 +900,10 @@ async function submitJobPost(mode = 'live') {
     if (!hasDescription) errors.push('Job description is required');
     
     if (errors.length) {
+        // Reset button state
         submitBtn.disabled = false;
-        btnSpinner.classList.add('d-none');
-        btnText.innerHTML = originalText;
+        if (btnSpinner) btnSpinner.classList.add('d-none');
+        if (btnText) btnText.innerHTML = originalText;
         
         const errorDiv = document.getElementById('formErrors');
         if (errorDiv) {
@@ -907,9 +924,10 @@ async function submitJobPost(mode = 'live') {
         const res = await apiFetch(API_BASE, { method: 'POST', body: JSON.stringify(data) });
         hideBanner();
         
+        // Reset button state
         submitBtn.disabled = false;
-        btnSpinner.classList.add('d-none');
-        btnText.innerHTML = originalText;
+        if (btnSpinner) btnSpinner.classList.add('d-none');
+        if (btnText) btnText.innerHTML = originalText;
         
         toast(isDraft ? 'Job draft saved successfully!' : 'Job post created successfully!', 'success');
         
@@ -927,21 +945,29 @@ async function submitJobPost(mode = 'live') {
         
         if (!isDraft) {
             setTimeout(() => {
-                clearForm();
-            }, 2000);
+                if (confirm('Job posted successfully! Would you like to post another job?')) {
+                    clearForm();
+                } else {
+                    window.location.href = '/jobs';
+                }
+            }, 500);
         } else {
-            clearForm();
+            setTimeout(() => {
+                if (confirm('Draft saved successfully! Would you like to continue posting?')) {
+                    // Stay on the form
+                } else {
+                    window.location.href = '/dashboard';
+                }
+            }, 500);
         }
-            
+        
     } catch (err) {
         hideBanner();
         
         // Reset button state
         submitBtn.disabled = false;
-        btnSpinner.classList.add('d-none');
-        btnText.innerHTML = originalText;
-        
-        // console.log('Full error:', err);
+        if (btnSpinner) btnSpinner.classList.add('d-none');
+        if (btnText) btnText.innerHTML = originalText;
         
         // Extract the actual error message
         let errorMessage = '';
@@ -956,7 +982,6 @@ async function submitJobPost(mode = 'live') {
             errorMessage = typeof err.error === 'string' ? err.error : JSON.stringify(err.error);
         }
         else if (err.errors) {
-            // Handle validation errors
             const errorList = [];
             Object.values(err.errors).forEach(e => {
                 if (Array.isArray(e)) errorList.push(...e);
@@ -968,10 +993,8 @@ async function submitJobPost(mode = 'live') {
             errorMessage = 'Failed to post job. Please try again.';
         }
         
-        // Show toast with the actual error message
         toast(errorMessage, 'error');
         
-        // Display detailed errors in the form
         const errorDiv = document.getElementById('formErrors');
         if (errorDiv) {
             displayFormErrors(errorDiv, err);

@@ -224,7 +224,7 @@ function copyAllLinks() {
         return;
     }
     
-    const allMessages = currentJobs.map((job, i) => formatWhatsAppMessage(job, i)).join('\n\n' + '─'.repeat(40) + '\n\n');
+    const allMessages = currentJobs.map((job, i) => formatWhatsAppMessage(job, i)).join('\n\n' + '─'.repeat(48) + '\n\n');
     
     navigator.clipboard.writeText(allMessages).then(() => {
         toast(`Copied ${currentJobs.length} messages!`, 'success');
