@@ -504,8 +504,8 @@ class JobPostController extends Controller
             $description .= "Short-term opportunity. ";
         }
         
-        // Limit to 160 characters
-        return Str::limit($description, 160);
+        // ✅ Limit to 200 characters (not 160)
+        return Str::limit($description, 200);
     }
 
     /**

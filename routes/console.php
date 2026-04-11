@@ -6,87 +6,63 @@ use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
+})->purpose('Display an inspiring quote')->daily();
 
 // ============================================================
-// SEO & SITEMAP TASKS
+// SITEMAP GENERATION
+// ============================================================
+Schedule::command('sitemap:generate')
+    ->everySixHours()
+    ->name('generate-sitemap')
+    ->withoutOverlapping();
+
+// ============================================================
+// SEO FLOW:
+// 1. Check for new jobs and ping search engines (Hourly)
+// 2. Submit ONLY pinged jobs to Indexing API (Every 6 hours)
+// 3. Check indexing status (Daily)
 // ============================================================
 
-// Generate sitemap every 6 hours (instead of hourly to reduce load)
-// Since you have 128 jobs, hourly is fine, but 6 hours is more efficient
-Schedule::command('sitemap:generate')->everySixHours()->name('generate-sitemap');
+// Step 1: Ping search engines when new jobs exist
+Schedule::call(fn() => app(\App\Services\SearchEnginePingService::class)->pingIfNewJobs())
+    ->hourly()
+    ->name('ping-search-engines')
+    ->withoutOverlapping();
 
-// Ping search engines hourly if new jobs
-Schedule::call(function () {
-    app(\App\Services\SearchEnginePingService::class)->pingIfNewJobs();
-})->hourly()->name('ping-search-engines');
+// Step 2: Submit ONLY jobs that were successfully pinged to Google Indexing API
+Schedule::call(fn() => app(\App\Services\SearchEnginePingService::class)->submitNewJobsToIndexing())
+    ->everySixHours()
+    ->name('submit-to-indexing')
+    ->withoutOverlapping();
+
+// Step 3: Check indexing status for submitted jobs
+Schedule::call(fn() => app(\App\Services\SearchEnginePingService::class)->checkAndUpdateIndexingStatus())
+    ->dailyAt('04:00')
+    ->name('check-indexing-status')
+    ->withoutOverlapping();
 
 // ============================================================
 // JOB CLEANUP TASKS
 // ============================================================
 
-// 1. Clean up expired featured jobs hourly
+// Clean up expired featured jobs
 Schedule::call(function () {
     $expired = \DB::table('job_posts')
         ->where('is_featured', true)
         ->where('featured_until', '<', now())
         ->update(['is_featured' => false, 'featured_until' => null]);
     
-if ($expired > 0) {
-    \Log::info("Cleaned up {$expired} expired featured jobs");
-}
+    if ($expired > 0) {
+        \Log::info("Cleaned up {$expired} expired featured jobs");
+    }
 })->hourly()->name('clean-expired-featured');
 
-// 2. Force delete jobs older than 2 months (60 days) - run daily at 2 AM
+// Soft delete jobs older than 45 days
 Schedule::call(function () {
-    $cutoffDate = now()->subMonths(2);
-    
-    $jobsToDelete = \DB::table('job_posts')
-        ->where('created_at', '<', $cutoffDate)
-        ->where(function ($query) {
-            $query->where('is_featured', false)
-                  ->orWhere('featured_until', '<', now());
-        })
-        ->select('id', 'slug', 'job_title')
-        ->get();
-    
-    if ($jobsToDelete->count() > 0) {
-        $ids = $jobsToDelete->pluck('id')->toArray();
-        
-        \Log::info("Deleting {$jobsToDelete->count()} jobs older than 2 months", [
-            'job_ids' => $ids,
-            'job_titles' => $jobsToDelete->pluck('job_title')->toArray()
-        ]);
-        
-        // Delete related records
-        \DB::table('job_applications')->whereIn('job_post_id', $ids)->delete();
-        \DB::table('job_audit_logs')->whereIn('job_post_id', $ids)->delete();
-        \DB::table('job_views')->whereIn('job_post_id', $ids)->delete();
-        
-        // Delete the jobs
-        \DB::table('job_posts')->whereIn('id', $ids)->delete();
-        
-        // Clear cache
-        foreach ($jobsToDelete as $job) {
-            \Cache::forget("job_{$job->slug}");
-            \Cache::forget("featured:{$job->slug}");
-        }
-        
-        \Log::info("Successfully deleted {$jobsToDelete->count()} old jobs");
-    }
-})->dailyAt('02:00')->name('delete-old-jobs'); // Run at 2 AM
-
-// 3. Soft delete jobs that are 1.5 months old (45 days) - run daily at 3 AM
-Schedule::call(function () {
-    $cutoffDate = now()->subDays(45);
-    
     $updated = \DB::table('job_posts')
-        ->where('created_at', '<', $cutoffDate)
+        ->where('created_at', '<', now()->subDays(45))
         ->whereNull('deleted_at')
-        ->where(function ($query) {
-            $query->where('is_featured', false)
-                  ->orWhere('featured_until', '<', now());
-        })
+        ->where('is_featured', false)
         ->update(['deleted_at' => now()]);
     
     if ($updated > 0) {
@@ -94,29 +70,49 @@ Schedule::call(function () {
     }
 })->dailyAt('03:00')->name('soft-delete-old-jobs');
 
+// Force delete jobs older than 60 days
+Schedule::call(function () {
+    $jobsToDelete = \DB::table('job_posts')
+        ->where('created_at', '<', now()->subMonths(2))
+        ->where(function ($query) {
+            $query->where('is_featured', false)
+                  ->orWhere('featured_until', '<', now());
+        })
+        ->get();
+    
+    if ($jobsToDelete->isNotEmpty()) {
+        $ids = $jobsToDelete->pluck('id')->toArray();
+        
+        \DB::table('job_applications')->whereIn('job_post_id', $ids)->delete();
+        \DB::table('job_audit_logs')->whereIn('job_post_id', $ids)->delete();
+        \DB::table('job_views')->whereIn('job_post_id', $ids)->delete();
+        \DB::table('job_posts')->whereIn('id', $ids)->delete();
+        
+        foreach ($jobsToDelete as $job) {
+            \Cache::forget("job_{$job->slug}");
+            \Cache::forget("featured:{$job->slug}");
+        }
+        
+        \Log::info("Permanently deleted {$jobsToDelete->count()} jobs older than 60 days");
+    }
+})->dailyAt('02:00')->name('force-delete-old-jobs');
 
 // ============================================================
-// OPTIONAL: Send daily summary email (if you have mail configured)
+// ARTISAN COMMANDS
 // ============================================================
-/*
-Schedule::call(function () {
-    $newJobsToday = \DB::table('job_posts')
-        ->whereDate('created_at', today())
-        ->count();
-    
-    $activeJobs = \DB::table('job_posts')
-        ->where('is_active', true)
-        ->where('deadline', '>=', now())
-        ->count();
-    
-    $expiringSoon = \DB::table('job_posts')
-        ->where('is_active', true)
-        ->where('deadline', '<=', now()->addDays(3))
-        ->count();
-    
-    \Log::info("Daily Stats - New: {$newJobsToday}, Active: {$activeJobs}, Expiring Soon: {$expiringSoon}");
-    
-    // Send email to admin
-    // Mail::to('admin@example.com')->send(new DailyStatsReport($newJobsToday, $activeJobs, $expiringSoon));
-})->dailyAt('23:59')->name('daily-stats');
-*/
+
+Artisan::command('seo:force-ping', function () {
+    $this->info('Forcing sitemap ping...');
+    app(\App\Services\SearchEnginePingService::class)->forcePing();
+    $this->info('✓ Sitemap ping completed');
+})->purpose('Force sitemap ping to search engines');
+
+Artisan::command('seo:stats', function () {
+    $stats = [
+        ['Active Jobs', \App\Models\Job\JobPost::where('is_active', true)->where('deadline', '>=', now())->count()],
+        ['Pinged Jobs', \App\Models\Job\JobPost::where('is_pinged', true)->count()],
+        ['Submitted to Indexing', \App\Models\Job\JobPost::where('submitted_to_indexing', true)->count()],
+        ['Confirmed Indexed', \App\Models\Job\JobPost::where('is_indexed', true)->count()],
+    ];
+    $this->table(['Metric', 'Count'], $stats);
+})->purpose('Display SEO statistics');

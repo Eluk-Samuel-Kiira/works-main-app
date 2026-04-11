@@ -60,4 +60,6 @@ class JobsCategoryController extends Controller
             'per_page'     => $companies->perPage(),
         ]);
     }
+
+
 }
