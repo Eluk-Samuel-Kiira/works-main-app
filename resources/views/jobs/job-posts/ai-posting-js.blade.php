@@ -369,6 +369,56 @@ function selectModel(el, modelId) {
 
 
 // ============================================================
+// SOURCE TYPE TOGGLE (text/url)
+// ============================================================
+function initSourceTypeToggle() {
+    const sourceTypeRadios = document.querySelectorAll('input[name="sourceType"]');
+    const textPanel = document.getElementById('textSourcePanel');
+    const urlPanel = document.getElementById('urlSourcePanel');
+    
+    function toggleSourceType() {
+        const selectedValue = document.querySelector('input[name="sourceType"]:checked').value;
+        if (selectedValue === 'text') {
+            if (textPanel) textPanel.style.display = 'block';
+            if (urlPanel) urlPanel.style.display = 'none';
+        } else {
+            if (textPanel) textPanel.style.display = 'none';
+            if (urlPanel) urlPanel.style.display = 'block';
+        }
+    }
+    
+    // Add event listeners to all radio buttons
+    sourceTypeRadios.forEach(radio => {
+        radio.addEventListener('change', toggleSourceType);
+    });
+    
+    // Set initial state
+    toggleSourceType();
+}
+
+// ============================================================
+// SOURCE TYPE TOGGLE (Alternative using event delegation)
+// ============================================================
+document.addEventListener('change', function(e) {
+    if (e.target && e.target.name === 'sourceType') {
+        const textPanel = document.getElementById('textSourcePanel');
+        const urlPanel = document.getElementById('urlSourcePanel');
+        
+        if (textPanel && urlPanel) {
+            if (e.target.value === 'text') {
+                textPanel.style.display = 'block';
+                urlPanel.style.display = 'none';
+            } else if (e.target.value === 'url') {
+                textPanel.style.display = 'none';
+                urlPanel.style.display = 'block';
+            }
+        }
+    }
+});
+
+
+
+// ============================================================
 // APPLY EXTRACTED DATA TO FORM
 // ============================================================
 function applyExtractedData() {
@@ -594,7 +644,7 @@ async function aiEnhanceField(fieldName, instruction) {
         currentContent = el ? el.value : '';
     }
 
-    if (!currentContent.trim() || currentContent === '<br>') {
+    if (!currentContent.trim() || currentContent === '<br>' || currentContent === '<p><br></p>' || currentContent === '<div><br></div>') {
         toast('Please add some content first before enhancing.', 'warning');
         return;
     }
@@ -604,22 +654,56 @@ async function aiEnhanceField(fieldName, instruction) {
 
     try {
         const stripped = currentContent.replace(/<[^>]*>/g, '');
+        
         const result = await apiFetch(`${AI_API_BASE}/enhance-field`, {
             method: 'POST',
             body: JSON.stringify({ model, field_name: fieldName, content: stripped, instruction })
         });
         
-        let enhanced = result.enhanced;
-        enhanced = enhanced.replace(/```html\n?/g, '').replace(/```\n?/g, '').trim();
+        console.log('AI Enhance response:', result);
+        
+        // Check if result exists and has enhanced property
+        let enhanced = null;
+        
+        if (result && result.enhanced) {
+            enhanced = result.enhanced;
+        } else if (result && result.data && result.data.enhanced) {
+            enhanced = result.data.enhanced;
+        } else if (result && typeof result === 'string') {
+            enhanced = result;
+        } else {
+            // Try to extract from response
+            enhanced = result?.message || result?.error || 'No enhanced content returned';
+        }
+        
+        if (!enhanced || enhanced === 'null' || enhanced === 'undefined') {
+            throw new Error('AI returned empty response. Please try again.');
+        }
+        
+        // Clean the enhanced content
+        if (typeof enhanced === 'string') {
+            enhanced = enhanced.replace(/```html\n?/g, '').replace(/```\n?/g, '').trim();
+        } else {
+            enhanced = String(enhanced);
+        }
 
         if (editorMap[fieldName]) {
-            richEditorSet(editorMap[fieldName], enhanced);
+            const editor = document.getElementById(editorMap[fieldName]);
+            if (editor) {
+                editor.innerHTML = enhanced;
+                // Also update hidden input
+                const hiddenInput = document.getElementById(editorMap[fieldName] + '_hidden');
+                if (hiddenInput) hiddenInput.value = enhanced;
+            }
         } else {
             const el = document.getElementById(`f_${fieldName}`);
             if (el) el.value = enhanced.replace(/<[^>]*>/g, '');
         }
+        
         toast(`${fieldName.replace(/_/g, ' ')} enhanced successfully!`, 'success');
+        
     } catch (e) {
+        console.error('AI Enhance error:', e);
         toast('Enhancement failed: ' + (e.message || 'Unknown error'), 'error');
     } finally {
         hideBanner();
@@ -1058,6 +1142,34 @@ function openAiExtractModal() {
 document.addEventListener('DOMContentLoaded', () => {
     loadDropdowns();
     initCharCounters();
+    
+    // Initialize source type toggle
+    initSourceTypeToggle();
+    
+    // Alternative: Also add the event listener directly
+    const sourceTypeRadios = document.querySelectorAll('input[name="sourceType"]');
+    sourceTypeRadios.forEach(radio => {
+        radio.addEventListener('change', function(e) {
+            const textPanel = document.getElementById('textSourcePanel');
+            const urlPanel = document.getElementById('urlSourcePanel');
+            if (this.value === 'text') {
+                if (textPanel) textPanel.style.display = 'block';
+                if (urlPanel) urlPanel.style.display = 'none';
+            } else {
+                if (textPanel) textPanel.style.display = 'none';
+                if (urlPanel) urlPanel.style.display = 'block';
+            }
+        });
+    });
+    
+    // Set initial state
+    const textPanel = document.getElementById('textSourcePanel');
+    const urlPanel = document.getElementById('urlSourcePanel');
+    if (textPanel && urlPanel) {
+        const isTextSelected = document.querySelector('input[name="sourceType"]:checked')?.value === 'text';
+        textPanel.style.display = isTextSelected ? 'block' : 'none';
+        urlPanel.style.display = isTextSelected ? 'none' : 'block';
+    }
     
     const editorIds = ['f_job_description_editor', 'f_responsibilities_editor', 'f_qualifications_editor', 'f_skills_editor'];
     editorIds.forEach(editorId => {

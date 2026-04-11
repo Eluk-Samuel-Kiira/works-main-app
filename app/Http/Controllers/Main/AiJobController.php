@@ -110,20 +110,70 @@ class AiJobController extends Controller
         $apiKey = $this->apiKeys[$model] ?? null;
 
         if (!$apiKey && !in_array($model, ['grok', 'mistral'])) {
-            return response()->json(['error' => "API key not configured for {$model}"], 400);
+            return response()->json(['success' => false, 'error' => "API key not configured for {$model}"], 400);
         }
 
         try {
             $prompt = "{$instruction}. Return ONLY the improved HTML content using <p> and <ul><li> tags, no explanations, no markdown:\n\n{$content}";
             $result = $this->callAiApi($model, $apiKey, $prompt);
             
-            $enhanced = is_array($result) ? json_encode($result) : $result;
+            // FIX: Extract the actual text content from the result
+            $enhanced = '';
+            
+            // If result is an array, try to get the text content
+            if (is_array($result)) {
+                // Check if result has a 'text' or 'content' field
+                if (isset($result['text'])) {
+                    $enhanced = $result['text'];
+                } elseif (isset($result['content'])) {
+                    $enhanced = $result['content'];
+                } elseif (isset($result['enhanced'])) {
+                    $enhanced = $result['enhanced'];
+                } else {
+                    // If result is an associative array, it might be the JSON we want
+                    // But the API already returned parsed JSON, so we need to re-encode?
+                    // Actually callAiApi already returns json_decode, so $result is the data
+                    // For enhancement, we expect a string, not an object
+                    if (isset($result['job_description'])) {
+                        // This is the full extraction result, we need just the enhanced field
+                        $enhanced = $result['job_description'] ?? '';
+                    } else {
+                        // Try to get the first string value
+                        $firstValue = reset($result);
+                        if (is_string($firstValue)) {
+                            $enhanced = $firstValue;
+                        } else {
+                            $enhanced = json_encode($result);
+                        }
+                    }
+                }
+            } elseif (is_string($result)) {
+                $enhanced = $result;
+            } else {
+                $enhanced = (string) $result;
+            }
+            
+            // Clean the enhanced content
+            $enhanced = preg_replace('/```html\n?|```\n?/', '', $enhanced);
+            $enhanced = trim($enhanced);
+            
+            // If still empty, return the original content
+            if (empty($enhanced)) {
+                $enhanced = $content;
+            }
             
             return response()->json([
                 'success' => true,
                 'enhanced' => $enhanced
             ]);
+            
         } catch (\Exception $e) {
+            Log::error('AI enhance field failed', [
+                'model' => $model,
+                'field_name' => $request->field_name,
+                'error' => $e->getMessage()
+            ]);
+            
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage()

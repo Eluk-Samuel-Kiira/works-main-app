@@ -26,7 +26,7 @@ class ArtisanCommandController extends Controller
         'migrate'              => 'Run database migrations',
         'migrate:status'       => 'Show migration status',
         'db:seed'              => 'Seed the database',
-        'migrate:fresh --seed' => 'Migrate and Seed the database a fresh',
+        // 'migrate:fresh --seed' => 'Migrate and Seed the database a fresh',
     ];
 
     public function index()
