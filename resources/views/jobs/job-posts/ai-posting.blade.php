@@ -251,7 +251,7 @@
             <input type="text" name="application_procedure" id="f_application_procedure"
                    class="form-control"
                    placeholder="e.g. Send CV to hr@company.com or visit https://apply.company.com">
-            <small class="text-muted mt-1 d-block">Include a URL or email where candidates should apply.</small>
+            <small class="text-muted mt-1 d-block">Include a URL where candidates should apply.</small>
         </div>
     </div>
 
