@@ -22,6 +22,14 @@
                         </nav>
                     </div>
                     <div>
+                        <button class="btn btn-outline-success d-flex align-items-center gap-2 me-2"
+                                onclick="openIndexingModal()">
+                            <i class="ti ti-search-check fs-4"></i>
+                            Ping & Index
+                            <span class="badge bg-warning text-dark ms-1" id="pendingIndexBadge">–</span>
+                        </button>
+                    </div>
+                    <div>
                         <button class="btn btn-primary d-flex align-items-center gap-2" onclick="openCreateModal()">
                             <i class="ti ti-plus fs-4"></i> Add Job Post
                         </button>
@@ -222,6 +230,56 @@
                     </div>
                 </div>
                 <div id="statusActionMsg" class="mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- INDEXING MODAL --}}
+<div class="modal fade" id="indexingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(135deg,#4f46e5,#7c3aed)">
+                <h5 class="modal-title text-white d-flex align-items-center gap-2">
+                    <i class="ti ti-search-check"></i> Ping & Index Jobs
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="indexingStats" class="row g-3 mb-4">
+                    <div class="col-4 text-center">
+                        <div class="p-3 bg-light rounded-2">
+                            <div class="fw-bold fs-4 text-primary" id="statPending">...</div>
+                            <small class="text-muted">Not yet indexed</small>
+                        </div>
+                    </div>
+                    <div class="col-4 text-center">
+                        <div class="p-3 bg-light rounded-2">
+                            <div class="fw-bold fs-4 text-success" id="statSubmitted">...</div>
+                            <small class="text-muted">Submitted to Google</small>
+                        </div>
+                    </div>
+                    <div class="col-4 text-center">
+                        <div class="p-3 bg-light rounded-2">
+                            <div class="fw-bold fs-4 text-warning" id="statIndexed">...</div>
+                            <small class="text-muted">Confirmed indexed</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2 mb-3">
+                    <button class="btn btn-primary fw-semibold" onclick="runManualIndexing('new')">
+                        <i class="ti ti-rocket me-2"></i>Submit New Jobs (not yet submitted)
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="runManualIndexing('all')">
+                        <i class="ti ti-refresh me-2"></i>Resubmit All Active Jobs
+                    </button>
+                </div>
+
+                <div id="indexingResult" class="mt-3"></div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>

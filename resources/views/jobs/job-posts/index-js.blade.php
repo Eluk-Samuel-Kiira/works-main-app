@@ -1045,3 +1045,96 @@
         loadJobs(1);
     });
 </script>
+
+<script>
+    // Load indexing stats on page load
+    async function loadIndexingStats() {
+        try {
+            const res = await apiFetch('/api/v1/job-posts/indexing-stats');
+            const d   = res.data ?? res;
+            
+            // Map API keys to what the UI expects
+            const pendingPing    = d.not_pinged ?? 0;        // jobs not yet pinged
+            const pendingIndex   = d.not_indexed ?? 0;       // jobs not yet indexed
+            const submitted      = d.submitted_to_indexing ?? 0;
+            const indexed        = d.indexed ?? 0;
+            
+            // Update the badge on the button (show not_pinged count)
+            const badge = document.getElementById('pendingIndexBadge');
+            if (badge) {
+                badge.textContent = pendingPing;
+                // Change color based on count
+                badge.className = (pendingPing > 0) 
+                    ? 'badge bg-warning text-dark ms-1' 
+                    : 'badge bg-success ms-1';
+            }
+            
+            // Optional: update other stats if you add elements with these IDs later
+            // document.getElementById('statPending')?.textContent = pendingPing;
+            // document.getElementById('statSubmitted')?.textContent = submitted;
+            // document.getElementById('statIndexed')?.textContent = indexed;
+            
+        } catch (e) {
+            console.error('Stats load failed:', e);
+            // Fallback: hide badge on error
+            const badge = document.getElementById('pendingIndexBadge');
+            if (badge) {
+                badge.textContent = '–';
+                badge.className = 'badge bg-secondary ms-1';
+            }
+        }
+    }
+
+    function openIndexingModal() {
+        loadIndexingStats();
+        bsModal('indexingModal').show();
+    }
+
+    async function runManualIndexing(mode = 'new') {
+        const resultDiv = document.getElementById('indexingResult');
+        resultDiv.innerHTML = `<div class="d-flex align-items-center gap-2 text-muted">
+            <div class="spinner-border spinner-border-sm"></div>
+            <span>Submitting to Google & Bing Indexing APIs...</span>
+        </div>`;
+
+        try {
+            const res = await apiFetch('/api/v1/job-posts/manual-index', {
+                method: 'POST',
+                body: JSON.stringify({ mode })
+            });
+
+            const submitted = res.submitted ?? 0;
+            const results   = res.results   ?? [];
+            const okCount   = results.filter(r => r.success).length;
+            const failCount = submitted - okCount;
+
+            let html = `<div class="alert ${failCount === 0 ? 'alert-success' : 'alert-warning'}">
+                <strong>${submitted} jobs processed</strong> — ${okCount} submitted successfully, ${failCount} failed.
+            </div>`;
+
+            if (results.length > 0) {
+                html += '<table class="table table-sm"><thead><tr><th>Job</th><th>Google</th><th>Bing</th></tr></thead><tbody>';
+                results.forEach(r => {
+                    const g = r.google?.success ? '✅' : (r.google ? '❌' : '⏭');
+                    const b = r.bing?.success   ? '✅' : '❌';
+                    html += `<tr><td>${r.title}</td><td>${g}</td><td>${b}</td></tr>`;
+                });
+                html += '</tbody></table>';
+            }
+
+            resultDiv.innerHTML = html;
+            loadIndexingStats();
+            toast(`${okCount} jobs submitted to indexing!`, 'success');
+        } catch (e) {
+            resultDiv.innerHTML = `<div class="alert alert-danger">${e.message || 'Indexing failed'}</div>`;
+            toast('Indexing failed: ' + (e.message || 'Unknown error'), 'error');
+        }
+    }
+
+    // Load stats on init
+    document.addEventListener('DOMContentLoaded', () => {
+        loadPosterFilter();
+        loadJobs(1);
+        loadIndexingStats(); // ← add this
+    });
+</script>
