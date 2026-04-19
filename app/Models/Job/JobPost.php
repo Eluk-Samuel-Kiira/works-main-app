@@ -79,6 +79,10 @@ class JobPost extends Model
         'view_count',
         'application_count',
         'click_count',
+        'indexing_response',
+        'indexing_status',
+        'submitted_to_indexing',
+        'indexing_submitted_at',
         
         // Application Requirements
         'is_cover_letter_required',

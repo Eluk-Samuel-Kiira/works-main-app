@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use App\Services\SearchEnginePingService;
 
 class JobPostController extends Controller
 {
@@ -1134,4 +1135,194 @@ class JobPostController extends Controller
 
         return 'Negotiable';
     }
+
+
+
+    protected $seoService;
+
+    public function __construct(SearchEnginePingService $seoService)
+    {
+        $this->seoService = $seoService;
+    }
+
+    /**
+     * GET /api/v1/job-posts/indexing-stats
+     * Return indexing statistics for dashboard
+     */
+    public function indexingStats(Request $request): JsonResponse
+    {
+        try {
+            $stats = [
+                // Ping status
+                'pinged' => JobPost::where('is_pinged', true)->count(),
+                'not_pinged' => JobPost::where('is_pinged', false)
+                    ->where('is_active', true)
+                    ->where('deadline', '>=', now())
+                    ->count(),
+                'last_pinged_24h' => JobPost::where('last_pinged_at', '>=', now()->subDay())->count(),
+                
+                // Indexing status
+                'indexed' => JobPost::where('is_indexed', true)->count(),
+                'not_indexed' => JobPost::where('is_indexed', false)
+                    ->where('is_active', true)
+                    ->where('deadline', '>=', now())
+                    ->count(),
+                'submitted_to_indexing' => JobPost::where('submitted_to_indexing', true)->count(),
+                'last_indexed_24h' => JobPost::where('last_indexed_at', '>=', now()->subDay())->count(),
+                
+                // SEO quality
+                'high_seo_score' => JobPost::where('seo_score', '>=', 80)->count(),
+                'avg_seo_score' => round(JobPost::avg('seo_score') ?? 0, 1),
+                
+                // Recent activity
+                'new_jobs_24h' => JobPost::where('created_at', '>=', now()->subDay())->count(),
+                'total_active' => JobPost::where('is_active', true)
+                    ->where('deadline', '>=', now())
+                    ->count(),
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $stats
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Indexing stats failed: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => [
+                    'pinged' => 0,
+                    'not_pinged' => 0,
+                    'indexed' => 0,
+                    'not_indexed' => 0,
+                    'submitted_to_indexing' => 0,
+                    'high_seo_score' => 0,
+                    'avg_seo_score' => 0,
+                    'new_jobs_24h' => 0,
+                    'total_active' => 0,
+                ]
+            ], 500);
+        }
+    }
+
+    /**
+     * POST /api/v1/job-posts/manual-index
+     * Manually trigger indexing for jobs using SearchEnginePingService
+     */
+    public function manualIndex(Request $request): JsonResponse
+    {
+        try {
+            $mode = $request->input('mode', 'new');
+            
+            // Get jobs to index
+            $query = JobPost::where('is_active', true)
+                ->where('deadline', '>=', now())
+                ->whereNull('indexing_submitted_at');
+            
+            if ($mode === 'new') {
+                $query->limit(50);
+            }
+            
+            $jobs = $query->get();
+            
+            if ($jobs->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'submitted' => 0,
+                    'message' => 'No pending jobs to index',
+                    'results' => []
+                ]);
+            }
+            
+            // Use the existing service to ping jobs
+            $result = $this->seoService->manualPingJobs($jobs->pluck('id')->toArray());
+            
+            return response()->json([
+                'success' => true,
+                'submitted' => $result['submitted'],
+                'results' => $result['results']
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Manual indexing failed: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * POST /api/v1/job-posts/single-index
+     * Manually trigger indexing for a single job
+     */
+    public function singleIndex(Request $request, $id): JsonResponse
+    {
+        try {
+            $job = JobPost::where('id', $id)
+                ->where('is_active', true)
+                ->where('deadline', '>=', now())
+                ->firstOrFail();
+            
+            $result = $this->seoService->manualPingJobs([$job->id]);
+            
+            return response()->json([
+                'success' => true,
+                'job' => [
+                    'id' => $job->id,
+                    'title' => $job->job_title,
+                    'url' => $job->url
+                ],
+                'result' => $result['results'][0] ?? null
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Single job indexing failed: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * GET /api/v1/job-posts/indexing-status/{id}
+     * Get indexing status for a specific job
+     */
+    public function indexingStatus($id): JsonResponse
+    {
+        try {
+            $job = JobPost::findOrFail($id);
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $job->id,
+                    'title' => $job->job_title,
+                    'slug' => $job->slug,
+                    'url' => $job->url,
+                    'is_active' => $job->is_active,
+                    'is_pinged' => $job->is_pinged,
+                    'last_pinged_at' => $job->last_pinged_at,
+                    'is_indexed' => $job->is_indexed,
+                    'last_indexed_at' => $job->last_indexed_at,
+                    'submitted_to_indexing' => $job->submitted_to_indexing,
+                    'indexing_submitted_at' => $job->indexing_submitted_at,
+                    'indexing_status' => $job->indexing_status,
+                    'indexing_response' => $job->indexing_response,
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
 }

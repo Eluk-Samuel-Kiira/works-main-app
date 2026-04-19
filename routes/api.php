@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\Jobs\{
     JobTypeController,
     SalaryRangeController,
     SocialMediaController,
+    JobPostController  // Add this import
 };
 
 // ─── Existing read-only data routes (consumed by works-web app) ─────────────
@@ -26,9 +27,7 @@ Route::get('/test', function () {
     return response()->json(['message' => 'API is working!']);
 });
 
-
 Route::prefix('v2')->name('api.v1.')->group(function () {
-
     Route::get('/user-data',                         [DashboardController::class, 'getUserData']);
     Route::get('/jobs-data-from-main',               [JobsController::class, 'index']);
     Route::get('/jobs-data-from-main/featured',      [JobsController::class, 'featured']);
@@ -46,14 +45,11 @@ Route::prefix('v2')->name('api.v1.')->group(function () {
 });
 
 // ─── v1 CRUD API ─────────────────────────────────────────────────────────────
-
-
 Route::prefix('v1')->name('api.v1.')->group(function () {
 
     // Users    
     Route::get('users/list', [UserController::class, 'list']);
-    
-    Route::apiResource('users',            UserController::class);
+    Route::apiResource('users', UserController::class);
 
     // Job-related lookups
     Route::apiResource('companies',        CompanyController::class);
@@ -68,37 +64,46 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     // ── Static endpoints FIRST (before the resource so slugs don't clash) ──
     Route::get('social-media/platforms',               [SocialMediaController::class, 'platforms']);
     Route::get('social-media/by-location/{locationId}',[SocialMediaController::class, 'byLocation']);
-
     Route::apiResource('social-media', SocialMediaController::class)
          ->parameters(['social-media' => 'social_media_platform']);
-})->middleware('auth:sanctum');
+});
 
-
-use App\Http\Controllers\Api\Jobs\JobPostController;
- 
-Route::prefix('v1')->middleware('api')->group(function () {
- 
+// =============================================================================
+// JOB POSTS ROUTES - IMPORTANT: Static routes MUST come BEFORE apiResource
+// =============================================================================
+Route::prefix('v1')->group(function () {
+    
     // -------------------------------------------------------------------------
-    // Job Posts — CRUD
+    // STATIC ROUTES FIRST - These must be defined BEFORE the resource route
+    // to avoid being captured as {jobPost} parameters
     // -------------------------------------------------------------------------
+    
+    // Indexing stats (static)
+    Route::get('/job-posts/indexing-stats', [JobPostController::class, 'indexingStats']);
+    
+    // Manual index (static)
+    Route::post('/job-posts/manual-index', [JobPostController::class, 'manualIndex']);
+    
+    // Check duplicate (static)
     Route::post('/job-posts/check-duplicate', [JobPostController::class, 'checkDuplicate']);
-    Route::apiResource('job-posts', JobPostController::class)->parameters([
-        'job-posts' => 'jobPost'  // force camelCase parameter name
-    ]);
- 
+    
     // -------------------------------------------------------------------------
-    // Job Posts — Status / Action endpoints
+    // RESOURCE ROUTE - Dynamic routes go AFTER static ones
+    // -------------------------------------------------------------------------
+    Route::apiResource('job-posts', JobPostController::class)->parameters([
+        'job-posts' => 'jobPost'
+    ]);
+    
+    // -------------------------------------------------------------------------
+    // Job Posts — Status / Action endpoints (these use the {jobPost} parameter)
     // -------------------------------------------------------------------------
     Route::prefix('job-posts/{jobPost}')->group(function () {
         Route::patch('activate',   [JobPostController::class, 'activate']);
         Route::patch('deactivate', [JobPostController::class, 'deactivate']);
         Route::patch('verify',     [JobPostController::class, 'verify']);
-        Route::patch('feature',    [JobPostController::class, 'feature']);   // body: { "days": 14 }
+        Route::patch('feature',    [JobPostController::class, 'feature']);
         Route::patch('urgent',     [JobPostController::class, 'markUrgent']);
     });
 
-    Route::get('v1/users/list', [UserController::class, 'list']);
- 
+    Route::get('users/list', [UserController::class, 'list']);
 })->middleware('auth:sanctum');
-
-

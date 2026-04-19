@@ -55,4 +55,8 @@ return [
         'api_key_dev' => env('COHERE_API_KEY_DEV'),
     ],
 
+    'bing' => [
+        'indexing_api_key' => env('BING_WEBMASTER_API_KEY'),
+    ],
+
 ];
