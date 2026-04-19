@@ -56,7 +56,7 @@ return [
     ],
 
     'bing' => [
-        'indexing_api_key' => env('BING_WEBMASTER_API_KEY'),
+        'indexing_api_key' => env('BING_INDEXING_API_KEY'),
     ],
 
 ];

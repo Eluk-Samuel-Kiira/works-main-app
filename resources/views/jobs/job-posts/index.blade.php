@@ -136,9 +136,9 @@
                 <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button class="btn btn-primary" onclick="switchToEdit()">
-                    <i class="ti ti-pencil me-1"></i>Edit
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="runIndexBtn" onclick="runManualIndexing('new')">
+                    <i class="ti ti-sparkles me-1"></i>Run Indexing
                 </button>
             </div>
         </div>

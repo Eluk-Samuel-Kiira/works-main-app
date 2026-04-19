@@ -5,6 +5,38 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Main\{ DashboardController };
 use App\Http\Controllers\Settings\{ ArtisanCommandController };
 
+Route::get('/debug/test-indexing', function () {
+    try {
+        $service = app(\App\Services\SearchEnginePingService::class);
+        
+        // Get a recent job
+        $job = \App\Models\Job\JobPost::where('is_active', true)
+            ->where('deadline', '>=', now())
+            ->first();
+            
+        if (!$job) {
+            return response()->json(['error' => 'No active jobs found'], 404);
+        }
+        
+        $result = $service->manualPingJobs([$job->id]);
+        
+        return response()->json([
+            'success' => true,
+            'job' => [
+                'id' => $job->id,
+                'title' => $job->job_title,
+            ],
+            'result' => $result,
+        ]);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ], 500);
+    }
+});
 
 Route::middleware('guest')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('home.welcome');

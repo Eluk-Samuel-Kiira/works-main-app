@@ -66,59 +66,115 @@ class SearchEnginePingService
                     'type' => 'URL_UPDATED',
                 ]);
 
+            $success = $response->successful();
+            $status = $response->status();
+            $responseData = $response->json();
+            
+            // Extract error message if any
+            $error = null;
+            if (!$success && isset($responseData['error'])) {
+                $error = $responseData['error']['message'] ?? json_encode($responseData['error']);
+            }
+
             return [
-                'success'  => $response->successful(),
-                'status'   => $response->status(),
-                'response' => $response->json(),
-                'engine'   => 'google',
+                'success' => $success,
+                'status' => $status,
+                'response' => $error ?: $responseData,
+                'engine' => 'google',
             ];
         } catch (\Exception $e) {
             return [
-                'success'  => false,
-                'status'   => 0,
+                'success' => false,
+                'status' => 0,
                 'response' => ['error' => $e->getMessage()],
-                'engine'   => 'google',
+                'engine' => 'google',
             ];
         }
     }
 
-    // ── Bing Webmaster API ────────────────────────────────────────────────────
+
     private function submitToBingIndexingApi(string $url): array
     {
         $apiKey = config('services.bing.indexing_api_key');
+        $siteUrl = rtrim(config('api.web_app.url'), '/');
 
-        if (!$apiKey) {
+        if (empty($apiKey) || empty($siteUrl)) {
             return [
-                'success'  => false,
-                'status'   => 0,
-                'response' => ['error' => 'Bing API key not configured'],
-                'engine'   => 'bing',
+                'success' => false,
+                'status' => 0,
+                'response' => [
+                    'error' => 'Missing configuration: BING_INDEXING_API_KEY or site URL not set.'
+                ],
+                'engine' => 'bing',
             ];
         }
 
-        try {
-            $siteUrl  = rtrim(config('api.web_app.url'), '/');
-            $response = Http::withHeaders([
-                'Content-Type' => 'application/json; charset=utf-8',
-            ])
-            ->timeout(15)
-            ->post("https://ssl.bing.com/webmaster/api.svc/json/SubmitUrlBatch?apikey={$apiKey}", [
-                'siteUrl' => $siteUrl,
-                'urlList' => [$url],
-            ]);
+        $endpoint = 'https://ssl.bing.com/webmaster/api.svc/json/SubmitUrlBatch';
 
-            return [
-                'success'  => $response->successful(),
-                'status'   => $response->status(),
-                'response' => $response->json(),
-                'engine'   => 'bing',
+        try {
+            $response = Http::timeout(15)
+                ->acceptJson()
+                ->asJson()
+                ->post($endpoint . '?apikey=' . urlencode($apiKey), [
+                    'siteUrl' => $siteUrl,
+                    'urlList' => [$url],
+                ]);
+
+            $status = $response->status();
+            $body = $response->json();
+
+            // Default result
+            $result = [
+                'success' => false,
+                'status' => $status,
+                'response' => $body,
+                'engine' => 'bing',
             ];
-        } catch (\Exception $e) {
+
+            // HTTP-level failure
+            if (!$response->successful()) {
+                $result['response'] = [
+                    'error' => $body['error']['message']
+                        ?? $body['message']
+                        ?? "HTTP error {$status}",
+                ];
+                return $result;
+            }
+
+            // Bing-specific error handling (important)
+            if (isset($body['d']['ErrorCode']) && $body['d']['ErrorCode'] != 0) {
+                return [
+                    'success' => false,
+                    'status' => $status,
+                    'response' => [
+                        'error' => $body['d']['Message'] ?? 'Unknown Bing API error',
+                        'code' => $body['d']['ErrorCode'],
+                    ],
+                    'engine' => 'bing',
+                ];
+            }
+
+            // Success case
             return [
-                'success'  => false,
-                'status'   => 0,
+                'success' => true,
+                'status' => $status,
+                'response' => $body['d'] ?? $body,
+                'engine' => 'bing',
+            ];
+
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            return [
+                'success' => false,
+                'status' => 0,
+                'response' => ['error' => 'Connection timeout or network issue'],
+                'engine' => 'bing',
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'status' => 0,
                 'response' => ['error' => $e->getMessage()],
-                'engine'   => 'bing',
+                'engine' => 'bing',
             ];
         }
     }
@@ -235,60 +291,266 @@ class SearchEnginePingService
         $this->sendReport($newJobs, $results, $yandex, $googleToken !== null);
     }
 
-    // ── Manual trigger (button click) ────────────────────────────────────────
+    /**
+     * Check if we have Google quota available
+     */
+    public function getGoogleQuotaStatus(): array
+    {
+        $googleToken = $this->getGoogleAccessToken();
+        if (!$googleToken) {
+            return ['available' => false, 'error' => 'No token', 'remaining' => 0];
+        }
+        
+        try {
+            // Google doesn't provide a quota endpoint, so we track in cache
+            $today = now()->toDateString();
+            $submittedToday = Cache::get('google_indexing_today_' . $today, 0);
+            $remaining = max(0, 200 - $submittedToday);
+            
+            return [
+                'available' => $remaining > 0,
+                'remaining' => $remaining,
+                'submitted_today' => $submittedToday,
+                'limit' => 200,
+            ];
+        } catch (\Exception $e) {
+            return ['available' => false, 'error' => $e->getMessage(), 'remaining' => 0];
+        }
+    }
+
+
+    /**
+     * Manually ping jobs to Google/Bing indexing APIs
+     * @param array $jobIds Array of job post IDs
+     * @return array { submitted: int, results: array, message: string }
+     */
     public function manualPingJobs(array $jobIds): array
     {
-        $jobs = JobPost::whereIn('id', $jobIds)
-            ->where('is_active', true)
-            ->get();
+        $results = [];
+        $submitted = 0;
+        $webUrl = rtrim(config('api.web_app.url', config('app.url')), '/');
 
-        if ($jobs->isEmpty()) {
-            return ['submitted' => 0, 'results' => []];
+        $today = now()->toDateString();
+        $googleSubmittedToday = Cache::get("google_indexing_today_{$today}", 0);
+        $googleQuotaRemaining = max(0, 200 - $googleSubmittedToday);
+
+        // ── Google Token ─────────────────────────────────────────────
+        $googleToken = null;
+        if ($googleQuotaRemaining > 0) {
+            try {
+                $googleToken = $this->getGoogleAccessToken();
+            } catch (\Throwable $e) {
+                Log::error('Google token error: ' . $e->getMessage());
+            }
         }
 
-        $googleToken = $this->getGoogleAccessToken();
-        $webUrl = rtrim(config('api.web_app.url'), '/');
-        $results = [];
+        $googleAvailable = !empty($googleToken) && $googleQuotaRemaining > 0;
+
+        // Limit jobs correctly
+        $limit = $googleAvailable ? $googleQuotaRemaining : min(count($jobIds), 10);
+
+        $jobs = JobPost::whereIn('id', $jobIds)
+            ->where('is_active', true)
+            ->where('deadline', '>=', now())
+            ->limit($limit)
+            ->get(['id', 'job_title', 'slug']);
 
         foreach ($jobs as $job) {
-            $url = $webUrl . '/jobs/' . $job->slug;
-            $google = $googleToken ? $this->submitToGoogleIndexingApi($url, $googleToken) : null;
-            $bing = $this->submitToBingIndexingApi($url);
+            $url = "{$webUrl}/jobs/{$job->slug}";
 
-            $googleSuccess = $google['success'] ?? false;
-            $bingSuccess = $bing['success'] ?? false;
+            // ── GOOGLE ────────────────────────────────────────────────
+            $googleResult = [
+                'success' => false,
+                'status' => null,
+                'error' => null,
+            ];
 
-            $job->update([
-                'is_pinged' => $googleSuccess || $bingSuccess,
-                'last_pinged_at' => now(),
+            if ($googleAvailable && $googleSubmittedToday < 200) {
+                try {
+                    $response = Http::timeout(10)
+                        ->withToken($googleToken)
+                        ->post('https://indexing.googleapis.com/v3/urlNotifications:publish', [
+                            'url' => $url,
+                            'type' => 'URL_UPDATED',
+                        ]);
+
+                    $status = $response->status();
+
+                    if ($response->successful()) {
+                        $googleResult['success'] = true;
+                        $submitted++;
+                        $googleSubmittedToday++;
+
+                        Cache::put(
+                            "google_indexing_today_{$today}",
+                            $googleSubmittedToday,
+                            now()->endOfDay()
+                        );
+                    } else {
+                        $body = $response->json();
+                        $googleResult['error'] =
+                            $body['error']['message']
+                            ?? $body['error']['code']
+                            ?? "HTTP {$status}";
+                    }
+
+                    $googleResult['status'] = $status;
+
+                } catch (\Throwable $e) {
+                    $googleResult['error'] = $e->getMessage();
+                    $googleResult['status'] = 0;
+                }
+
+                usleep(200000); // 200ms
+            } else {
+                $googleResult['error'] = $googleQuotaRemaining <= 0
+                    ? 'Google quota exceeded (200/day)'
+                    : 'Google unavailable';
+            }
+
+            // ── BING (FIXED) ─────────────────────────────────────────
+            $bingResult = [
+                'success' => false,
+                'status' => null,
+                'error' => null,
+            ];
+
+            try {
+                $bing = $this->submitToBingIndexingApi($url); // reuse your helper
+
+                $bingResult = [
+                    'success' => $bing['success'],
+                    'status' => $bing['status'],
+                    'error' => $bing['success'] ? null : ($bing['response']['error'] ?? 'Unknown error'),
+                ];
+
+            } catch (\Throwable $e) {
+                $bingResult['error'] = $e->getMessage();
+                $bingResult['status'] = 0;
+            }
+
+            // ── STATUS LOGIC ─────────────────────────────────────────
+            $googleSuccess = $googleResult['success'];
+            $bingSuccess = $bingResult['success'];
+
+            $status = match (true) {
+                $googleSuccess && $bingSuccess => 'submitted',
+                $googleSuccess => 'google_only',
+                $bingSuccess => 'bing_only',
+                default => 'failed',
+            };
+
+            // ── UPDATE DB ────────────────────────────────────────────
+            JobPost::where('id', $job->id)->update([
                 'submitted_to_indexing' => $googleSuccess,
                 'indexing_submitted_at' => $googleSuccess ? now() : null,
-                'indexing_status' => $this->deriveStatus($googleSuccess, $bingSuccess),
-                'indexing_response' => json_encode(['google' => $google, 'bing' => $bing]),
+                'is_pinged' => $googleSuccess || $bingSuccess,
+                'last_pinged_at' => now(),
+                'indexing_status' => $status,
+                'indexing_response' => json_encode([
+                    'google' => $googleResult,
+                    'bing' => $bingResult,
+                    'timestamp' => now()->toIso8601String(),
+                ]),
             ]);
 
             $results[] = [
                 'job_id' => $job->id,
                 'title' => $job->job_title,
                 'url' => $url,
-                'google' => $google,
-                'bing' => $bing,
-                'success' => $googleSuccess || $bingSuccess,
+                'google' => $googleResult,
+                'bing' => $bingResult,
+                'fully_submitted' => $googleSuccess && $bingSuccess,
             ];
-
-            if ($googleToken) usleep(200000);
         }
 
-        return ['submitted' => count($results), 'results' => $results];
+        return [
+            'submitted' => $submitted,
+            'total' => count($jobs),
+            'message' => "{$submitted}/" . count($jobs) .
+                " submitted to Google (used {$googleSubmittedToday}/200)",
+            'results' => $results,
+            'google_available' => $googleAvailable,
+            'quota_remaining' => max(0, 200 - $googleSubmittedToday),
+        ];
+    }
+
+    /**
+     * Send detailed report for manual ping
+     */
+    private function sendManualPingReport(array $results, bool $googleAvailable): void
+    {
+        $adminEmails = array_filter(array_map('trim', explode(',', env('ADMIN_EMAILS', ''))));
+        if (empty($adminEmails)) return;
+        
+        $total = count($results);
+        $successful = count(array_filter($results, fn($r) => $r['fully_submitted']));
+        $failed = $total - $successful;
+        
+        $subject = "📊 Manual Indexing Report - {$successful}/{$total} successful - " . now()->format('Y-m-d H:i');
+        
+        $html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>';
+        $html .= 'body{font-family:Arial,sans-serif;margin:0;padding:20px;background:#f4f4f4}';
+        $html .= '.container{max-width:800px;margin:0 auto;background:#fff;border-radius:8px;padding:20px;box-shadow:0 2px 10px rgba(0,0,0,0.1)}';
+        $html .= 'h1{color:#333;border-bottom:2px solid #4f46e5;padding-bottom:10px}';
+        $html .= '.summary{background:#f0fdf4;border-left:4px solid #22c55e;padding:15px;margin:20px 0}';
+        $html .= '.summary-error{background:#fef2f2;border-left:4px solid #ef4444}';
+        $html .= 'table{width:100%;border-collapse:collapse;margin-top:20px}';
+        $html .= 'th,td{padding:12px;text-align:left;border-bottom:1px solid #ddd}';
+        $html .= 'th{background:#f8f9fa;font-weight:600}';
+        $html .= '.success{color:#22c55e;font-weight:bold}';
+        $html .= '.error{color:#ef4444;font-weight:bold}';
+        $html .= '.pending{color:#eab308;font-weight:bold}';
+        $html .= 'pre{background:#f8f9fa;padding:10px;border-radius:4px;overflow-x:auto;font-size:11px;margin:5px 0 0 0}';
+        $html .= '</style></head><body>';
+        $html .= '<div class="container">';
+        $html .= '<h1>🔍 Manual Indexing Report</h1>';
+        $html .= '<p><strong>Generated:</strong> ' . now()->format('Y-m-d H:i:s') . '</p>';
+        $html .= '<p><strong>Google API:</strong> ' . ($googleAvailable ? '✅ Available' : '❌ Not Available') . '</p>';
+        
+        $html .= '<div class="' . ($failed > 0 ? 'summary-error' : 'summary') . '">';
+        $html .= '<strong>📊 Summary:</strong><br>';
+        $html .= "Total Jobs: {$total}<br>";
+        $html .= "✅ Fully Submitted (Both Google & Bing): {$successful}<br>";
+        $html .= "❌ Failed/Partial: {$failed}<br>";
+        $html .= '</div>';
+        
+        if ($failed > 0) {
+            $html .= '<h3>❌ Failed/Partial Jobs</h3>';
+            $html .= '<table><thead><tr><th>Job</th><th>Google</th><th>Bing</th><th>Error Details</th></tr></thead><tbody>';
+            foreach ($results as $r) {
+                if (!$r['fully_submitted']) {
+                    $html .= '<tr>';
+                    $html .= '<td><strong>' . htmlspecialchars(substr($r['title'], 0, 50)) . '</strong><br><small>' . htmlspecialchars($r['url']) . '</small></td>';
+                    $html .= '<td class="' . ($r['google']['success'] ? 'success' : 'error') . '">' . ($r['google']['success'] ? '✅ Success' : '❌ Failed') . '<pre>' . htmlspecialchars(substr($r['google']['error'] ?? '', 0, 200)) . '</pre></td>';
+                    $html .= '<td class="' . ($r['bing']['success'] ? 'success' : 'error') . '">' . ($r['bing']['success'] ? '✅ Success' : '❌ Failed') . '<pre>' . htmlspecialchars(substr($r['bing']['error'] ?? '', 0, 200)) . '</pre></td>';
+                    $html .= '<td>' . ($r['google']['error'] && $r['bing']['error'] ? 'Both APIs failed' : ($r['google']['error'] ? 'Google failed' : 'Bing failed')) . '</td>';
+                    $html .= '</tr>';
+                }
+            }
+            $html .= '</tbody></table>';
+        }
+        
+        $html .= '<p style="margin-top:30px;font-size:12px;color:#666;text-align:center">Stardena Works - Automated Indexing Report</p>';
+        $html .= '</div></body></html>';
+        
+        foreach ($adminEmails as $email) {
+            try {
+                Mail::html($html, fn($m) => $m->to($email)->subject($subject)->from(env('MAIL_FROM_ADDRESS'), 'Stardena Works SEO'));
+            } catch (\Exception $e) {
+                Log::error("Failed to send manual ping report to {$email}: " . $e->getMessage());
+            }
+        }
     }
 
     private function deriveStatus(bool $google, bool $bing): string
     {
-        if ($google && $bing)  return 'submitted_all';
-        if ($google)           return 'submitted_google';
-        if ($bing)             return 'submitted_bing';
+        if ($google && $bing) return 'submitted_all';
+        if ($google) return 'submitted_google';
+        if ($bing) return 'submitted_bing';
         return 'failed';
     }
+
 
     public function forcePing(): void
     {

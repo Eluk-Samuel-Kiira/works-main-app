@@ -1090,45 +1090,127 @@
         bsModal('indexingModal').show();
     }
 
+
     async function runManualIndexing(mode = 'new') {
         const resultDiv = document.getElementById('indexingResult');
-        resultDiv.innerHTML = `<div class="d-flex align-items-center gap-2 text-muted">
-            <div class="spinner-border spinner-border-sm"></div>
-            <span>Submitting to Google & Bing Indexing APIs...</span>
-        </div>`;
+        const btn = document.getElementById('runIndexBtn');
+        
+        // Check if button exists
+        if (!btn) {
+            console.warn('Button runIndexBtn not found');
+        }
+        
+        // Show loading state
+        if (resultDiv) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-info d-flex align-items-center gap-2">
+                    <div class="spinner-border spinner-border-sm"></div>
+                    <span>Submitting jobs to Google & Bing Indexing APIs...</span>
+                </div>`;
+        }
+        
+        if (btn) btn.disabled = true;
 
         try {
-            const res = await apiFetch('/api/v1/job-posts/manual-index', {
+            const response = await fetch('/api/v1/job-posts/manual-index', {
                 method: 'POST',
-                body: JSON.stringify({ mode })
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                },
+                body: JSON.stringify({ mode, limit: 10 }) // Reduce limit to 10 for faster response
             });
 
-            const submitted = res.submitted ?? 0;
-            const results   = res.results   ?? [];
-            const okCount   = results.filter(r => r.success).length;
-            const failCount = submitted - okCount;
-
-            let html = `<div class="alert ${failCount === 0 ? 'alert-success' : 'alert-warning'}">
-                <strong>${submitted} jobs processed</strong> — ${okCount} submitted successfully, ${failCount} failed.
-            </div>`;
-
-            if (results.length > 0) {
-                html += '<table class="table table-sm"><thead><tr><th>Job</th><th>Google</th><th>Bing</th></tr></thead><tbody>';
-                results.forEach(r => {
-                    const g = r.google?.success ? '✅' : (r.google ? '❌' : '⏭');
-                    const b = r.bing?.success   ? '✅' : '❌';
-                    html += `<tr><td>${r.title}</td><td>${g}</td><td>${b}</td></tr>`;
-                });
-                html += '</tbody></table>';
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                throw new Error(`Server returned ${response.status}: ${text.substring(0, 200)}`);
             }
 
-            resultDiv.innerHTML = html;
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || data.error || `HTTP ${response.status}`);
+            }
+
+            renderIndexingResults(data.data || data);
             loadIndexingStats();
-            toast(`${okCount} jobs submitted to indexing!`, 'success');
+            
+            if (typeof toastr !== 'undefined') {
+                toastr.success('Indexing complete!', 'Success');
+            }
+
         } catch (e) {
-            resultDiv.innerHTML = `<div class="alert alert-danger">${e.message || 'Indexing failed'}</div>`;
-            toast('Indexing failed: ' + (e.message || 'Unknown error'), 'error');
+            console.error('Indexing error:', e);
+            if (resultDiv) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>❌ Failed:</strong> ${escapeHtml(e.message)}
+                        <br><small class="text-muted">Check browser console for details</small>
+                    </div>`;
+            }
+            if (typeof toastr !== 'undefined') {
+                toastr.error(e.message, 'Indexing Failed');
+            }
+        } finally {
+            if (btn) btn.disabled = false;
         }
+    }
+
+    function renderIndexingResults(data) {
+        const { submitted, total, message, results, google_available } = data;
+        
+        let html = `<div class="alert ${submitted === total ? 'alert-success' : 'alert-warning'}">
+            <strong>📊 ${message}</strong>
+            ${!google_available ? '<br><small class="text-danger">⚠️ Google API not configured — only Bing submissions attempted</small>' : ''}
+        </div>`;
+
+        if (results?.length > 0) {
+            html += '<div class="table-responsive"><table class="table table-sm table-striped align-middle">';
+            html += '<thead><tr><th>Job</th><th>Google</th><th>Bing</th><th>Overall</th></tr></thead><tbody>';
+            
+            results.forEach(r => {
+                const googleBadge = renderApiBadge(r.google, 'Google');
+                const bingBadge = renderApiBadge(r.bing, 'Bing');
+                const overall = (r.google?.success || r.bing?.success) 
+                    ? '<span class="badge bg-success">✅ Submitted</span>' 
+                    : '<span class="badge bg-danger">❌ Failed</span>';
+                
+                html += `<tr>
+                    <td><strong>${escapeHtml(r.title)}</strong><br>
+                        <small><a href="${r.url}" target="_blank" class="text-decoration-none">View →</a></small>
+                    </td>
+                    <td>${googleBadge}</td>
+                    <td>${bingBadge}</td>
+                    <td>${overall}</td>
+                </tr>`;
+            });
+            html += '</tbody></table></div>';
+        }
+        
+        document.getElementById('indexingResult').innerHTML = html;
+    }
+
+    function renderApiBadge(api, name) {
+        if (!api) return '<span class="badge bg-secondary">⏭ Skipped</span>';
+        
+        if (api.success) {
+            return `<span class="badge bg-success">✅ ${api.status || 'OK'}</span>`;
+        }
+        
+        const error = api.error || 'Unknown error';
+        const shortError = error.length > 60 ? error.substring(0, 57) + '...' : error;
+        
+        return `<span class="badge bg-danger" title="${escapeHtml(error)}">
+            ❌ ${api.status || 'Failed'}<br><small>${escapeHtml(shortError)}</small>
+        </span>`;
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
     }
 
     // Load stats on init
