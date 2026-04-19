@@ -1137,127 +1137,129 @@ class JobPostController extends Controller
     }
 
 
+    
 
-    protected $seoService;
-
-    public function __construct(SearchEnginePingService $seoService)
-    {
-        $this->seoService = $seoService;
-    }
+    
 
     /**
      * GET /api/v1/job-posts/indexing-stats
-     * Return indexing statistics for dashboard
      */
     public function indexingStats(Request $request): JsonResponse
     {
         try {
             $stats = [
-                // Ping status
                 'pinged' => JobPost::where('is_pinged', true)->count(),
                 'not_pinged' => JobPost::where('is_pinged', false)
                     ->where('is_active', true)
                     ->where('deadline', '>=', now())
                     ->count(),
-                'last_pinged_24h' => JobPost::where('last_pinged_at', '>=', now()->subDay())->count(),
-                
-                // Indexing status
                 'indexed' => JobPost::where('is_indexed', true)->count(),
                 'not_indexed' => JobPost::where('is_indexed', false)
                     ->where('is_active', true)
                     ->where('deadline', '>=', now())
                     ->count(),
                 'submitted_to_indexing' => JobPost::where('submitted_to_indexing', true)->count(),
-                'last_indexed_24h' => JobPost::where('last_indexed_at', '>=', now()->subDay())->count(),
-                
-                // SEO quality
-                'high_seo_score' => JobPost::where('seo_score', '>=', 80)->count(),
-                'avg_seo_score' => round(JobPost::avg('seo_score') ?? 0, 1),
-                
-                // Recent activity
-                'new_jobs_24h' => JobPost::where('created_at', '>=', now()->subDay())->count(),
                 'total_active' => JobPost::where('is_active', true)
                     ->where('deadline', '>=', now())
                     ->count(),
             ];
 
-            return response()->json([
-                'success' => true,
-                'data' => $stats
-            ]);
+            return $this->success($stats, 'Indexing stats retrieved');
             
         } catch (\Exception $e) {
-            Log::error('Indexing stats failed: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-                'data' => [
-                    'pinged' => 0,
-                    'not_pinged' => 0,
-                    'indexed' => 0,
-                    'not_indexed' => 0,
-                    'submitted_to_indexing' => 0,
-                    'high_seo_score' => 0,
-                    'avg_seo_score' => 0,
-                    'new_jobs_24h' => 0,
-                    'total_active' => 0,
-                ]
-            ], 500);
+            Log::error('Indexing stats failed: ' . $e->getMessage(), [
+                'file' => $e->getFile(), 'line' => $e->getLine()
+            ]);
+            return $this->error('Failed to load indexing stats: ' . $e->getMessage(), 500);
         }
     }
 
     /**
      * POST /api/v1/job-posts/manual-index
-     * Manually trigger indexing for jobs using SearchEnginePingService
+     * Manually trigger indexing for pending jobs
      */
     public function manualIndex(Request $request): JsonResponse
     {
         try {
-            $mode = $request->input('mode', 'new');
-            
-            // Get jobs to index
+            $mode = $request->input('mode', 'new'); // 'new' | 'all' | 'failed'
+            $limit = min((int) $request->input('limit', 20), 100);
+
+            // Build query for jobs to index
             $query = JobPost::where('is_active', true)
-                ->where('deadline', '>=', now())
-                ->whereNull('indexing_submitted_at');
-            
+                ->where('deadline', '>=', now());
+
             if ($mode === 'new') {
-                $query->limit(50);
+                $query->whereNull('indexing_submitted_at')
+                    ->orderBy('created_at', 'desc')
+                    ->limit($limit);
+            } elseif ($mode === 'failed') {
+                $query->where('indexing_status', 'failed')
+                    ->orderBy('updated_at', 'asc')
+                    ->limit($limit);
             }
-            
-            $jobs = $query->get();
-            
+            // 'all' mode: no extra filters
+
+            $jobs = $query->get(['id', 'job_title', 'slug', 'is_pinged', 'is_indexed']);
+
             if ($jobs->isEmpty()) {
-                return response()->json([
-                    'success' => true,
+                return $this->success([
                     'submitted' => 0,
-                    'message' => 'No pending jobs to index',
+                    'message' => 'No jobs match the criteria',
                     'results' => []
-                ]);
+                ], 'Nothing to submit');
             }
-            
-            // Use the existing service to ping jobs
-            $result = $this->seoService->manualPingJobs($jobs->pluck('id')->toArray());
-            
-            return response()->json([
-                'success' => true,
-                'submitted' => $result['submitted'],
-                'results' => $result['results']
-            ]);
-            
+
+            // Call service with explicit error handling
+            $service = app(\App\Services\SearchEnginePingService::class);
+            $result = $service->manualPingJobs($jobs->pluck('id')->toArray());
+
+            // Ensure result is always an array with expected keys
+            $response = [
+                'submitted' => $result['submitted'] ?? 0,
+                'message' => $result['message'] ?? "{$result['submitted']} jobs processed",
+                'results' => array_map(function($r) {
+                    return [
+                        'job_id' => $r['job_id'] ?? null,
+                        'title' => $r['title'] ?? 'Unknown',
+                        'url' => $r['url'] ?? '',
+                        'google' => [
+                            'success' => $r['google']['success'] ?? false,
+                            'status' => $r['google']['status'] ?? null,
+                            'error' => is_string($r['google']['error'] ?? null) 
+                                ? $r['google']['error'] 
+                                : (is_array($r['google']['error'] ?? null) 
+                                    ? json_encode($r['google']['error']) 
+                                    : null),
+                        ],
+                        'bing' => [
+                            'success' => $r['bing']['success'] ?? false,
+                            'status' => $r['bing']['status'] ?? null,
+                            'error' => is_string($r['bing']['error'] ?? null)
+                                ? $r['bing']['error']
+                                : (is_array($r['bing']['error'] ?? null)
+                                    ? json_encode($r['bing']['error'])
+                                    : null),
+                        ],
+                    ];
+                }, $result['results'] ?? []),
+            ];
+
+            return $this->success($response, 'Manual indexing completed');
+
+        } catch (\Illuminate\Database\QueryException $e) {
+            Log::error('DB error in manualIndex: ' . $e->getMessage());
+            return $this->error('Database error: ' . $e->getMessage(), 500);
         } catch (\Exception $e) {
-            Log::error('Manual indexing failed: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
+            Log::error('Manual indexing failed: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            return $this->error('Indexing failed: ' . $e->getMessage(), 500);
         }
     }
 
     /**
-     * POST /api/v1/job-posts/single-index
-     * Manually trigger indexing for a single job
+     * POST /api/v1/job-posts/single-index/{id}
+     * Index a single job by ID
      */
     public function singleIndex(Request $request, $id): JsonResponse
     {
@@ -1265,27 +1267,38 @@ class JobPostController extends Controller
             $job = JobPost::where('id', $id)
                 ->where('is_active', true)
                 ->where('deadline', '>=', now())
-                ->firstOrFail();
-            
-            $result = $this->seoService->manualPingJobs([$job->id]);
-            
-            return response()->json([
-                'success' => true,
+                ->first();
+
+            if (!$job) {
+                return $this->error('Job not found or not eligible for indexing', 404);
+            }
+
+            $service = app(\App\Services\SearchEnginePingService::class);
+            $result = $service->manualPingJobs([$job->id]);
+
+            $r = $result['results'][0] ?? null;
+
+            return $this->success([
                 'job' => [
                     'id' => $job->id,
                     'title' => $job->job_title,
-                    'url' => $job->url
+                    'url' => url('/jobs/' . $job->slug),
                 ],
-                'result' => $result['results'][0] ?? null
-            ]);
-            
+                'google' => [
+                    'success' => $r['google']['success'] ?? false,
+                    'status' => $r['google']['status'] ?? null,
+                    'error' => $r['google']['error'] ?? null,
+                ],
+                'bing' => [
+                    'success' => $r['bing']['success'] ?? false,
+                    'status' => $r['bing']['status'] ?? null,
+                    'error' => $r['bing']['error'] ?? null,
+                ],
+            ], 'Indexing attempt completed');
+
         } catch (\Exception $e) {
             Log::error('Single job indexing failed: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
+            return $this->error('Failed: ' . $e->getMessage(), 500);
         }
     }
 
