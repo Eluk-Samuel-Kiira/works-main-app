@@ -27,7 +27,7 @@ class JobPostController extends Controller
             'is_active', 'is_verified', 'is_featured', 'is_urgent',
             'is_pinged', 'is_indexed',
             'published_at', 'deadline', 'view_count', 'application_count',
-            'click_count', 'seo_score',
+            'click_count', 'seo_score','created_at',
             'company_id', 'job_location_id', 'job_category_id',
             'industry_id', 'job_type_id', 'poster_id',
         ])
@@ -1138,6 +1138,7 @@ class JobPostController extends Controller
 
 
     
+
 
     
 

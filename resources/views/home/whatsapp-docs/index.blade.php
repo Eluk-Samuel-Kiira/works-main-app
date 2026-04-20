@@ -24,8 +24,8 @@
                         </nav>
                     </div>
                     <div>
-                        <button class="btn btn-success btn-sm d-flex align-items-center gap-2" onclick="copyAllLinks()" id="copyAllBtn">
-                            <i class="ti ti-copy fs-5"></i> Copy All
+                        <button class="btn btn-success btn-sm d-flex align-items-center gap-2" onclick="copyAllBatches()" id="copyAllBtn">
+                            <i class="ti ti-copy fs-5"></i> Copy All Batches
                         </button>
                     </div>
                 </div>
@@ -37,8 +37,8 @@
             <div class="card-body py-2">
                 <div class="row g-2 align-items-end">
                     <div class="col-md-3">
-                        <label class="form-label small fw-semibold mb-1">Category <span class="text-muted fw-normal" id="selectedCategoryCount"></span></label>
-                        <select id="filterCategory" class="form-select form-select-sm" onchange="loadJobs(); updateSelectedCount()">
+                        <label class="form-label small fw-semibold mb-1">Category</label>
+                        <select id="filterCategory" class="form-select form-select-sm" onchange="loadJobs()">
                             <option value="">All Categories</option>
                         </select>
                     </div>
@@ -59,12 +59,14 @@
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label small fw-semibold mb-1">Limit</label>
-                        <select id="filterLimit" class="form-select form-select-sm" onchange="loadJobs()">
-                            <option value="10">10 jobs</option>
-                            <option value="25" selected>25 jobs</option>
-                            <option value="50">50 jobs</option>
-                            <option value="100">100 jobs</option>
+                        <label class="form-label small fw-semibold mb-1">Posted Date</label>
+                        <select id="filterDateRange" class="form-select form-select-sm" onchange="loadJobs()">
+                            <option value="">All Dates</option>
+                            <option value="today">Today</option>
+                            <option value="yesterday">Yesterday</option>
+                            <option value="2days">2 Days Ago</option>
+                            <option value="3days">3 Days Ago</option>
+                            <option value="this_week">This Week</option>
                         </select>
                     </div>
                     <div class="col-md-1">
@@ -146,11 +148,11 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <h6 class="mb-0 fw-semibold">
                         <i class="ti ti-brand-whatsapp text-success me-1"></i>
-                        Generated Messages
+                        Job Batches (10 jobs per batch)
                     </h6>
                     <div class="d-flex gap-1">
-                        <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="copyAllLinks()">
-                            <i class="ti ti-copy me-1"></i>Copy All
+                        <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="copyAllBatches()">
+                            <i class="ti ti-copy me-1"></i>Copy All Batches
                         </button>
                         <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="downloadTextFile()">
                             <i class="ti ti-download me-1"></i>.txt
@@ -158,17 +160,17 @@
                     </div>
                 </div>
             </div>
-            <div class="card-body p-2">
+            <div class="card-body p-3">
                 <div id="loadingSpinner" class="text-center py-4 d-none">
                     <div class="spinner-border text-success spinner-border-sm"></div>
                     <p class="text-muted small mt-2">Loading jobs...</p>
                 </div>
-                <div id="generatedContent" style="max-height: 500px; overflow-y: auto;">
+                <div id="generatedContent">
                     <div class="text-center text-muted py-4">
                         <i class="ti ti-brand-whatsapp fs-2 mb-2 d-block opacity-25"></i>
                         <p class="small mb-2">Select filters and generate messages</p>
                         <button class="btn btn-success btn-sm" onclick="loadJobs()">
-                            <i class="ti ti-sparkles me-1"></i>Generate
+                            <i class="ti ti-sparkles me-1"></i>Generate Batches
                         </button>
                     </div>
                 </div>
@@ -179,36 +181,139 @@
 </div>
 
 <style>
-    .whatsapp-message {
-        background: #f0fdf4;
-        border-left: 3px solid #25D366;
-        padding: 8px 12px;
-        margin-bottom: 6px;
-        border-radius: 6px;
-        font-size: 12px;
-        transition: all 0.2s;
+    .whatsapp-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        overflow: hidden;
+        background: #fff;
     }
-    .whatsapp-message:hover {
-        background: #dcfce7;
+
+    .whatsapp-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.15);
     }
-    .whatsapp-message pre {
+
+    .bg-gradient-success {
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        border-bottom: 1px solid #bbf7d0;
+    }
+
+    .whatsapp-preview-wrapper {
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #fafafa;
+    }
+
+    .whatsapp-header {
+        background: #075e54;
+        color: white;
+        padding: 10px 15px;
+        font-size: 13px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .whatsapp-header i {
+        font-size: 18px;
+    }
+
+    .whatsapp-preview {
         margin: 0;
+        padding: 16px;
+        font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+        font-size: 13px;
+        line-height: 1.6;
+        background: #fafafa;
+        color: #111b21;
         white-space: pre-wrap;
-        font-family: inherit;
+        word-wrap: break-word;
+        word-break: break-word;
+        max-height: 500px;
+        overflow-y: auto;
+    }
+
+    /* Style for job titles */
+    .whatsapp-preview {
+        font-weight: normal;
+    }
+
+    /* Ensure URLs wrap properly */
+    .whatsapp-preview {
+        word-break: break-all;
+    }
+
+    .copy-batch-btn, .share-wa-btn {
+        transition: all 0.2s;
         font-size: 12px;
-        line-height: 1.5;
+        padding: 5px 12px;
     }
-    .copy-job-btn {
-        opacity: 0;
-        transition: opacity 0.2s;
-        padding: 2px 6px;
+
+    .copy-batch-btn:hover, .share-wa-btn:hover {
+        transform: translateY(-1px);
+    }
+
+    .card-header {
+        padding: 12px 16px !important;
+    }
+
+    .card-body {
+        padding: 16px !important;
+    }
+
+    .card-footer {
+        padding: 10px 16px !important;
+        background: #f9fafb;
+    }
+
+    .badge {
         font-size: 11px;
+        padding: 4px 10px;
+        border-radius: 20px;
     }
-    .whatsapp-message:hover .copy-job-btn {
-        opacity: 1;
+
+    .badge.bg-success {
+        background: #25D366 !important;
     }
-    .job-header {
-        margin-bottom: 6px;
+
+    .badge.bg-info {
+        background: #128C7E !important;
+    }
+
+    /* Scrollbar styling */
+    .whatsapp-preview::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .whatsapp-preview::-webkit-scrollbar-track {
+        background: #e5e7eb;
+        border-radius: 3px;
+    }
+
+    .whatsapp-preview::-webkit-scrollbar-thumb {
+        background: #075e54;
+        border-radius: 3px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .whatsapp-preview {
+            font-size: 11px;
+            padding: 12px;
+        }
+        
+        .card-header {
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .copy-batch-btn, .share-wa-btn {
+            width: 100%;
+            margin: 2px 0;
+        }
     }
 </style>
 
