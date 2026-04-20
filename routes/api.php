@@ -107,3 +107,76 @@ Route::prefix('v1')->group(function () {
 
     Route::get('users/list', [UserController::class, 'list']);
 })->middleware('auth:sanctum');
+
+use App\Services\SitemapPingService;
+use App\Services\GoogleIndexingService;
+use App\Models\Job\JobPost;
+ 
+// ── Ping stats
+Route::get('/v1/seo/ping-stats', function () {
+    return response()->json([
+        'data' => app(SitemapPingService::class)->getStats()
+    ]);
+});
+ 
+// ── Google indexing stats
+Route::get('/v1/seo/indexing-stats', function () {
+    return response()->json([
+        'data' => app(GoogleIndexingService::class)->getStats()
+    ]);
+});
+ 
+// ── Ping a single job by slug
+Route::post('/v1/seo/ping-job/{slug}', function (string $slug) {
+    $job = JobPost::where('slug', $slug)->firstOrFail();
+    $result = app(SitemapPingService::class)->pingFailedJobs([$job->id]);
+    return response()->json([
+        'success' => $result['success'] > 0,
+        'message' => $result['message'] ?? ($result['success'] > 0 ? 'Pinged successfully' : 'Ping failed'),
+        'status'  => $result['status'] ?? 0,
+    ]);
+});
+ 
+// ── Google index a single job by slug
+Route::post('/v1/seo/index-job/{slug}', function (string $slug) {
+    $job    = JobPost::where('slug', $slug)->firstOrFail();
+    $result = app(GoogleIndexingService::class)->submitJob($job->id);
+    $stats  = app(GoogleIndexingService::class)->getStats();
+    return response()->json([
+        'success'    => $result['success'],
+        'message'    => $result['message'],
+        'status'     => $result['status']  ?? 0,
+        'quota_used' => $stats['quota_used'],
+        'quota_left' => $stats['quota_remaining'],
+    ]);
+});
+ 
+// ── Bulk ping (failed or all)
+Route::post('/v1/seo/bulk-ping', function (Request $request) {
+    $mode   = $request->input('mode', 'failed'); // 'failed' | 'all'
+    $result = app(SitemapPingService::class)->pingFailedJobs();
+    return response()->json(['data' => $result]);
+});
+ 
+// ── Bulk Google index
+Route::post('/v1/seo/bulk-index', function (Request $request) {
+    $mode = $request->input('mode', 'new'); // 'new' | 'priority'
+ 
+    $query = JobPost::where('is_active', true)->where('deadline', '>=', now());
+ 
+    if ($mode === 'new') {
+        $query->where(function($q) {
+            $q->whereNull('submitted_to_indexing')
+              ->orWhere('submitted_to_indexing', false);
+        });
+    } elseif ($mode === 'priority') {
+        $query->where('is_featured', true)->where(function($q) {
+            $q->whereNull('submitted_to_indexing')
+              ->orWhere('submitted_to_indexing', false);
+        });
+    }
+ 
+    $jobIds = $query->limit(200)->pluck('id')->toArray();
+    $result = app(GoogleIndexingService::class)->submitBatch($jobIds);
+    return response()->json(['data' => $result]);
+});

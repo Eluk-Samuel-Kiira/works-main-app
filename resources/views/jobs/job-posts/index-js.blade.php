@@ -51,7 +51,16 @@
     }
 
     function bsModal(id) {
-        return bootstrap.Modal.getOrCreateInstance(document.getElementById(id));
+        const el = document.getElementById(id);
+        if (!el._bsModal) {
+            el._bsModal = new bootstrap.Modal(el, { backdrop: 'static', keyboard: false });
+        }
+        return el._bsModal;
+    }
+
+    function openIndexingModal() {
+        loadIndexingStats();
+        bsModal('indexingModal').show();  // ✅ Use bsModal helper
     }
 
     function statusBadge(job) {
@@ -1046,177 +1055,328 @@
     });
 </script>
 
+{{-- ============================================================
+     JS — Add to index-js.blade.php
+============================================================ --}}
 <script>
-    // Load indexing stats on page load
-    async function loadIndexingStats() {
+    // ── SEO Stats ─────────────────────────────────────────────────────────────────
+    async function loadSeoStats() {
         try {
-            const res = await apiFetch('/api/v1/job-posts/indexing-stats');
-            const d   = res.data ?? res;
+            const ping   = await apiFetch('/api/v1/seo/ping-stats');
+            const google = await apiFetch('/api/v1/seo/indexing-stats');
+    
+            // ── HEADER BADGE: Show ONLY failed pings (not not_pinged) ──
+            const failedCount = ping.data?.failed ?? 0;
+            const badge = document.getElementById('pendingIndexBadge'); // ← Correct ID
             
-            // Map API keys to what the UI expects
-            const pendingPing    = d.not_pinged ?? 0;        // jobs not yet pinged
-            const pendingIndex   = d.not_indexed ?? 0;       // jobs not yet indexed
-            const submitted      = d.submitted_to_indexing ?? 0;
-            const indexed        = d.indexed ?? 0;
-            
-            // Update the badge on the button (show not_pinged count)
-            const badge = document.getElementById('pendingIndexBadge');
             if (badge) {
-                badge.textContent = pendingPing;
-                // Change color based on count
-                badge.className = (pendingPing > 0) 
-                    ? 'badge bg-warning text-dark ms-1' 
-                    : 'badge bg-success ms-1';
+                if (failedCount > 0) {
+                    badge.textContent = failedCount;
+                    badge.className = 'badge bg-warning text-dark ms-1';
+                    badge.title = `${failedCount} job(s) failed to ping via IndexNow`;
+                } else {
+                    // Hide badge or show checkmark when all pings succeeded
+                    badge.textContent = '✓';
+                    badge.className = 'badge bg-success ms-1';
+                    badge.title = 'All jobs pinged successfully';
+                }
             }
-            
-            // Optional: update other stats if you add elements with these IDs later
-            // document.getElementById('statPending')?.textContent = pendingPing;
-            // document.getElementById('statSubmitted')?.textContent = submitted;
-            // document.getElementById('statIndexed')?.textContent = indexed;
-            
-        } catch (e) {
-            console.error('Stats load failed:', e);
+    
+            // ── Bulk modal stats (unchanged) ──
+            const d = ping.data ?? {};
+            setValue('bsStat1', d.total_active  ?? 0);
+            setValue('bsStat2', d.pinged        ?? 0);
+            setValue('bsStat3', d.failed        ?? 0);  // ← This is the failed count
+            setValue('bsStat4', d.not_pinged    ?? 0);
+            setValue('failedPingCount', d.failed ?? 0); // ← Use only failed for button badge
+    
+            // ── Google quota stats (unchanged) ──
+            const g = google.data ?? {};
+            setValue('quotaUsed',       g.quota_used      ?? 0);
+            setValue('quotaLeft',       g.quota_remaining ?? 200);
+            setValue('gsNotSubmitted',  g.not_submitted   ?? 0);
+            setValue('gsSubmitted',     g.submitted       ?? 0);
+            setValue('gsIndexed',       g.indexed         ?? 0);
+            setValue('newJobsCount',    g.not_submitted   ?? 0);
+            setValue('googleQuotaLeft', g.quota_remaining ?? 200);
+    
+            // Quota bar
+            const pct = Math.round(((g.quota_used ?? 0) / 200) * 100);
+            const bar = document.getElementById('quotaBar');
+            if (bar) {
+                bar.style.width = pct + '%';
+                bar.className   = 'progress-bar ' + (pct > 80 ? 'bg-danger' : pct > 50 ? 'bg-warning' : 'bg-primary');
+            }
+    
+            // API config status
+            const apiStatus = document.getElementById('quotaApiStatus');
+            if (apiStatus) {
+                apiStatus.textContent  = g.api_configured ? '✅ API configured' : '⚠️ Service account missing';
+                apiStatus.style.color  = g.api_configured ? '#10b981' : '#f59e0b';
+            }
+    
+        } catch(e) {
+            console.error('SEO stats load failed:', e);
             // Fallback: hide badge on error
             const badge = document.getElementById('pendingIndexBadge');
             if (badge) {
-                badge.textContent = '–';
-                badge.className = 'badge bg-secondary ms-1';
+                badge.textContent = '!';
+                badge.className = 'badge bg-danger ms-1';
+                badge.title = 'Failed to load ping stats';
             }
         }
     }
-
-    function openIndexingModal() {
-        loadIndexingStats();
-        bsModal('indexingModal').show();
+    
+    function setValue(id, val) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
     }
-
-
-    async function runManualIndexing(mode = 'new') {
-        const resultDiv = document.getElementById('indexingResult');
-        const btn = document.getElementById('runIndexBtn');
-        
-        // Check if button exists
-        if (!btn) {
-            console.warn('Button runIndexBtn not found');
-        }
-        
-        // Show loading state
-        if (resultDiv) {
-            resultDiv.innerHTML = `
-                <div class="alert alert-info d-flex align-items-center gap-2">
-                    <div class="spinner-border spinner-border-sm"></div>
-                    <span>Submitting jobs to Google & Bing Indexing APIs...</span>
-                </div>`;
-        }
-        
-        if (btn) btn.disabled = true;
-
+    
+    function openBulkSeoModal() {
+        loadSeoStats();
+        bsModal('bulkSeoModal').show();
+    }
+    
+    // ── Per-job ping from status modal ───────────────────────────────────────────
+    async function pingThisJob() {
+        if (!currentSlug) return;
+        const btn = document.getElementById('pingBtn');
+        const msg = document.getElementById('statusActionMsg');
+        btn.disabled = true;
+        btn.innerHTML = '<div class="spinner-border spinner-border-sm me-1"></div>Pinging...';
+        msg.innerHTML = '';
+    
         try {
-            const response = await fetch('/api/v1/job-posts/manual-index', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
-                },
-                body: JSON.stringify({ mode, limit: 10 }) // Reduce limit to 10 for faster response
-            });
-
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                const text = await response.text();
-                throw new Error(`Server returned ${response.status}: ${text.substring(0, 200)}`);
-            }
-
-            const data = await response.json();
-
-            if (!response.ok || !data.success) {
-                throw new Error(data.message || data.error || `HTTP ${response.status}`);
-            }
-
-            renderIndexingResults(data.data || data);
-            loadIndexingStats();
-            
-            if (typeof toastr !== 'undefined') {
-                toastr.success('Indexing complete!', 'Success');
-            }
-
-        } catch (e) {
-            console.error('Indexing error:', e);
-            if (resultDiv) {
-                resultDiv.innerHTML = `
-                    <div class="alert alert-danger">
-                        <strong>❌ Failed:</strong> ${escapeHtml(e.message)}
-                        <br><small class="text-muted">Check browser console for details</small>
-                    </div>`;
-            }
-            if (typeof toastr !== 'undefined') {
-                toastr.error(e.message, 'Indexing Failed');
-            }
+            const res = await apiFetch(`/api/v1/seo/ping-job/${currentSlug}`, { method: 'POST' });
+            const ok  = res.success ?? res.data?.success;
+    
+            msg.innerHTML = `<div class="alert ${ok ? 'alert-success' : 'alert-danger'} py-2 mb-0">
+                ${ok ? '✅ Job submitted to IndexNow — Bing & Yandex notified.' : '❌ Ping failed: ' + (res.message ?? 'Unknown error')}
+            </div>`;
+    
+            // Update the status badge in the modal
+            updatePingBadge(ok);
+            if (ok) toast('Job pinged successfully!', 'success');
+            else    toast('Ping failed: ' + (res.message ?? ''), 'error');
+    
+            loadJobs(currentPage);
+        } catch(e) {
+            msg.innerHTML = `<div class="alert alert-danger py-2 mb-0">❌ ${e.message ?? 'Ping failed'}</div>`;
+            toast('Ping failed', 'error');
         } finally {
-            if (btn) btn.disabled = false;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ti ti-bell me-1"></i>Ping Now';
         }
     }
-
-    function renderIndexingResults(data) {
-        const { submitted, total, message, results, google_available } = data;
-        
-        let html = `<div class="alert ${submitted === total ? 'alert-success' : 'alert-warning'}">
-            <strong>📊 ${message}</strong>
-            ${!google_available ? '<br><small class="text-danger">⚠️ Google API not configured — only Bing submissions attempted</small>' : ''}
-        </div>`;
-
-        if (results?.length > 0) {
-            html += '<div class="table-responsive"><table class="table table-sm table-striped align-middle">';
-            html += '<thead><tr><th>Job</th><th>Google</th><th>Bing</th><th>Overall</th></tr></thead><tbody>';
-            
-            results.forEach(r => {
-                const googleBadge = renderApiBadge(r.google, 'Google');
-                const bingBadge = renderApiBadge(r.bing, 'Bing');
-                const overall = (r.google?.success || r.bing?.success) 
-                    ? '<span class="badge bg-success">✅ Submitted</span>' 
-                    : '<span class="badge bg-danger">❌ Failed</span>';
-                
-                html += `<tr>
-                    <td><strong>${escapeHtml(r.title)}</strong><br>
-                        <small><a href="${r.url}" target="_blank" class="text-decoration-none">View →</a></small>
-                    </td>
-                    <td>${googleBadge}</td>
-                    <td>${bingBadge}</td>
-                    <td>${overall}</td>
-                </tr>`;
+    
+    // ── Per-job Google index from status modal ────────────────────────────────────
+    async function indexThisJob() {
+        if (!currentSlug) return;
+        const btn = document.getElementById('indexBtn');
+        const msg = document.getElementById('statusActionMsg');
+        btn.disabled = true;
+        btn.innerHTML = '<div class="spinner-border spinner-border-sm me-1"></div>Submitting...';
+        msg.innerHTML = '';
+    
+        try {
+            const res = await apiFetch(`/api/v1/seo/index-job/${currentSlug}`, { method: 'POST' });
+            const ok  = res.success ?? res.data?.success;
+    
+            msg.innerHTML = `<div class="alert ${ok ? 'alert-success' : 'alert-warning'} py-2 mb-0">
+                ${ok
+                    ? '✅ URL submitted to Google Indexing API. Expect indexing within minutes to hours.'
+                    : '⚠️ ' + (res.message ?? 'Submission failed — check Google service account config')}
+            </div>`;
+    
+            updateIndexBadge(ok);
+            setValue('googleQuotaLeft', res.quota_left ?? '?');
+            loadSeoStats();
+            if (ok) toast('Submitted to Google!', 'success');
+    
+        } catch(e) {
+            msg.innerHTML = `<div class="alert alert-danger py-2 mb-0">❌ ${e.message ?? 'Failed'}</div>`;
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ti ti-brand-google me-1"></i>Index Now';
+        }
+    }
+    
+    // ── Bulk operations ───────────────────────────────────────────────────────────
+    async function bulkPing(mode = 'failed') {
+        const resultDiv = document.getElementById('bulkSeoResult');
+        resultDiv.innerHTML = loadingHtml('Pinging jobs via IndexNow...');
+    
+        try {
+            const res = await apiFetch('/api/v1/seo/bulk-ping', {
+                method: 'POST',
+                body: JSON.stringify({ mode })
             });
-            html += '</tbody></table></div>';
+    
+            const d = res.data ?? res;
+            resultDiv.innerHTML = resultCard(
+                d.success > 0,
+                `IndexNow Ping Complete`,
+                `${d.total} jobs processed — ${d.success} submitted — ${d.failed} failed — HTTP ${d.status}`
+            ) + (d.jobs?.length ? jobResultTable(d.jobs) : '');
+    
+            loadSeoStats();
+            toast(`${d.success} jobs pinged!`, d.success > 0 ? 'success' : 'error');
+    
+        } catch(e) {
+            resultDiv.innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+            toast('Bulk ping failed', 'error');
         }
-        
-        document.getElementById('indexingResult').innerHTML = html;
     }
-
-    function renderApiBadge(api, name) {
-        if (!api) return '<span class="badge bg-secondary">⏭ Skipped</span>';
-        
-        if (api.success) {
-            return `<span class="badge bg-success">✅ ${api.status || 'OK'}</span>`;
+    
+    async function bulkIndex(mode = 'new') {
+        const resultDiv = document.getElementById('bulkSeoResult');
+        resultDiv.innerHTML = loadingHtml('Submitting to Google Indexing API...');
+    
+        try {
+            const res = await apiFetch('/api/v1/seo/bulk-index', {
+                method: 'POST',
+                body: JSON.stringify({ mode })
+            });
+    
+            const d = res.data ?? res;
+    
+            if (!d.success && d.submitted === 0 && d.quota_used >= 200) {
+                resultDiv.innerHTML = `<div class="alert alert-warning">
+                    ⚠️ <strong>Daily quota reached</strong> — ${d.quota_used}/200 URLs submitted today.
+                    Quota resets at midnight UTC.
+                </div>`;
+                return;
+            }
+    
+            resultDiv.innerHTML = resultCard(
+                d.submitted > 0,
+                'Google Indexing Complete',
+                `${d.submitted} submitted — ${d.failed} failed — Quota: ${d.quota_used}/200 (${d.quota_left} remaining)`
+            ) + (d.results?.length ? googleResultTable(d.results) : '');
+    
+            loadSeoStats();
+            toast(`${d.submitted} jobs submitted to Google!`, d.submitted > 0 ? 'success' : 'warning');
+    
+        } catch(e) {
+            resultDiv.innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+            toast('Google indexing failed', 'error');
         }
-        
-        const error = api.error || 'Unknown error';
-        const shortError = error.length > 60 ? error.substring(0, 57) + '...' : error;
-        
-        return `<span class="badge bg-danger" title="${escapeHtml(error)}">
-            ❌ ${api.status || 'Failed'}<br><small>${escapeHtml(shortError)}</small>
-        </span>`;
     }
-
-    function escapeHtml(str) {
-        if (!str) return '';
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
+    
+    // ── Update per-job badges in status modal ─────────────────────────────────────
+    function updatePingBadge(success) {
+        const el = document.getElementById('statusPingBadge');
+        if (el) el.innerHTML = success
+            ? '<span class="badge bg-success">✅ Pinged</span>'
+            : '<span class="badge bg-danger">❌ Failed</span>';
     }
-
-    // Load stats on init
+    
+    function updateIndexBadge(success) {
+        const el = document.getElementById('statusIndexBadge');
+        if (el) el.innerHTML = success
+            ? '<span class="badge bg-success">✅ Submitted</span>'
+            : '<span class="badge bg-warning text-dark">⏳ Not submitted</span>';
+    }
+    
+    // Load job SEO status when status modal opens
+    async function loadJobSeoStatus(slug) {
+        try {
+            const res = await apiFetch(`${API_BASE}/${slug}`);
+            const job = res.data ?? res;
+    
+            // Ping badge
+            const pingEl = document.getElementById('statusPingBadge');
+            if (pingEl) {
+                if (job.is_pinged) {
+                    pingEl.innerHTML = '<span class="badge bg-success">✅ Pinged</span>';
+                } else if (job.last_pinged_at) {
+                    pingEl.innerHTML = '<span class="badge bg-danger">❌ Failed</span>';
+                } else {
+                    pingEl.innerHTML = '<span class="badge bg-secondary">Not pinged</span>';
+                }
+            }
+    
+            // Index badge
+            const indexEl = document.getElementById('statusIndexBadge');
+            if (indexEl) {
+                if (job.is_indexed) {
+                    indexEl.innerHTML = '<span class="badge bg-success">✅ Indexed</span>';
+                } else if (job.submitted_to_indexing) {
+                    indexEl.innerHTML = '<span class="badge bg-info">⏳ Submitted</span>';
+                } else {
+                    indexEl.innerHTML = '<span class="badge bg-secondary">Not submitted</span>';
+                }
+            }
+    
+            // Update quota display
+            loadSeoStats();
+        } catch(e) { /* silent */ }
+    }
+    
+    // ── HTML helpers ──────────────────────────────────────────────────────────────
+    function loadingHtml(msg) {
+        return `<div class="d-flex align-items-center gap-2 text-muted py-2">
+            <div class="spinner-border spinner-border-sm"></div><span>${msg}</span>
+        </div>`;
+    }
+    
+    function resultCard(ok, title, body) {
+        return `<div class="alert ${ok ? 'alert-success' : 'alert-warning'} mb-2">
+            <strong>${title}</strong><br><small>${body}</small>
+        </div>`;
+    }
+    
+    function jobResultTable(jobs) {
+        let html = '<div style="max-height:220px;overflow-y:auto"><table class="table table-sm table-bordered mt-2">';
+        html += '<tr><th>Job</th><th>Result</th></tr>';
+        jobs.forEach(j => {
+            html += `<tr><td><small>${j.title}</small></td><td>`;
+            html += j.success ? '<span class="text-success small">✅</span>' : '<span class="text-danger small">❌</span>';
+            html += `</td></tr>`;
+        });
+        return html + '</table></div>';
+    }
+    
+    function googleResultTable(results) {
+        let html = '<div style="max-height:220px;overflow-y:auto"><table class="table table-sm table-bordered mt-2">';
+        html += '<tr><th>Job</th><th>Result</th><th>Detail</th></tr>';
+        results.forEach(r => {
+            html += `<tr><td><small>${r.title}</small></td>`;
+            html += `<td>${r.success ? '<span class="text-success">✅</span>' : '<span class="text-danger">❌</span>'}</td>`;
+            html += `<td><small class="text-muted">${r.message ?? ''}</small></td></tr>`;
+        });
+        return html + '</table></div>';
+    }
+    
+    // ── Hook into existing openStatus ────────────────────────────────────────────
+    const _origOpenStatus = typeof openStatus === 'function' ? openStatus : null;
+    async function openStatus(slug, e) {
+        e?.preventDefault();
+        currentSlug = slug;
+        document.getElementById('statusActionMsg').innerHTML = '';
+    
+        // Load job data for status badges (existing logic)
+        try {
+            const res = await apiFetch(`${API_BASE}/${slug}`);
+            const job = res.data ?? res;
+            document.getElementById('statusJobTitle').textContent = job.job_title;
+    
+            // Existing badges
+            document.getElementById('badgeActive').textContent   = job.is_active   ? 'Active'    : '';
+            document.getElementById('badgeInactive').textContent = !job.is_active  ? 'Inactive'  : '';
+            document.getElementById('badgeVerified').textContent = job.is_verified ? 'Verified'  : 'Unverified';
+            document.getElementById('badgeUrgent').textContent   = job.is_urgent   ? 'Urgent'    : 'Normal';
+        } catch(_) {}
+    
+        // Load SEO status
+        loadJobSeoStatus(slug);
+        bsModal('statusModal').show();
+    }
+    
+    // ── Init ──────────────────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
         loadPosterFilter();
         loadJobs(1);
-        loadIndexingStats(); // ← add this
+        loadSeoStats(); // load header badge count
     });
 </script>
