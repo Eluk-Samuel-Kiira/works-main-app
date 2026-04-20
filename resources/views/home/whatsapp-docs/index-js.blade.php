@@ -3,8 +3,8 @@
 // CONFIG
 // ============================================================
 const JOBS_API = '/api/v1/job-posts';
-const CATEGORIES_API = '/job-categories/with-counts';  // Changed - removed /api prefix
-const COUNTRIES_API = '/job-countries/with-counts';    // Changed - removed /api prefix
+const CATEGORIES_API = '/job-categories/with-counts';
+const COUNTRIES_API = '/job-countries/with-counts';
 const WEB_URL = '{{ config("api.web_app.url", "https://stardenaworks.com") }}';
 const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 
@@ -32,34 +32,50 @@ function formatDate(dateStr) {
     return `${formattedDay} ${month} ${year}`;
 }
 
-function formatWhatsAppMessage(job, index) {
-    const jobTitle = job.job_title || 'Job Opportunity';
-    const companyName = job.company?.name || 'Company';
-    const location = job.duty_station || job.job_location?.district || job.job_location?.country || 'Uganda';
-    const jobUrl = `${WEB_URL}/jobs/${job.slug}`;
-    const deadline = job.deadline ? formatDate(job.deadline) : 'Not specified';
+// ============================================================
+// DATE FILTER HELPER
+// ============================================================
+function getDateFilterRange(filterValue) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
-    return `${jobTitle} at ${companyName}\n📍 ${location}\n\nApply: ${jobUrl}\nDeadline: ${deadline}`;
+    switch(filterValue) {
+        case 'today':
+            return { start: today, end: new Date(today.getTime() + 86400000) };
+        case 'yesterday':
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            return { start: yesterday, end: today };
+        case '2days':
+            const twoDaysAgo = new Date(today);
+            twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+            return { start: twoDaysAgo, end: new Date(twoDaysAgo.getTime() + 86400000) };
+        case '3days':
+            const threeDaysAgo = new Date(today);
+            threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+            return { start: threeDaysAgo, end: new Date(threeDaysAgo.getTime() + 86400000) };
+        case 'this_week':
+            const weekStart = new Date(today);
+            weekStart.setDate(today.getDate() - today.getDay());
+            return { start: weekStart, end: new Date() };
+        default:
+            return null;
+    }
 }
 
 // ============================================================
 // LOAD FILTERS
 // ============================================================
 async function loadFilters() {
-    // console.log('Loading filters...');
-    
     try {
         // Load categories with counts
-        // console.log('Fetching categories from:', CATEGORIES_API);
         const categoriesRes = await fetch(CATEGORIES_API, {
             headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN }
         });
         const categoriesData = await categoriesRes.json();
-        // console.log('Categories response:', categoriesData);
         
         if (categoriesData.success && categoriesData.data) {
             const categoriesWithJobs = categoriesData.data;
-            
             if (categoriesWithJobs.length > 0) {
                 const categoryOptions = categoriesWithJobs.map(c => 
                     `<option value="${c.id}">${escapeHtml(c.name)} (${c.job_count} jobs)</option>`
@@ -68,22 +84,16 @@ async function loadFilters() {
             } else {
                 document.getElementById('filterCategory').innerHTML = '<option value="">No categories with jobs</option>';
             }
-        } else {
-            console.error('Categories API returned error:', categoriesData);
-            document.getElementById('filterCategory').innerHTML = '<option value="">Error loading categories</option>';
         }
 
         // Load countries with counts
-        // console.log('Fetching countries from:', COUNTRIES_API);
         const countriesRes = await fetch(COUNTRIES_API, {
             headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN }
         });
         const countriesData = await countriesRes.json();
-        // console.log('Countries response:', countriesData);
         
         if (countriesData.success && countriesData.data) {
             const countriesWithJobs = countriesData.data;
-            
             if (countriesWithJobs.length > 0) {
                 const countryOptions = countriesWithJobs.map(c => 
                     `<option value="${escapeHtml(c.country)}">${escapeHtml(c.country)} (${c.job_count} jobs)</option>`
@@ -92,18 +102,247 @@ async function loadFilters() {
             } else {
                 document.getElementById('filterCountry').innerHTML = '<option value="">No countries with jobs</option>';
             }
-        } else {
-            console.error('Countries API returned error:', countriesData);
-            document.getElementById('filterCountry').innerHTML = '<option value="">Error loading countries</option>';
         }
 
     } catch (e) {
         console.error('Failed to load filters:', e);
-        document.getElementById('filterCategory').innerHTML = '<option value="">Error: ' + e.message + '</option>';
-        document.getElementById('filterCountry').innerHTML = '<option value="">Error: ' + e.message + '</option>';
         toast('Failed to load filters: ' + e.message, 'error');
     }
 }
+
+
+
+// ============================================================
+// CLEAN WHATSAPP MESSAGE FORMAT (Target Format)
+// ============================================================
+function formatWhatsAppMessage(job, index) {
+    const jobTitle = job.job_title || 'Job Opportunity';
+    const companyName = job.company?.name || 'Company';
+    const jobUrl = `${WEB_URL}/jobs/${job.slug}`;
+    const deadline = job.deadline ? formatDate(job.deadline) : 'Not specified';
+    
+    return `${jobTitle} job at ${companyName}\n${jobUrl}\nDeadline of this Job: "${deadline}"\n\n`;
+}
+
+// ============================================================
+// RENDER BATCH CARDS WITH TARGET FORMAT
+// ============================================================
+function renderBatchCards() {
+    const content = document.getElementById('generatedContent');
+    
+    // Group jobs into batches of 10
+    const batchSize = 10;
+    const batches = [];
+    for (let i = 0; i < currentJobs.length; i += batchSize) {
+        batches.push(currentJobs.slice(i, i + batchSize));
+    }
+    
+    if (batches.length === 0) {
+        content.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="ti ti-brand-whatsapp fs-2 mb-2 d-block opacity-25"></i>
+                <p class="small mb-2">No jobs found</p>
+                <button class="btn btn-outline-success btn-sm" onclick="resetFilters()">
+                    <i class="ti ti-refresh me-1"></i>Reset
+                </button>
+            </div>`;
+        return;
+    }
+    
+    let html = '';
+    
+    batches.forEach((batch, batchIndex) => {
+        const batchNumber = batchIndex + 1;
+        const totalBatches = batches.length;
+        const generatedDate = new Date().toISOString().slice(0, 19).replace('T', ' ');
+        
+        // Build batch message in target format
+        let batchMessage = `JOBS SHARED ON ${generatedDate} PART ${batchNumber}\n\n`;
+        
+        batch.forEach((job, idx) => {
+            const jobTitle = job.job_title || 'Job Opportunity';
+            const companyName = job.company?.name || 'Company';
+            const jobUrl = `${WEB_URL}/jobs/${job.slug}`;
+            const deadline = job.deadline ? formatDate(job.deadline) : 'Not specified';
+            
+            batchMessage += `${jobTitle} job at ${companyName}\n`;
+            batchMessage += `${jobUrl}\n`;
+            batchMessage += `Deadline of this Job: "${deadline}"\n\n`;
+        });
+        
+        html += `
+            <div class="card whatsapp-card mb-4">
+                <div class="card-header bg-gradient-success py-3 d-flex justify-content-between align-items-center flex-wrap">
+                    <div>
+                        <i class="ti ti-brand-whatsapp fs-5 text-success me-2"></i>
+                        <span class="badge bg-success me-2">Part ${batchNumber}/${totalBatches}</span>
+                        <span class="badge bg-info">${batch.length} Jobs</span>
+                    </div>
+                    <div class="mt-2 mt-sm-0">
+                        <button class="btn btn-sm btn-success copy-batch-btn me-1" onclick="copyBatch(${batchIndex})">
+                            <i class="ti ti-copy me-1"></i>Copy Part ${batchNumber}
+                        </button>
+                        <button class="btn btn-sm btn-primary share-wa-btn" onclick="shareToWhatsApp(${batchIndex})">
+                            <i class="ti ti-brand-whatsapp me-1"></i>Share to WhatsApp
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-3">
+                    <div class="whatsapp-preview-wrapper">
+                        <div class="whatsapp-header">
+                            <i class="ti ti-message-circle"></i> WhatsApp Preview
+                        </div>
+                        <pre id="batch-${batchIndex}" class="whatsapp-preview">${escapeHtml(batchMessage)}</pre>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent py-2">
+                    <small class="text-muted">
+                        <i class="ti ti-info-circle me-1"></i> 
+                        Click "Copy Part ${batchNumber}" to copy, or "Share to WhatsApp" to send directly
+                    </small>
+                </div>
+            </div>
+        `;
+    });
+    
+    // Add summary footer
+    html += `
+        <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+            <div class="text-muted small">
+                <i class="ti ti-chart-bar me-1"></i>
+                Total: ${currentJobs.length} jobs in ${batches.length} parts
+            </div>
+            <div>
+                <button class="btn btn-outline-success btn-sm" onclick="copyAllBatches()">
+                    <i class="ti ti-copy me-1"></i> Copy All Parts
+                </button>
+                <button class="btn btn-outline-secondary btn-sm ms-2" onclick="downloadTextFile()">
+                    <i class="ti ti-download me-1"></i> Download .txt
+                </button>
+            </div>
+        </div>
+    `;
+    
+    content.innerHTML = html;
+}
+
+// ============================================================
+// COPY SINGLE BATCH
+// ============================================================
+function copyBatch(batchIndex) {
+    const messageElement = document.getElementById(`batch-${batchIndex}`);
+    if (!messageElement) return;
+    
+    const text = messageElement.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+        toast(`Part ${batchIndex + 1} copied!`, 'success');
+    }).catch(() => {
+        toast('Failed to copy', 'error');
+    });
+}
+
+// ============================================================
+// COPY ALL BATCHES
+// ============================================================
+function copyAllBatches() {
+    if (currentJobs.length === 0) {
+        toast('No jobs to copy', 'warning');
+        return;
+    }
+    
+    const batchSize = 10;
+    const batches = [];
+    for (let i = 0; i < currentJobs.length; i += batchSize) {
+        batches.push(currentJobs.slice(i, i + batchSize));
+    }
+    
+    let allMessages = '';
+    const generatedDate = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    
+    batches.forEach((batch, batchIndex) => {
+        allMessages += `JOBS SHARED ON ${generatedDate} PART ${batchIndex + 1}\n\n`;
+        
+        batch.forEach((job) => {
+            const jobTitle = job.job_title || 'Job Opportunity';
+            const companyName = job.company?.name || 'Company';
+            const jobUrl = `${WEB_URL}/jobs/${job.slug}`;
+            const deadline = job.deadline ? formatDate(job.deadline) : 'Not specified';
+            
+            allMessages += `${jobTitle} job at ${companyName}\n`;
+            allMessages += `${jobUrl}\n`;
+            allMessages += `Deadline of this Job: "${deadline}"\n\n`;
+        });
+    });
+    
+    navigator.clipboard.writeText(allMessages).then(() => {
+        toast(`Copied ${currentJobs.length} jobs in ${batches.length} parts!`, 'success');
+    }).catch(() => {
+        toast('Failed to copy', 'error');
+    });
+}
+
+// ============================================================
+// DOWNLOAD TEXT FILE
+// ============================================================
+function downloadTextFile() {
+    if (currentJobs.length === 0) {
+        toast('No jobs to download', 'warning');
+        return;
+    }
+    
+    const batchSize = 10;
+    const batches = [];
+    for (let i = 0; i < currentJobs.length; i += batchSize) {
+        batches.push(currentJobs.slice(i, i + batchSize));
+    }
+    
+    let allMessages = '';
+    const generatedDate = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    
+    batches.forEach((batch, batchIndex) => {
+        allMessages += `JOBS SHARED ON ${generatedDate} PART ${batchIndex + 1}\n\n`;
+        
+        batch.forEach((job) => {
+            const jobTitle = job.job_title || 'Job Opportunity';
+            const companyName = job.company?.name || 'Company';
+            const jobUrl = `${WEB_URL}/jobs/${job.slug}`;
+            const deadline = job.deadline ? formatDate(job.deadline) : 'Not specified';
+            
+            allMessages += `${jobTitle} job at ${companyName}\n`;
+            allMessages += `${jobUrl}\n`;
+            allMessages += `Deadline of this Job: "${deadline}"\n\n`;
+        });
+    });
+    
+    const blob = new Blob([allMessages], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `whatsapp-jobs-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast('Downloaded!', 'success');
+}
+
+// ============================================================
+// SHARE TO WHATSAPP
+// ============================================================
+function shareToWhatsApp(batchIndex) {
+    const messageElement = document.getElementById(`batch-${batchIndex}`);
+    if (!messageElement) return;
+    
+    const text = messageElement.innerText;
+    const encodedText = encodeURIComponent(text);
+    const whatsappUrl = `https://wa.me/?text=${encodedText}`;
+    window.open(whatsappUrl, '_blank');
+}
+
+
+
+
 
 // ============================================================
 // LOAD JOBS
@@ -114,7 +353,8 @@ async function loadJobs() {
     const category = document.getElementById('filterCategory').value;
     const country = document.getElementById('filterCountry').value;
     const employmentType = document.getElementById('filterEmploymentType').value;
-    const limit = document.getElementById('filterLimit').value;
+    const dateRange = document.getElementById('filterDateRange')?.value || '';
+    const limit = document.getElementById('filterLimit')?.value || 50;
 
     spinner.classList.remove('d-none');
     content.innerHTML = '';
@@ -124,7 +364,6 @@ async function loadJobs() {
         if (category) url += `&job_category_id=${category}`;
         if (employmentType) url += `&employment_type=${employmentType}`;
         
-        // console.log('Fetching jobs from:', url);
         const response = await fetch(url, {
             headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN }
         });
@@ -132,11 +371,24 @@ async function loadJobs() {
         
         let jobs = result.data || [];
         
+        // Apply country filter
         if (country) {
             jobs = jobs.filter(job => {
                 const jobCountry = job.job_location?.country || '';
                 return jobCountry === country;
             });
+        }
+        
+        // Apply date range filter
+        if (dateRange) {
+            const dateFilter = getDateFilterRange(dateRange);
+            if (dateFilter) {
+                jobs = jobs.filter(job => {
+                    if (!job.created_at) return false;
+                    const createdDate = new Date(job.created_at);
+                    return createdDate >= dateFilter.start && createdDate < dateFilter.end;
+                });
+            }
         }
         
         currentJobs = jobs;
@@ -159,40 +411,16 @@ async function loadJobs() {
             content.innerHTML = `
                 <div class="text-center text-muted py-4">
                     <i class="ti ti-brand-whatsapp fs-2 mb-2 d-block opacity-25"></i>
-                    <p class="small mb-2">No jobs found</p>
+                    <p class="small mb-2">No jobs found with selected filters</p>
                     <button class="btn btn-outline-success btn-sm" onclick="resetFilters()">
-                        <i class="ti ti-refresh me-1"></i>Reset
+                        <i class="ti ti-refresh me-1"></i>Reset Filters
                     </button>
                 </div>`;
         } else {
-            let html = '';
-            jobs.forEach((job, index) => {
-                const message = formatWhatsAppMessage(job, index);
-                const escapedMessage = escapeHtml(message);
-                html += `
-                    <div class="whatsapp-message">
-                        <div class="d-flex justify-content-between align-items-center job-header">
-                            <span class="text-success fw-semibold small">Job #${index + 1}</span>
-                            <button class="btn btn-sm btn-outline-success copy-job-btn" onclick="copySingleMessage(${index})">
-                                <i class="ti ti-copy me-1"></i>Copy
-                            </button>
-                        </div>
-                        <pre id="message-${index}" style="margin:0; white-space:pre-wrap; font-family:inherit; font-size:12px; line-height:1.5;">${escapedMessage}</pre>
-                    </div>`;
-            });
-            html += `
-                <div class="text-center mt-2 pt-1">
-                    <button class="btn btn-success btn-sm" onclick="copyAllLinks()">
-                        <i class="ti ti-copy me-1"></i>Copy All (${jobs.length})
-                    </button>
-                    <button class="btn btn-outline-secondary btn-sm ms-1" onclick="downloadTextFile()">
-                        <i class="ti ti-download me-1"></i>Download .txt
-                    </button>
-                </div>`;
-            content.innerHTML = html;
+            renderBatchCards();
         }
         
-        toast(`Loaded ${jobs.length} jobs`, 'success');
+        toast(`Loaded ${jobs.length} jobs in ${Math.ceil(jobs.length / 10)} batches`, 'success');
         
     } catch (e) {
         console.error('Load jobs error:', e);
@@ -204,86 +432,14 @@ async function loadJobs() {
 }
 
 // ============================================================
-// COPY FUNCTIONS
+// RESET FUNCTION
 // ============================================================
-function copySingleMessage(index) {
-    const messageElement = document.getElementById(`message-${index}`);
-    if (!messageElement) return;
-    
-    const text = messageElement.innerText;
-    navigator.clipboard.writeText(text).then(() => {
-        toast('Copied!', 'success');
-    }).catch(() => {
-        toast('Failed to copy', 'error');
-    });
-}
-
-function copyAllLinks() {
-    if (currentJobs.length === 0) {
-        toast('No messages to copy', 'warning');
-        return;
-    }
-    
-    const allMessages = currentJobs.map((job, i) => formatWhatsAppMessage(job, i)).join('\n\n' + '─'.repeat(48) + '\n\n');
-    
-    navigator.clipboard.writeText(allMessages).then(() => {
-        toast(`Copied ${currentJobs.length} messages!`, 'success');
-        
-        const btn = document.getElementById('copyAllBtn');
-        const originalHtml = btn.innerHTML;
-        btn.innerHTML = '<i class="ti ti-check fs-5"></i> Copied!';
-        setTimeout(() => {
-            btn.innerHTML = originalHtml;
-        }, 2000);
-    }).catch(() => {
-        toast('Failed to copy', 'error');
-    });
-}
-
-function downloadTextFile() {
-    if (currentJobs.length === 0) {
-        toast('No messages to download', 'warning');
-        return;
-    }
-    
-    const header = `WhatsApp Job Links - Generated on ${new Date().toLocaleString()}\n${'='.repeat(50)}\n\n`;
-    const messages = currentJobs.map((job, i) => formatWhatsAppMessage(job, i)).join('\n\n' + '─'.repeat(40) + '\n\n');
-    const footer = `\n\n${'='.repeat(50)}\nTotal Jobs: ${currentJobs.length}\nGenerated by Stardena Works`;
-    const content = header + messages + footer;
-    
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `whatsapp-jobs-${new Date().toISOString().split('T')[0]}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    toast('Downloaded!', 'success');
-}
-
 function resetFilters() {
     document.getElementById('filterCategory').value = '';
     document.getElementById('filterCountry').value = '';
     document.getElementById('filterEmploymentType').value = '';
-    document.getElementById('filterLimit').value = '25';
+    document.getElementById('filterDateRange').value = '';
     loadJobs();
-}
-
-function updateSelectedCount() {
-    const select = document.getElementById('filterCategory');
-    const selectedOption = select.options[select.selectedIndex];
-    const countSpan = document.getElementById('selectedCategoryCount');
-    if (countSpan && selectedOption.value) {
-        const match = selectedOption.text.match(/\((\d+) jobs\)/);
-        if (match) {
-            countSpan.textContent = `(${match[1]} jobs)`;
-        }
-    } else if (countSpan) {
-        countSpan.textContent = '';
-    }
 }
 
 function escapeHtml(str) {
@@ -300,7 +456,6 @@ function escapeHtml(str) {
 // INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
-    // console.log('DOM loaded, initializing...');
     loadFilters();
 });
 </script>
