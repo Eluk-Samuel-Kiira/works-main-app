@@ -49,12 +49,6 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>http://127.0.0.1:8001/jobs/category/software-development</loc>
-    <lastmod>2026-04-08T17:17:01+00:00</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>http://127.0.0.1:8001/jobs/category/web-development</loc>
     <lastmod>2026-04-08T17:17:01+00:00</lastmod>
     <changefreq>daily</changefreq>
@@ -368,12 +362,6 @@
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/category/sports</loc>
-    <lastmod>2026-04-08T17:17:02+00:00</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>http://127.0.0.1:8001/jobs/category/nonprofit</loc>
     <lastmod>2026-04-08T17:17:02+00:00</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
@@ -697,12 +685,6 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>http://127.0.0.1:8001/jobs?company=startimes</loc>
-    <lastmod>2026-04-13T10:20:07+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
     <loc>http://127.0.0.1:8001/jobs?company=bon-bini-residence</loc>
     <lastmod>2026-04-13T10:27:45+00:00</lastmod>
     <changefreq>weekly</changefreq>
@@ -783,12 +765,6 @@
   <url>
     <loc>http://127.0.0.1:8001/jobs?company=rcs-consult</loc>
     <lastmod>2026-04-15T12:23:59+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>http://127.0.0.1:8001/jobs?company=httpshiainternationalscom</loc>
-    <lastmod>2026-04-15T12:45:05+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -896,61 +872,61 @@
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/aserrer-at-a-leading-private-company-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T14:20:55+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/test-seo-indexing-job</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-19T14:32:36+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/student-at-a-leading-private-company-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-19T14:32:33+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/nursery-teacher-2-slots-available-at-a-private-school-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-19T14:32:30+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/upper-primary-teacher-mathematics-science-at-a-private-school-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-19T14:32:26+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/a-male-nurse-at-a-private-clinic-in-masaka</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-19T14:32:22+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/marketing-lead-at-pure-flow-boda-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-19T14:32:18+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/branch-director-at-pure-flow-boda-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-19T14:32:15+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/recruitment-compliance-lead-at-pure-flow-boda-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-19T14:32:11+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/school-mechanicdriver-at-a-private-school-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-19T14:32:07+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1058,523 +1034,481 @@
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/a-nurse-at-a-leading-private-company-in-mukono</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:51+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/male-nurse-at-a-leading-private-company-in-fort-portal</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:51+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/a-fresher-nurse-at-a-leading-private-company-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:51+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/maid-needed-at-a-leading-private-company-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:51+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/director-program-and-sponsorship-at-child-fund-international-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:51+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/fleet-usage-administrator-at-hariss-international-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:51+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/machine-operator-labeller-at-hariss-international-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:51+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/security-manager-at-hariss-international-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>http://127.0.0.1:8001/jobs/head-of-procurement-and-logistics-at-hariss-international-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:51+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/track-and-trace-officer-at-true-north-africa-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:51+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/sarissa-assistant-invoice-dispatch-clerk-at-true-north-africa-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:51+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/yard-signalman-at-true-north-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:51+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/waitress-and-waiters-at-a-leading-private-company-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>http://127.0.0.1:8001/jobs/clinical-officer-clinical-coordinator-at-httpshiainternationalscom-in-sembabule</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:51+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/experiment-officer-at-tiko-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/credit-officer-at-rcs-consult-in-mukono</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/fleet-drivers-at-alllied-uganda-limited-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/quality-inspector-at-mcdermott-uganda-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/logistics-supervisor-at-alllied-uganda-limited-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/manager-pay-point-premium-collection-at-prudential-uganda-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/account-manager-at-cloud-chariots-services-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/aws-certified-devops-engineer-internship-at-cloud-chariots-services-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/solution-architect-internship-at-cloud-chariots-services-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/program-interns-03-echoes-of-hope-nourish-sack-maisha-mzuri-skilling-at-wilmat-development-foundation-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/operations-manager-at-wilmat-development-foundation-in-arua</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/project-assistant-01-programs-partnerships-advocacy-at-wilmat-development-foundation-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/technical-advisor-nutrition-and-food-systems-at-gain-gloabal-health-alliance-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/insurance-associate-at-greenwheels-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/reservoir-engineer-trainee-at-cnooc-uganda-limited-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/financial-planning-and-analysis-manager-at-c-care-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>http://127.0.0.1:8001/jobs/team-leader-direct-sales-at-mtn-uganda-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>http://127.0.0.1:8001/jobs/key-account-manager-government-at-mtn-uganda-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>http://127.0.0.1:8001/jobs/senior-manager-commercial-planning-at-mtn-uganda-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/procurement-logistics-management-apprentice-at-a-leading-private-company-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/secretary-and-chief-executive-officer-at-atomic-energy-council-aec-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/manager-reprographics-at-uganda-national-examinations-board-uneb-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/director-research-and-development-at-uganda-national-examinations-board-uneb-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/director-human-resource-and-administration-at-uganda-national-examinations-board-uneb-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/senior-veterinary-officer-at-ntoroko-district-local-government-in-ntoroko</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/district-engineer-at-ntoroko-district-local-government-in-ntoroko</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/civil-engineer-water-at-ntoroko-district-local-government-in-ntoroko</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/engineering-assistant-civil-at-ntoroko-district-local-government-in-ntoroko</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/road-inspector-at-ntoroko-district-local-government-in-ntoroko</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/district-natural-resources-officer-at-ntoroko-district-local-government-in-ntoroko</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/chief-finance-officer-at-ntoroko-district-local-government-in-ntoroko</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/senior-environmental-health-officer-at-ntoroko-district-local-government-in-ntoroko</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/sonographer-at-ntoroko-district-local-government-in-ntoroko</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/counsellor-at-ntoroko-district-local-government-in-ntoroko</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/medical-laboratory-technician-at-ntoroko-district-local-government-in-ntoroko</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/medical-clinical-officer-at-ntoroko-district-local-government-in-ntoroko</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/assistant-nursing-officer-public-health-at-ntoroko-district-local-government-in-ntoroko</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/assistant-nursing-officer-nursing-at-ntoroko-district-local-government-in-ntoroko</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/medical-laboratory-assistant-at-ntoroko-district-local-government-in-ntoroko</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/experienced-front-office-property-manager-at-bon-bini-residence-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>http://127.0.0.1:8001/jobs/hr-assistant-at-startimes-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/marketing-officer-at-luweero-international-university-in-luwero</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/tiktok-live-host-at-a-leading-private-company-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/security-company-at-vilirana-hospital-munyonyo-uganda-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/plumber-at-vilirana-hospital-munyonyo-uganda-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/ambulance-driver-at-vilirana-hospital-munyonyo-uganda-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/it-support-officer-at-vilirana-hospital-munyonyo-uganda-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/procurementstore-officer-at-vilirana-hospital-munyonyo-uganda-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/bio-waste-company-at-vilirana-hospital-munyonyo-uganda-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/laundry-workers-company-at-vilirana-hospital-munyonyo-uganda-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/catering-at-vilirana-hospital-munyonyo-uganda-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/receptionistcashier-4-at-vilirana-hospital-munyonyo-uganda-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/accountant-at-vilirana-hospital-munyonyo-uganda-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/dentist-2-at-vilirana-hospital-munyonyo-uganda-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/nutritionist-2-at-vilirana-hospital-munyonyo-uganda-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/anesthetist-2-at-vivo-energy-uganda-shell-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/theatre-assistant-at-vilirana-hospital-munyonyo-uganda-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/clinical-psychologist-at-vilirana-hospital-munyonyo-uganda-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/occupational-therapist-at-vilirana-hospital-munyonyo-uganda-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/speech-and-language-therapist-at-vilirana-hospital-munyonyo-uganda-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/physiotherapist-at-vilirana-hospital-munyonyo-uganda-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/radiographer-3-at-vilirana-hospital-munyonyo-uganda-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/pharmacy-technician-3-at-vilirana-hospital-munyonyo-uganda-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/medical-laboratory-technologist-3vhhiringteam-at-gmailcom-at-vilirana-hospital-munyonyo-uganda-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/midwife-3-at-vilirana-hospital-munyonyo-uganda-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/nurse-registeredcomprehensive-6-at-vilirana-hospital-munyonyo-uganda-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/medical-officer-3-at-vilirana-hospital-munyonyo-uganda-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/medical-director-at-vilirana-hospital-munyonyo-uganda-in-entebbe</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/a-female-nurse-or-midwife-at-a-leading-private-company-in-mbarara</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/a-competent-nurse-or-clinician-at-a-leading-private-company-in-kampala-1</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>http://127.0.0.1:8001/jobs/inventory-accounts-assistant-at-true-north-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/enterprise-banker-at-absa-bank-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/country-manager-uganda-at-pum-in-kampala</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1622,7 +1556,7 @@
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/railroad-switch-operator-manager-nMf8fT</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1646,7 +1580,7 @@
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/secondary-school-teacher-officer-EQTO7D</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
@@ -1657,14 +1591,8 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>http://127.0.0.1:8001/jobs/radio-operator-manager-S4kAeM</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>http://127.0.0.1:8001/jobs/pipelaying-fitter-coordinator-UIO4Em</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1682,7 +1610,7 @@
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/fabric-pressers-coordinator-Vu0t2e</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1706,7 +1634,7 @@
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/government-service-executive-consultant-YptppY</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1718,19 +1646,19 @@
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/network-systems-analyst-consultant-re8BIR</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/account-executive-bxUY4Z</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:49+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/transportation-equipment-painters-assistant-jZZd8S</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:49+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1784,7 +1712,7 @@
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/composer-supervisor-fZvLn9</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:49+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1802,7 +1730,7 @@
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/dancer-manager-2aoRzJ</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:49+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1820,13 +1748,13 @@
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/landscape-architect-manager-FJQHIL</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:49+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/petroleum-engineer-specialist-hdlURr</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:49+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
@@ -1849,12 +1777,6 @@
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>http://127.0.0.1:8001/jobs/frontend-developer-vO5fA7</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>http://127.0.0.1:8001/jobs/cardiovascular-technologist-assistant-B3YKsd</loc>
     <lastmod>2026-04-19T14:31:16+00:00</lastmod>
     <changefreq>weekly</changefreq>
@@ -1868,13 +1790,13 @@
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/library-assistant-specialist-D98v9B</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:49+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/automotive-mechanic-assistant-IoZYFc</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:49+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1922,7 +1844,7 @@
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/plating-machine-operator-supervisor-ZJEqvg</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:49+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1934,7 +1856,7 @@
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/technical-specialist-manager-Fd2tvl</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:49+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1976,7 +1898,7 @@
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/personnel-recruiter-coordinator-gcuKoI</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:49+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1988,7 +1910,7 @@
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/marriage-and-family-therapist-manager-c2gcGu</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:49+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -2024,13 +1946,13 @@
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/university-supervisor-tXiFuZ</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:49+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>http://127.0.0.1:8001/jobs/food-preparation-specialist-gsavlI</loc>
-    <lastmod>2026-04-19T14:31:16+00:00</lastmod>
+    <lastmod>2026-04-20T15:17:49+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>

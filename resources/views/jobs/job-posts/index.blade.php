@@ -23,9 +23,9 @@
                     </div>
                     <div>
                         <button class="btn btn-outline-success d-flex align-items-center gap-2 me-2"
-                                onclick="openIndexingModal()">
+                                onclick="openBulkSeoModal()">
                             <i class="ti ti-search-check fs-4"></i>
-                            Ping & Index
+                            Ping
                             <span class="badge bg-warning text-dark ms-1" id="pendingIndexBadge">–</span>
                         </button>
                     </div>
@@ -190,9 +190,13 @@
     </div>
 </div>
 
-{{-- ============================================================ STATUS MODAL ============================================================ --}}
+
+{{--
+    Replace the existing statusModal div in index.blade.php with this.
+    The Ping and Index sections are added at the bottom of the modal body.
+--}}
 <div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="ti ti-settings me-2"></i>Update Status</h5>
@@ -200,7 +204,9 @@
             </div>
             <div class="modal-body">
                 <p class="text-muted mb-3 fw-semibold" id="statusJobTitle"></p>
-                <div class="d-grid gap-2">
+ 
+                {{-- ── Existing status actions ── --}}
+                <div class="d-grid gap-2 mb-4">
                     <button class="btn btn-outline-success d-flex justify-content-between align-items-center"
                         onclick="doStatusAction('activate')">
                         <span><i class="ti ti-player-play me-2"></i>Activate</span>
@@ -229,6 +235,80 @@
                         <span class="input-group-text">days</span>
                     </div>
                 </div>
+ 
+                {{-- ── SEO ACTIONS SECTION ── --}}
+                <div class="border-top pt-3 mb-3">
+                    <p class="text-muted small fw-semibold text-uppercase mb-3" style="letter-spacing:.06em">
+                        <i class="ti ti-search me-1"></i>SEO Actions
+                    </p>
+ 
+                    {{-- Current SEO status for this job --}}
+                    <div class="row g-2 mb-3" id="jobSeoStatus">
+                        <div class="col-6">
+                            <div class="p-2 border rounded-2 text-center">
+                                <div class="small text-muted">IndexNow Ping</div>
+                                <div id="statusPingBadge" class="mt-1">—</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-2 border rounded-2 text-center">
+                                <div class="small text-muted">Google Index</div>
+                                <div id="statusIndexBadge" class="mt-1">—</div>
+                            </div>
+                        </div>
+                    </div>
+ 
+                    {{-- PING button --}}
+                    <div class="card border-0 bg-body-secondary mb-2">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-start gap-3">
+                                <div class="rounded-2 bg-primary bg-opacity-10 p-2 flex-shrink-0">
+                                    <i class="ti ti-bell-ringing text-primary fs-5"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="fw-semibold small mb-1">IndexNow Ping</div>
+                                    <div class="text-muted" style="font-size:12px">
+                                        Notifies Bing, Yandex & other search engines via IndexNow protocol.
+                                        Always safe to run — no quota limits.
+                                    </div>
+                                </div>
+                                <button class="btn btn-primary btn-sm fw-semibold flex-shrink-0"
+                                        onclick="pingThisJob()" id="pingBtn">
+                                    <i class="ti ti-bell me-1"></i>Ping Now
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+ 
+                    {{-- GOOGLE INDEX button --}}
+                    <div class="card border-0 bg-body-secondary mb-2">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-start gap-3">
+                                <div class="rounded-2 bg-danger bg-opacity-10 p-2 flex-shrink-0">
+                                    <img src="https://www.google.com/favicon.ico" width="20" alt="Google">
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="fw-semibold small mb-1">
+                                        Google Indexing API
+                                        <span class="badge bg-warning text-dark ms-1" style="font-size:10px">
+                                            <span id="googleQuotaLeft">...</span> left today
+                                        </span>
+                                    </div>
+                                    <div class="text-muted" style="font-size:12px">
+                                        Submits directly to Google's index queue. Limited to
+                                        <strong>200 URLs/day</strong> — use for priority jobs only.
+                                    </div>
+                                </div>
+                                <button class="btn btn-danger btn-sm fw-semibold flex-shrink-0"
+                                        onclick="indexThisJob()" id="indexBtn">
+                                    <i class="ti ti-brand-google me-1"></i>Index Now
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+ 
+                </div>
+ 
                 <div id="statusActionMsg" class="mt-3"></div>
             </div>
             <div class="modal-footer">
@@ -238,48 +318,142 @@
     </div>
 </div>
 
-{{-- INDEXING MODAL --}}
-<div class="modal fade" id="indexingModal" tabindex="-1" aria-hidden="true">
+{{-- ============================================================
+     BULK PING & INDEX MODAL
+     Add this as a NEW modal — opened from the page header button
+============================================================ --}}
+<div class="modal fade" id="bulkSeoModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header" style="background:linear-gradient(135deg,#4f46e5,#7c3aed)">
                 <h5 class="modal-title text-white d-flex align-items-center gap-2">
-                    <i class="ti ti-search-check"></i> Ping & Index Jobs
+                    <i class="ti ti-search-check fs-5"></i> Bulk Ping & Index
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div id="indexingStats" class="row g-3 mb-4">
-                    <div class="col-4 text-center">
-                        <div class="p-3 bg-light rounded-2">
-                            <div class="fw-bold fs-4 text-primary" id="statPending">...</div>
-                            <small class="text-muted">Not yet indexed</small>
+ 
+                {{-- Stats --}}
+                <div class="row g-3 mb-4" id="bulkSeoStats">
+                    <div class="col-3">
+                        <div class="p-3 border rounded-2 text-center">
+                            <div class="fw-bold fs-5 text-body" id="bsStat1">...</div>
+                            <div class="text-muted" style="font-size:11px">Active Jobs</div>
                         </div>
                     </div>
-                    <div class="col-4 text-center">
-                        <div class="p-3 bg-light rounded-2">
-                            <div class="fw-bold fs-4 text-success" id="statSubmitted">...</div>
-                            <small class="text-muted">Submitted to Google</small>
+                    <div class="col-3">
+                        <div class="p-3 border rounded-2 text-center">
+                            <div class="fw-bold fs-5 text-primary" id="bsStat2">...</div>
+                            <div class="text-muted" style="font-size:11px">Pinged</div>
                         </div>
                     </div>
-                    <div class="col-4 text-center">
-                        <div class="p-3 bg-light rounded-2">
-                            <div class="fw-bold fs-4 text-warning" id="statIndexed">...</div>
-                            <small class="text-muted">Confirmed indexed</small>
+                    <div class="col-3">
+                        <div class="p-3 border rounded-2 text-center">
+                            <div class="fw-bold fs-5 text-danger" id="bsStat3">...</div>
+                            <div class="text-muted" style="font-size:11px">Ping Failed</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="p-3 border rounded-2 text-center">
+                            <div class="fw-bold fs-5 text-warning" id="bsStat4">...</div>
+                            <div class="text-muted" style="font-size:11px">Not Pinged</div>
                         </div>
                     </div>
                 </div>
-
-                <div class="d-grid gap-2 mb-3">
-                    <button class="btn btn-primary fw-semibold" onclick="runManualIndexing('new')">
-                        <i class="ti ti-rocket me-2"></i>Submit New Jobs (not yet submitted)
-                    </button>
-                    <button class="btn btn-outline-primary" onclick="runManualIndexing('all')">
-                        <i class="ti ti-refresh me-2"></i>Resubmit All Active Jobs
-                    </button>
+ 
+                <hr class="my-3">
+ 
+                {{-- PING SECTION --}}
+                <div class="mb-4">
+                    <h6 class="fw-semibold d-flex align-items-center gap-2 mb-3">
+                        <span class="badge bg-primary rounded-2 p-1"><i class="ti ti-bell fs-6"></i></span>
+                        IndexNow Ping
+                        <small class="text-muted fw-normal">— Bing, Yandex & others — no quota limits</small>
+                    </h6>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary" onclick="bulkPing('failed')" id="pingFailedBtn">
+                            <i class="ti ti-bell-ringing me-1"></i>
+                            Ping Failed Jobs
+                            <span class="badge bg-white text-primary ms-1" id="failedPingCount">...</span>
+                        </button>
+                        <button class="btn btn-outline-primary" onclick="bulkPing('all')">
+                            <i class="ti ti-bell me-1"></i>Ping All Unpigged
+                        </button>
+                    </div>
                 </div>
-
-                <div id="indexingResult" class="mt-3"></div>
+ 
+                <hr class="my-3">
+ 
+                {{-- GOOGLE INDEX SECTION --}}
+                <div class="mb-3">
+                    <h6 class="fw-semibold d-flex align-items-center gap-2 mb-2">
+                        <span class="badge bg-danger rounded-2 p-1">
+                            <img src="https://www.google.com/favicon.ico" width="14" alt="G">
+                        </span>
+                        Google Indexing API
+                        <small class="text-muted fw-normal">— Direct submission — max 200/day</small>
+                    </h6>
+ 
+                    {{-- Quota bar --}}
+                    <div class="bg-body-secondary rounded-2 p-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="small fw-semibold">Daily Quota</span>
+                            <span class="small text-muted">
+                                <span id="quotaUsed">...</span> / 200 used
+                                (<span id="quotaLeft">...</span> remaining)
+                            </span>
+                        </div>
+                        <div class="progress" style="height:8px">
+                            <div class="progress-bar bg-primary" id="quotaBar" style="width:0%"></div>
+                        </div>
+                        <div class="d-flex justify-content-between mt-1">
+                            <small class="text-muted">Resets at midnight UTC</small>
+                            <small id="quotaApiStatus" class="text-muted">Checking...</small>
+                        </div>
+                    </div>
+ 
+                    {{-- Google indexing stats --}}
+                    <div class="row g-2 mb-3">
+                        <div class="col-4 text-center">
+                            <div class="p-2 border rounded-2">
+                                <div class="fw-bold text-warning" id="gsNotSubmitted">...</div>
+                                <small class="text-muted">Not submitted</small>
+                            </div>
+                        </div>
+                        <div class="col-4 text-center">
+                            <div class="p-2 border rounded-2">
+                                <div class="fw-bold text-success" id="gsSubmitted">...</div>
+                                <small class="text-muted">Submitted</small>
+                            </div>
+                        </div>
+                        <div class="col-4 text-center">
+                            <div class="p-2 border rounded-2">
+                                <div class="fw-bold text-primary" id="gsIndexed">...</div>
+                                <small class="text-muted">Confirmed indexed</small>
+                            </div>
+                        </div>
+                    </div>
+ 
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-danger" onclick="bulkIndex('new')" id="indexNewBtn">
+                            <i class="ti ti-brand-google me-1"></i>
+                            Submit New Jobs
+                            <span class="badge bg-white text-danger ms-1" id="newJobsCount">...</span>
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="bulkIndex('priority')">
+                            <i class="ti ti-star me-1"></i>Submit Featured Jobs
+                        </button>
+                    </div>
+                    <small class="text-muted d-block mt-2">
+                        <i class="ti ti-info-circle me-1"></i>
+                        Only submit jobs you want Google to crawl urgently.
+                        Google finds all jobs automatically via sitemap within days.
+                    </small>
+                </div>
+ 
+                {{-- Result output --}}
+                <div id="bulkSeoResult" class="mt-3"></div>
+ 
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -287,6 +461,8 @@
         </div>
     </div>
 </div>
+
+
 
 @include('jobs.job-posts.index-js')
 @include('jobs.job-posts.simple-post')
