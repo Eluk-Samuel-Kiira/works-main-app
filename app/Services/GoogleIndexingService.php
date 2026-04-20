@@ -256,11 +256,28 @@ class GoogleIndexingService
             return $cached;
         }
 
-        $keyPath = storage_path('app/google-service-account.json');
-        if (!file_exists($keyPath)) {
-            Log::warning('GOOGLE INDEXING: Service account file not found at ' . $keyPath);
+        // Check multiple possible locations
+        $possiblePaths = [
+            storage_path('app/google-service-account.json'),
+            storage_path('google-service-account.json'),
+            base_path('google-service-account.json'),
+            base_path('storage/app/google-service-account.json'),
+        ];
+        
+        $keyPath = null;
+        foreach ($possiblePaths as $path) {
+            if (file_exists($path)) {
+                $keyPath = $path;
+                break;
+            }
+        }
+        
+        if (!$keyPath) {
+            Log::warning('GOOGLE INDEXING: Service account file not found. Tried: ' . implode(', ', $possiblePaths));
             return null;
         }
+
+        Log::info('GOOGLE INDEXING: Using service account from: ' . $keyPath);
 
         try {
             $key = json_decode(file_get_contents($keyPath), true);
