@@ -20,7 +20,10 @@ use Illuminate\Support\Facades\Cache;
  * Google does NOT support IndexNow — use GoogleIndexingService for that.
  *
  * API KEY  : b433024ea88249dfa1cae5e8cfacacf9
- * KEY FILE : https://stardenaworks.com/b433024ea88249dfa1cae5e8cfacacf9.txt
+ * KEY FILE : https://stardenaworks.com/b433024ea88249df1cae5e8cfacacf9.txt
+ * 
+ * IMPORTANT: published_at remains NULL until ping is successful.
+ * Only after successful ping does the job become visible to the frontend API.
  * ─────────────────────────────────────────────────────────────────
  */
 class SitemapPingService
@@ -69,10 +72,21 @@ class SitemapPingService
 
         // Update DB based on result
         foreach ($jobs as $job) {
-            JobPost::where('id', $job->id)->update([
-                'is_pinged'      => $result['success'],
-                'last_pinged_at' => now(),
-            ]);
+            if ($result['success']) {
+                // ✅ SUCCESS: Update is_pinged, last_pinged_at, AND published_at
+                JobPost::where('id', $job->id)->update([
+                    'is_pinged'      => true,
+                    'last_pinged_at' => now(),
+                    'published_at'   => now(), // ← CRITICAL: Job becomes visible to frontend
+                ]);
+            } else {
+                // ❌ FAILED: Only update is_pinged as false, published_at remains NULL
+                JobPost::where('id', $job->id)->update([
+                    'is_pinged'      => false,
+                    'last_pinged_at' => now(),
+                    // published_at stays NULL — job NOT visible to frontend
+                ]);
+            }
         }
 
         $report = [
@@ -114,7 +128,7 @@ class SitemapPingService
             });
         }
 
-        $jobs = $query->select(['id', 'job_title', 'slug', 'is_pinged', 'last_pinged_at'])
+        $jobs = $query->select(['id', 'job_title', 'slug', 'is_pinged', 'last_pinged_at', 'published_at'])
                       ->limit(self::BATCH_SIZE)
                       ->get();
 
@@ -127,10 +141,24 @@ class SitemapPingService
         $result = $this->submitToIndexNow($jobs->pluck('slug')->toArray());
 
         foreach ($jobs as $job) {
-            JobPost::where('id', $job->id)->update([
-                'is_pinged'      => $result['success'],
-                'last_pinged_at' => now(),
-            ]);
+            if ($result['success']) {
+                // ✅ SUCCESS: Update is_pinged, last_pinged_at, AND published_at if still NULL
+                $updateData = [
+                    'is_pinged'      => true,
+                    'last_pinged_at' => now(),
+                ];
+                // Only set published_at if it's still NULL (first successful ping)
+                if (is_null($job->published_at)) {
+                    $updateData['published_at'] = now();
+                }
+                JobPost::where('id', $job->id)->update($updateData);
+            } else {
+                // ❌ FAILED: Only update is_pinged, published_at remains unchanged
+                JobPost::where('id', $job->id)->update([
+                    'is_pinged'      => false,
+                    'last_pinged_at' => now(),
+                ]);
+            }
         }
 
         return [
@@ -145,6 +173,61 @@ class SitemapPingService
                 'url'     => $this->webUrl . '/jobs/' . $j->slug,
                 'success' => $result['success'],
             ])->toArray(),
+        ];
+    }
+
+    // =========================================================================
+    // MANUAL PING FOR SPECIFIC JOBS (from bulk modal)
+    // =========================================================================
+    public function manualPingJobs(array $jobIds): array
+    {
+        $jobs = JobPost::whereIn('id', $jobIds)
+            ->where('is_active', true)
+            ->where('deadline', '>=', now())
+            ->get();
+
+        if ($jobs->isEmpty()) {
+            return ['submitted' => 0, 'results' => []];
+        }
+
+        \Artisan::call('sitemap:generate');
+
+        $result = $this->submitToIndexNow($jobs->pluck('slug')->toArray());
+        $submitted = 0;
+        $results = [];
+
+        foreach ($jobs as $job) {
+            $success = $result['success'];
+            if ($success) {
+                $updateData = [
+                    'is_pinged'      => true,
+                    'last_pinged_at' => now(),
+                ];
+                if (is_null($job->published_at)) {
+                    $updateData['published_at'] = now();
+                }
+                JobPost::where('id', $job->id)->update($updateData);
+                $submitted++;
+            } else {
+                JobPost::where('id', $job->id)->update([
+                    'is_pinged'      => false,
+                    'last_pinged_at' => now(),
+                ]);
+            }
+
+            $results[] = [
+                'job_id' => $job->id,
+                'title' => $job->job_title,
+                'url' => $this->webUrl . '/jobs/' . $job->slug,
+                'success' => $success,
+            ];
+        }
+
+        return [
+            'submitted' => $submitted,
+            'total' => $jobs->count(),
+            'results' => $results,
+            'status' => $result['status'],
         ];
     }
 
@@ -270,14 +353,17 @@ class SitemapPingService
 
         // Job list
         if (!empty($report['jobs'])) {
-            $html .= '<table><tr><th>Job</th><th>Status</th></tr>';
+            $html .= 'table<thead><tr><th>Job</th><th>Status</th><th>Published</th></tr></thead><tbody>';
             foreach ($report['jobs'] as $j) {
                 $s = $j['success'] ? '<span class="ok">✅ Pinged</span>' : '<span class="fail">❌ Failed</span>';
-                $html .= '<tr><td><strong>' . htmlspecialchars($j['title']) . '</strong><br>';
+                $html .= '<tr>';
+                $html .= '<td><strong>' . htmlspecialchars($j['title']) . '</strong><br>';
                 $html .= '<a href="' . $j['url'] . '" style="color:#6366f1;font-size:12px">' . $j['url'] . '</a></td>';
-                $html .= '<td>' . $s . '</td></tr>';
+                $html .= '<td>' . $s . '</td>';
+                $html .= '<td>' . ($j['success'] ? '<span class="ok">✅ Visible</span>' : '<span class="fail">⏳ Not Published</span>') . '</td>';
+                $html .= '</tr>';
             }
-            $html .= '</table>';
+            $html .= '</tbody></table>';
         }
 
         $html .= '<div style="text-align:center;margin:20px 0">';
@@ -285,7 +371,8 @@ class SitemapPingService
         $html .= '<a href="' . $this->webUrl . '/sitemap.xml" style="display:inline-block;background:#fff;color:#6366f1;border:2px solid #6366f1;padding:9px 20px;text-decoration:none;border-radius:7px;font-size:13px;font-weight:600;margin:4px">View Sitemap</a>';
         $html .= '</div>';
 
-        $html .= '<div class="ft">Stardena Works — IndexNow ping via api.indexnow.org</div>';
+        $html .= '<div class="ft">Stardena Works — IndexNow ping via api.indexnow.org<br>';
+        $html .= '<strong>Note:</strong> Jobs become visible on the frontend ONLY after successful ping (published_at is set).</div>';
         $html .= '</div></body></html>';
 
         foreach ($adminEmails as $email) {

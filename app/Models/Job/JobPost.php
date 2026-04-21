@@ -152,7 +152,7 @@ class JobPost extends Model
         parent::boot();
 
         static::creating(function ($job) {
-            if (empty($job->published_at)) $job->published_at = now();
+            // if (empty($job->published_at)) $job->published_at = now();
             $job->currency        = $job->currency        ?? 'UGX';
             $job->location_type   = $job->location_type   ?? 'on-site';
             $job->employment_type = $job->employment_type ?? 'full-time';
