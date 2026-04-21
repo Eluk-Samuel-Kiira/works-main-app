@@ -16,10 +16,15 @@ class GoogleIndexingService
     private const API_ENDPOINT   = 'https://indexing.googleapis.com/v3/urlNotifications:publish';
 
     private string $webUrl;
+    private string $apiUrl;
 
     public function __construct()
     {
+        // Frontend website URL (where jobs are displayed)
         $this->webUrl = rtrim(config('api.web_app.url', env('WEB_APP_URL', 'https://stardenaworks.com')), '/');
+        
+        // Backend API URL (for internal operations)
+        $this->apiUrl = rtrim(config('api.main_app.url', env('APP_URL', 'https://ma1n.stardenaworks.com')), '/');
     }
 
     // =========================================================================
@@ -147,7 +152,13 @@ class GoogleIndexingService
             ];
         }
 
+        // Use the FRONTEND URL for job inspection (stardenaworks.com)
         $url = $this->webUrl . '/jobs/' . $job->slug;
+        
+        // The site URL in Search Console must match exactly
+        // For domain property, use the domain without protocol
+        $siteUrl = 'https://stardenaworks.com'; // or 'stardenaworks.com' for domain property
+        
         $token = $this->getSearchConsoleAccessToken();
 
         if (!$token) {
@@ -164,7 +175,7 @@ class GoogleIndexingService
                 ->timeout(15)
                 ->post('https://searchconsole.googleapis.com/v1/urlInspection/index:inspect', [
                     'inspectionUrl' => $url,
-                    'siteUrl'       => $this->webUrl,
+                    'siteUrl'       => $siteUrl, // Must match exactly what's in Search Console
                 ]);
 
             if (!$response->successful()) {
@@ -182,7 +193,6 @@ class GoogleIndexingService
             $verdict = $data['inspectionResult']['indexStatusResult']['verdict'] ?? 'unknown';
             $indexed = in_array($verdict, ['PASS', 'NEUTRAL']);
 
-            // Update job record
             JobPost::where('id', $job->id)->update([
                 'is_indexed' => $indexed,
                 'last_indexed_check' => now(),
@@ -192,8 +202,8 @@ class GoogleIndexingService
                     [
                         'verified_at' => now()->toISOString(),
                         'verdict' => $verdict,
-                        'coverage' => $data['inspectionResult']['indexStatusResult']['coverage'] ?? null,
-                        'crawled_at' => $data['inspectionResult']['indexStatusResult']['lastCrawlTime'] ?? null
+                        'site_url' => $siteUrl,
+                        'inspection_url' => $url
                     ]
                 )),
             ]);
