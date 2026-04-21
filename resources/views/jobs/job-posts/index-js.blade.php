@@ -1064,33 +1064,39 @@
         try {
             const ping   = await apiFetch('/api/v1/seo/ping-stats');
             const google = await apiFetch('/api/v1/seo/indexing-stats');
-    
-            // ── HEADER BADGE: Show ONLY failed pings (not not_pinged) ──
+
+            // ── HEADER BADGE: Show number of unpinged/failed jobs ──
+            // Use not_pinged count (jobs that haven't been successfully pinged)
+            const unpingedCount = ping.data?.not_pinged ?? 0;
             const failedCount = ping.data?.failed ?? 0;
-            const badge = document.getElementById('pendingIndexBadge'); // ← Correct ID
+            
+            // Show the count of jobs that need pinging (not_pinged)
+            const badgeCount = unpingedCount > 0 ? unpingedCount : (failedCount > 0 ? failedCount : 0);
+            const badge = document.getElementById('pendingIndexBadge');
             
             if (badge) {
-                if (failedCount > 0) {
-                    badge.textContent = failedCount;
+                if (badgeCount > 0) {
+                    badge.textContent = badgeCount;
                     badge.className = 'badge bg-warning text-dark ms-1';
-                    badge.title = `${failedCount} job(s) failed to ping via IndexNow`;
+                    badge.title = `${badgeCount} job(s) need ping - click to run bulk ping`;
                 } else {
-                    // Hide badge or show checkmark when all pings succeeded
+                    // Only show checkmark when absolutely no jobs need attention
                     badge.textContent = '✓';
                     badge.className = 'badge bg-success ms-1';
                     badge.title = 'All jobs pinged successfully';
                 }
             }
-    
-            // ── Bulk modal stats (unchanged) ──
+
+            // ── Bulk modal stats ──
             const d = ping.data ?? {};
             setValue('bsStat1', d.total_active  ?? 0);
             setValue('bsStat2', d.pinged        ?? 0);
-            setValue('bsStat3', d.failed        ?? 0);  // ← This is the failed count
+            setValue('bsStat3', d.failed        ?? 0);
             setValue('bsStat4', d.not_pinged    ?? 0);
-            setValue('failedPingCount', d.failed ?? 0); // ← Use only failed for button badge
-    
-            // ── Google quota stats (unchanged) ──
+            setValue('failedPingCount', d.failed ?? 0);
+            setValue('unpingedCount', d.not_pinged ?? 0);
+
+            // ── Google quota stats ──
             const g = google.data ?? {};
             setValue('quotaUsed',       g.quota_used      ?? 0);
             setValue('quotaLeft',       g.quota_remaining ?? 200);
@@ -1099,7 +1105,7 @@
             setValue('gsIndexed',       g.indexed         ?? 0);
             setValue('newJobsCount',    g.not_submitted   ?? 0);
             setValue('googleQuotaLeft', g.quota_remaining ?? 200);
-    
+
             // Quota bar
             const pct = Math.round(((g.quota_used ?? 0) / 200) * 100);
             const bar = document.getElementById('quotaBar');
@@ -1107,17 +1113,17 @@
                 bar.style.width = pct + '%';
                 bar.className   = 'progress-bar ' + (pct > 80 ? 'bg-danger' : pct > 50 ? 'bg-warning' : 'bg-primary');
             }
-    
+
             // API config status
             const apiStatus = document.getElementById('quotaApiStatus');
             if (apiStatus) {
                 apiStatus.textContent  = g.api_configured ? '✅ API configured' : '⚠️ Service account missing';
                 apiStatus.style.color  = g.api_configured ? '#10b981' : '#f59e0b';
             }
-    
+
         } catch(e) {
             console.error('SEO stats load failed:', e);
-            // Fallback: hide badge on error
+            // Fallback: show error on badge
             const badge = document.getElementById('pendingIndexBadge');
             if (badge) {
                 badge.textContent = '!';
@@ -1126,16 +1132,17 @@
             }
         }
     }
-    
+
     function setValue(id, val) {
         const el = document.getElementById(id);
         if (el) el.textContent = val;
     }
-    
+
     function openBulkSeoModal() {
         loadSeoStats();
         bsModal('bulkSeoModal').show();
     }
+    
     
     // ── Per-job ping from status modal ───────────────────────────────────────────
     async function pingThisJob() {
@@ -1205,41 +1212,42 @@
     async function bulkPing(mode = 'failed') {
         const resultDiv = document.getElementById('bulkSeoResult');
         resultDiv.innerHTML = loadingHtml('Pinging jobs via IndexNow...');
-    
+
         try {
             const res = await apiFetch('/api/v1/seo/bulk-ping', {
                 method: 'POST',
                 body: JSON.stringify({ mode })
             });
-    
+
             const d = res.data ?? res;
             resultDiv.innerHTML = resultCard(
                 d.success > 0,
                 `IndexNow Ping Complete`,
                 `${d.total} jobs processed — ${d.success} submitted — ${d.failed} failed — HTTP ${d.status}`
             ) + (d.jobs?.length ? jobResultTable(d.jobs) : '');
-    
-            loadSeoStats();
+
+            // Refresh the badge after bulk operation
+            await loadSeoStats();
             toast(`${d.success} jobs pinged!`, d.success > 0 ? 'success' : 'error');
-    
+
         } catch(e) {
             resultDiv.innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
             toast('Bulk ping failed', 'error');
         }
     }
-    
+
     async function bulkIndex(mode = 'new') {
         const resultDiv = document.getElementById('bulkSeoResult');
         resultDiv.innerHTML = loadingHtml('Submitting to Google Indexing API...');
-    
+
         try {
             const res = await apiFetch('/api/v1/seo/bulk-index', {
                 method: 'POST',
                 body: JSON.stringify({ mode })
             });
-    
+
             const d = res.data ?? res;
-    
+
             if (!d.success && d.submitted === 0 && d.quota_used >= 200) {
                 resultDiv.innerHTML = `<div class="alert alert-warning">
                     ⚠️ <strong>Daily quota reached</strong> — ${d.quota_used}/200 URLs submitted today.
@@ -1247,21 +1255,24 @@
                 </div>`;
                 return;
             }
-    
+
             resultDiv.innerHTML = resultCard(
                 d.submitted > 0,
                 'Google Indexing Complete',
                 `${d.submitted} submitted — ${d.failed} failed — Quota: ${d.quota_used}/200 (${d.quota_left} remaining)`
             ) + (d.results?.length ? googleResultTable(d.results) : '');
-    
-            loadSeoStats();
+
+            // Refresh the badge after bulk operation
+            await loadSeoStats();
             toast(`${d.submitted} jobs submitted to Google!`, d.submitted > 0 ? 'success' : 'warning');
-    
+
         } catch(e) {
             resultDiv.innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
             toast('Google indexing failed', 'error');
         }
     }
+    
+
     
     // ── Update per-job badges in status modal ─────────────────────────────────────
     function updatePingBadge(success) {

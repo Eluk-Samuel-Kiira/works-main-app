@@ -53,6 +53,41 @@ Schedule::call(function () {
         \Log::info("Force deleted {$jobs->count()} old jobs");
     }
 })->dailyAt('02:00')->name('force-delete-old-jobs');
+
+
+
+// Verify indexing status for jobs submitted in last 7 days (once daily)
+Schedule::call(function () {
+    $service = app(\App\Services\GoogleIndexingService::class);
+    
+    // Check jobs that were submitted but not yet confirmed indexed
+    $jobs = JobPost::where('submitted_to_indexing', true)
+        ->where(function ($q) {
+            $q->whereNull('is_indexed')
+              ->orWhere('is_indexed', false);
+        })
+        ->where('indexing_submitted_at', '>=', now()->subDays(7))
+        ->limit(50) // Respect API rate limits: ~1 request/sec
+        ->get();
+
+    $verified = 0;
+    $indexed  = 0;
+
+    foreach ($jobs as $job) {
+        $result = $service->verifyIndexingStatus($job->id);
+        if ($result['success']) {
+            $verified++;
+            if ($result['indexed']) $indexed++;
+        }
+        usleep(1000000); // 1 second between requests — API rate limit
+    }
+
+    if ($verified > 0) {
+        Log::info("Index verification: checked {$verified} jobs, {$indexed} confirmed indexed");
+    }
+})->dailyAt('04:30')->name('verify-google-indexing');
+
+
  
 // ── Artisan helpers ───────────────────────────────────────────────────────────
 Artisan::command('seo:ping-failed', function () {

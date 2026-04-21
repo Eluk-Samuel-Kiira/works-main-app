@@ -351,6 +351,118 @@ class GoogleIndexingService
         }
     }
 
+
+    /**
+     * Check indexing status for a single job via Search Console URL Inspection API
+     */
+    public function verifyIndexingStatus(int $jobId): array
+    {
+        $job = JobPost::find($jobId);
+        if (!$job) return ['success' => false, 'message' => 'Job not found'];
+
+        $url = $this->webUrl . '/jobs/' . $job->slug;
+        $token = $this->getSearchConsoleAccessToken(); // Different scope than Indexing API
+
+        if (!$token) {
+            return ['success' => false, 'message' => 'Search Console API not configured'];
+        }
+
+        try {
+            // URL Inspection API endpoint
+            $response = Http::withToken($token)
+                ->timeout(15)
+                ->post('https://searchconsole.googleapis.com/v1/urlInspection/index:inspect', [
+                    'inspectionUrl' => $url,
+                    'siteUrl'       => $this->webUrl, // Must match verified property in Search Console
+                ]);
+
+            if (!$response->successful()) {
+                return [
+                    'success' => false,
+                    'message' => "HTTP {$response->status()}: " . ($response->json('error.message') ?? 'Unknown'),
+                ];
+            }
+
+            $data = $response->json();
+            $indexed = $data['inspectionResult']['indexStatusResult']['verdict'] === 'NEUTRAL' 
+                    || $data['inspectionResult']['indexStatusResult']['verdict'] === 'PASS';
+
+            // Update job record
+            JobPost::where('id', $job->id)->update([
+                'is_indexed'        => $indexed,
+                'index_verified_at' => $indexed ? now() : null,
+                'indexing_response' => json_encode(array_merge(
+                    json_decode($job->indexing_response ?? '{}', true) ?: [],
+                    ['verified_at' => now(), 'verdict' => $data['inspectionResult']['indexStatusResult']['verdict'] ?? null]
+                )),
+            ]);
+
+            Log::info("INDEX VERIFIED: {$url} — " . ($indexed ? '✅ Indexed' : '❌ Not indexed'));
+
+            return [
+                'success'  => true,
+                'indexed'  => $indexed,
+                'verdict'  => $data['inspectionResult']['indexStatusResult']['verdict'] ?? 'unknown',
+                'details'  => $data['inspectionResult']['indexStatusResult'] ?? [],
+            ];
+
+        } catch (\Exception $e) {
+            Log::error("Index verification failed for {$url}: " . $e->getMessage());
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Get OAuth token for Search Console API (different scope than Indexing API)
+     */
+    private function getSearchConsoleAccessToken(): ?string
+    {
+        $cacheKey = 'google_search_console_token';
+        
+        if ($cached = Cache::get($cacheKey)) {
+            return $cached;
+        }
+
+        // Same service account file, but different scope
+        $keyPath = storage_path('app/google-service-account.json');
+        if (!file_exists($keyPath)) return null;
+
+        try {
+            $key = json_decode(file_get_contents($keyPath), true);
+            $now = time();
+
+            $header  = $this->base64UrlEncode(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
+            $payload = $this->base64UrlEncode(json_encode([
+                'iss'   => $key['client_email'],
+                'scope' => 'https://www.googleapis.com/auth/webmasters.readonly', // ← Different scope
+                'aud'   => 'https://oauth2.googleapis.com/token',
+                'exp'   => $now + 3600,
+                'iat'   => $now,
+            ]));
+
+            $signingInput = "{$header}.{$payload}";
+            $signature = '';
+            openssl_sign($signingInput, $signature, $key['private_key'], 'SHA256');
+            $jwt = $signingInput . '.' . $this->base64UrlEncode($signature);
+
+            $response = Http::asForm()->post('https://oauth2.googleapis.com/token', [
+                'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                'assertion'  => $jwt,
+            ]);
+
+            if (!$response->successful()) return null;
+
+            $token = $response->json('access_token');
+            Cache::put($cacheKey, $token, now()->addSeconds(3500));
+            return $token;
+
+        } catch (\Exception $e) {
+            Log::error('Search Console token failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+
     // =========================================================================
     // EMAIL REPORT
     // =========================================================================
