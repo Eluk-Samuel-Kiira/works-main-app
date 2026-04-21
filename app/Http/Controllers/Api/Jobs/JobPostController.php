@@ -183,47 +183,52 @@ class JobPostController extends Controller
         return min(100, $finalSimilarity);
     }
 
+
     /**
-     * Generate a unique SEO-friendly slug
+     * Generate a unique SEO-friendly slug with "job" keyword after the title
+     * Example: mechanical-engineer-job-at-mtn-uganda
      */
     private function generateSlug(string $title, ?int $companyId = null, ?int $locationId = null): string
     {
-        $baseSlug = Str::slug($title);
-        $slug = $baseSlug;
+        // Clean the title - remove special characters
+        $cleanTitle = preg_replace('/[^\w\s-]/', '', $title);
+        $cleanTitle = trim(preg_replace('/\s+/', ' ', $cleanTitle));
+        $cleanTitle = Str::slug($cleanTitle);
         
-        // Try to get company and location names for better uniqueness
+        // Start with the job title slug
+        $slugParts = [$cleanTitle];
+        
+        // Add "job" after the title (not before)
+        // This creates: mechanical-engineer-job-at-mtn-uganda
+        if (!preg_match('/\b(job|position|career|opportunity|vacancy)\b/i', $cleanTitle)) {
+            $slugParts[] = 'job';
+        }
+        
+        // Add company name if provided
         if ($companyId) {
-            // \Log::info('Generating slug - Company ID: ' . $companyId);
             $company = Company::find($companyId);
-            
             if ($company && $company->name) {
-                \Log::info('Company found: ' . $company->name);
-                $slug = Str::slug($title . ' at ' . $company->name);
-                \Log::info('Slug after adding company: ' . $slug);
-            } else {
-                \Log::warning('Company not found for ID: ' . $companyId);
+                $companyName = preg_replace('/[^\w\s-]/', '', $company->name);
+                $companyName = Str::slug($companyName);
+                $slugParts[] = 'at';
+                $slugParts[] = $companyName;
             }
         }
         
+        // Add location if provided
         if ($locationId) {
-            \Log::info('Generating slug - Location ID: ' . $locationId);
             $location = JobLocation::find($locationId);
-            
             if ($location && ($location->district || $location->country)) {
                 $locationName = $location->district ?? $location->country;
-                \Log::info('Location found: ' . $locationName);
-                
-                // If we already have company in slug, add location with "in"
-                if ($slug !== $baseSlug) {
-                    $slug = Str::slug($title . ' at ' . $company->name . ' in ' . $locationName);
-                } else {
-                    $slug = Str::slug($title . ' in ' . $locationName);
-                }
-                // \Log::info('Slug after adding location: ' . $slug);
-            } else {
-                \Log::warning('Location not found for ID: ' . $locationId);
+                $locationName = preg_replace('/[^\w\s-]/', '', $locationName);
+                $locationName = Str::slug($locationName);
+                $slugParts[] = 'in';
+                $slugParts[] = $locationName;
             }
         }
+        
+        // Create the slug
+        $slug = implode('-', $slugParts);
         
         // Ensure uniqueness
         $originalSlug = $slug;
@@ -232,12 +237,117 @@ class JobPostController extends Controller
         while (JobPost::where('slug', $slug)->exists()) {
             $slug = $originalSlug . '-' . $counter;
             $counter++;
-            \Log::info('Duplicate slug found, trying: ' . $slug);
         }
         
-        // \Log::info('Final slug generated: ' . $slug);
-        
         return $slug;
+    }
+
+    
+    /**
+     * Generate dynamic SEO-optimized meta description
+     * Automatically cuts at 200 words, no errors if exceeded
+     */
+    private function generateDynamicMetaDescription(array $validated, $company, $location): string
+    {
+        $description = '';
+        
+        // Start with job title and company
+        $description .= "{$validated['job_title']} position";
+        
+        if ($company && $company->name) {
+            $description .= " at {$company->name}";
+        }
+        
+        if ($location) {
+            $locationName = $location->district ?? $location->country ?? '';
+            if ($locationName) {
+                $description .= " in {$locationName}";
+            }
+        }
+        
+        $description .= ". ";
+        
+        // Add key benefits/highlights
+        $highlights = [];
+        
+        if (!empty($validated['salary_amount'])) {
+            $salary = number_format($validated['salary_amount']);
+            $currency = $validated['currency'] ?? 'UGX';
+            $period = $validated['payment_period'] ?? 'monthly';
+            $periodMap = ['hourly' => 'hour', 'daily' => 'day', 'weekly' => 'week', 'monthly' => 'month', 'yearly' => 'year'];
+            $highlights[] = "{$currency} {$salary} per {$periodMap[$period]}";
+        }
+        
+        if (!empty($validated['employment_type'])) {
+            $typeMap = [
+                'full-time' => 'Full-time position',
+                'part-time' => 'Part-time opportunity',
+                'contract' => 'Contract role',
+                'internship' => 'Internship opportunity',
+                'volunteer' => 'Volunteer position',
+                'temporary' => 'Temporary role'
+            ];
+            $highlights[] = $typeMap[$validated['employment_type']] ?? $validated['employment_type'];
+        }
+        
+        if (!empty($validated['location_type']) && $validated['location_type'] === 'remote') {
+            $highlights[] = 'Work from home';
+        } elseif (!empty($validated['location_type']) && $validated['location_type'] === 'hybrid') {
+            $highlights[] = 'Hybrid work model';
+        }
+        
+        if (!empty($validated['is_urgent'])) {
+            $highlights[] = 'Urgent hiring';
+        }
+        
+        if (!empty($validated['is_featured'])) {
+            $highlights[] = 'Featured job';
+        }
+        
+        if (!empty($validated['experience_level_id'])) {
+            $experience = ExperienceLevel::find($validated['experience_level_id']);
+            if ($experience) {
+                $highlights[] = $experience->name . ' level';
+            }
+        }
+        
+        if (!empty($validated['education_level_id'])) {
+            $education = EducationLevel::find($validated['education_level_id']);
+            if ($education) {
+                $highlights[] = $education->name . ' required';
+            }
+        }
+        
+        if (!empty($highlights)) {
+            $description .= implode(' • ', $highlights) . ". ";
+        }
+        
+        // Add application call to action
+        $deadline = !empty($validated['deadline']) ? \Carbon\Carbon::parse($validated['deadline'])->format('M d, Y') : 'soon';
+        $description .= "Apply now before {$deadline}. ";
+        
+        // Add platform name
+        $description .= "Find the best jobs on Stardena Works. ";
+        
+        // Add unique selling point based on job type
+        if (!empty($validated['is_simple_job'])) {
+            $description .= "Quick application process. ";
+        }
+        
+        if (!empty($validated['is_quick_gig'])) {
+            $description .= "Short-term opportunity. ";
+        }
+        
+        // Count words and cut at 200 words without error
+        $words = str_word_count($description, 1);
+        if (count($words) > 200) {
+            // Cut at 200 words
+            $truncated = array_slice($words, 0, 200);
+            $description = implode(' ', $truncated) . '...';
+        }
+        
+        // Also limit to 300 characters as fallback (but word count is primary)
+        return Str::limit($description, 300);
     }
 
     /**
@@ -411,103 +521,6 @@ class JobPostController extends Controller
         return Str::limit($metaTitle, 60);
     }
 
-    /**
-     * Generate dynamic SEO-optimized meta description
-     */
-    private function generateDynamicMetaDescription(array $validated, $company, $location): string
-    {
-        $description = '';
-        
-        // Start with job title and company
-        $description .= "{$validated['job_title']} position";
-        
-        if ($company && $company->name) {
-            $description .= " at {$company->name}";
-        }
-        
-        if ($location) {
-            $locationName = $location->district ?? $location->country ?? '';
-            if ($locationName) {
-                $description .= " in {$locationName}";
-            }
-        }
-        
-        $description .= ". ";
-        
-        // Add key benefits/highlights
-        $highlights = [];
-        
-        if (!empty($validated['salary_amount'])) {
-            $salary = number_format($validated['salary_amount']);
-            $currency = $validated['currency'] ?? 'UGX';
-            $period = $validated['payment_period'] ?? 'monthly';
-            $periodMap = ['hourly' => 'hour', 'daily' => 'day', 'weekly' => 'week', 'monthly' => 'month', 'yearly' => 'year'];
-            $highlights[] = "{$currency} {$salary} per {$periodMap[$period]}";
-        }
-        
-        if (!empty($validated['employment_type'])) {
-            $typeMap = [
-                'full-time' => 'Full-time position',
-                'part-time' => 'Part-time opportunity',
-                'contract' => 'Contract role',
-                'internship' => 'Internship opportunity',
-                'volunteer' => 'Volunteer position',
-                'temporary' => 'Temporary role'
-            ];
-            $highlights[] = $typeMap[$validated['employment_type']] ?? $validated['employment_type'];
-        }
-        
-        if (!empty($validated['location_type']) && $validated['location_type'] === 'remote') {
-            $highlights[] = 'Work from home';
-        } elseif (!empty($validated['location_type']) && $validated['location_type'] === 'hybrid') {
-            $highlights[] = 'Hybrid work model';
-        }
-        
-        if (!empty($validated['is_urgent'])) {
-            $highlights[] = 'Urgent hiring';
-        }
-        
-        if (!empty($validated['is_featured'])) {
-            $highlights[] = 'Featured job';
-        }
-        
-        if (!empty($validated['experience_level_id'])) {
-            $experience = ExperienceLevel::find($validated['experience_level_id']);
-            if ($experience) {
-                $highlights[] = $experience->name . ' level';
-            }
-        }
-        
-        if (!empty($validated['education_level_id'])) {
-            $education = EducationLevel::find($validated['education_level_id']);
-            if ($education) {
-                $highlights[] = $education->name . ' required';
-            }
-        }
-        
-        if (!empty($highlights)) {
-            $description .= implode(' • ', $highlights) . ". ";
-        }
-        
-        // Add application call to action
-        $deadline = !empty($validated['deadline']) ? \Carbon\Carbon::parse($validated['deadline'])->format('M d, Y') : 'soon';
-        $description .= "Apply now before {$deadline}. ";
-        
-        // Add platform name
-        $description .= "Find the best jobs on Stardena Works. ";
-        
-        // Add unique selling point based on job type
-        if (!empty($validated['is_simple_job'])) {
-            $description .= "Quick application process. ";
-        }
-        
-        if (!empty($validated['is_quick_gig'])) {
-            $description .= "Short-term opportunity. ";
-        }
-        
-        // ✅ Limit to 200 characters (not 160)
-        return Str::limit($description, 200);
-    }
 
     /**
      * Generate dynamic SEO keywords
