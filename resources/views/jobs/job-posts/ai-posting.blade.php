@@ -102,7 +102,12 @@
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Location <span class="text-danger">*</span></label>
                     <div class="position-relative">
-                        <input type="text" id="f_location_input" class="form-control" placeholder="Type to search..." autocomplete="off">
+                        <div class="input-group">
+                            <input type="text" id="f_location_input" class="form-control" placeholder="Type to search..." autocomplete="off">
+                            <button class="btn btn-outline-primary" type="button" onclick="openQuickLocationModal('f_location_input', 'f_location_id')" title="Add new location">
+                                <i class="ti ti-plus"></i>
+                            </button>
+                        </div>
                         <input type="hidden" name="job_location_id" id="f_location_id">
                         <ul class="dropdown-menu w-100" id="f_location_list" style="max-height:220px;overflow-y:auto"></ul>
                     </div>
@@ -722,4 +727,5 @@
 
 @include('jobs.job-posts.ai-posting-js')
 @include('jobs.job-posts.quick-company')
+@include('jobs.job-posts.quick-location')
 @endsection

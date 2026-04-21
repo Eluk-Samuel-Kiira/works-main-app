@@ -38,8 +38,19 @@
                             placeholder="Search district or country…" oninput="debounceLoad()">
                     </div>
                     <div class="col-md-2">
-                        <input type="text" id="filterCountry" class="form-control form-control-sm"
-                            placeholder="Country code…" oninput="debounceLoad()">
+                        <select id="filterCountry" class="form-select form-select-sm" onchange="loadItems(1)">
+                            <option value="">All Countries</option>
+                            <option value="UG">Uganda (UG)</option>
+                            <option value="KE">Kenya (KE)</option>
+                            <option value="TZ">Tanzania (TZ)</option>
+                            <option value="NG">Nigeria (NG)</option>
+                            <option value="ZA">South Africa (ZA)</option>
+                            <option value="GH">Ghana (GH)</option>
+                            <option value="RW">Rwanda (RW)</option>
+                            <option value="SS">South Sudan (SS)</option>
+                            <option value="CD">DR Congo (CD)</option>
+                            <option value="ET">Ethiopia (ET)</option>
+                        </select>
                     </div>
                     <div class="col-md-2">
                         <select id="filterStatus" class="form-select form-select-sm" onchange="loadItems(1)">
@@ -123,7 +134,20 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label">Country <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="formCountry" required placeholder="e.g. Uganda">
+                            <select class="form-select" id="formCountry" required>
+                                <option value="">Select Country</option>
+                                <option value="UG">Uganda (UG)</option>
+                                <option value="KE">Kenya (KE)</option>
+                                <option value="TZ">Tanzania (TZ)</option>
+                                <option value="NG">Nigeria (NG)</option>
+                                <option value="ZA">South Africa (ZA)</option>
+                                <option value="GH">Ghana (GH)</option>
+                                <option value="RW">Rwanda (RW)</option>
+                                <option value="SS">South Sudan (SS)</option>
+                                <option value="CD">DR Congo (CD)</option>
+                                <option value="ET">Ethiopia (ET)</option>
+                            </select>
+                            <small class="form-text text-muted">Select the country where this job location is based</small>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">District <span class="text-danger">*</span></label>
