@@ -31,13 +31,17 @@ class VerifyIndexing extends Command
             return $this->verifySingleJob($service, (int) $jobId);
         }
 
-        // Bulk verification mode
+        // Bulk verification mode - only check jobs that need verification
         $jobs = JobPost::where('submitted_to_indexing', true)
             ->where(function ($q) {
                 $q->whereNull('is_indexed')
                   ->orWhere('is_indexed', false);
             })
             ->where('indexing_submitted_at', '>=', now()->subDays($days))
+            ->where(function ($q) {
+                $q->whereNull('last_indexed_check')
+                  ->orWhere('last_indexed_check', '<', now()->subDays(1));
+            })
             ->orderBy('indexing_submitted_at')
             ->limit($limit)
             ->get();
@@ -64,7 +68,6 @@ class VerifyIndexing extends Command
                     $verified++;
                     if ($result['indexed']) {
                         $indexed++;
-                        $job->update(['is_indexed' => true, 'indexed_at' => now()]);
                         $bar->setProgressCharacter('✅');
                     } else {
                         $bar->setProgressCharacter('⏳');
@@ -72,11 +75,12 @@ class VerifyIndexing extends Command
                 } else {
                     $errors++;
                     $bar->setProgressCharacter('❌');
-                    $this->warn("Job #{$job->id}: {$result['error']}");
+                    $this->warn("\nJob #{$job->id}: {$result['message']}");
                 }
             } catch (\Exception $e) {
                 $errors++;
                 $bar->setProgressCharacter('💥');
+                $this->warn("\nJob #{$job->id}: Exception - {$e->getMessage()}");
                 Log::error("Index verification failed for job #{$job->id}: {$e->getMessage()}");
             }
 
@@ -84,7 +88,7 @@ class VerifyIndexing extends Command
             
             // Rate limiting (skip with --force)
             if (!$force) {
-                usleep(1000000); // 1 second between requests
+                usleep(500000); // 0.5 second between requests
             }
         }
 
@@ -112,7 +116,9 @@ class VerifyIndexing extends Command
         ]);
 
         // Email report if configured
-        $this->sendSummaryEmail($verified, $indexed, $errors, $jobs->count());
+        if ($verified > 0) {
+            $this->sendSummaryEmail($verified, $indexed, $errors, $jobs->count());
+        }
 
         $this->info('✨ Verification complete.');
         return self::SUCCESS;
@@ -134,13 +140,13 @@ class VerifyIndexing extends Command
             
             if ($result['success']) {
                 if ($result['indexed']) {
-                    $job->update(['is_indexed' => true, 'indexed_at' => now()]);
                     $this->info('✅ Job is confirmed indexed by Google.');
                 } else {
                     $this->warn('⏳ Job submitted but not yet indexed by Google.');
+                    $this->line("   Verdict: {$result['verdict']}");
                 }
             } else {
-                $this->error("❌ Verification failed: {$result['error']}");
+                $this->error("❌ Verification failed: {$result['message']}");
                 return self::FAILURE;
             }
         } catch (\Exception $e) {
@@ -163,7 +169,6 @@ class VerifyIndexing extends Command
 
         $subject = "🔍 Index Verification Report — {$indexed}/{$verified} indexed";
         
-        // Simple text email (upgrade to Mailable class if needed)
         $body = "Indexing Verification Summary\n";
         $body .= str_repeat('-', 40) . "\n";
         $body .= "Time: " . now()->format('Y-m-d H:i:s T') . "\n";
