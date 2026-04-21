@@ -27,7 +27,7 @@ class JobPostRequest extends FormRequest
             'skills'                => 'nullable|string',
             'qualifications'        => 'nullable|string',
             'deadline'              => "{$required}|date|after_or_equal:today",
-            'application_procedure' => 'nullable|string|max:255',
+            'application_procedure' => 'nullable|string|max:400',
             'email'                 => 'nullable|email|max:255',
             'telephone'             => 'nullable|string|max:50',
 
@@ -70,7 +70,7 @@ class JobPostRequest extends FormRequest
             // SEO
             // ----------------------------------------------------------------
             'meta_title'       => 'nullable|string|max:100',
-            'meta_description' => 'nullable|string|max:200',
+            'meta_description' => 'nullable|string|max:400',
             'keywords'         => 'nullable|string',
             'canonical_url'    => 'nullable|url|max:255',
             'focus_keyphrase'  => 'nullable|string',
