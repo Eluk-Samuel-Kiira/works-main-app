@@ -11,12 +11,12 @@ use Illuminate\Support\Facades\{ Log, Http, DB, Mail  };
 class JobsController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Display a listing of the resource (FRONTEND)
      */
     public function index(Request $request)
     {
         try {
-            // Start query with relationships
+            // Start query with relationships - ONLY show published jobs
             $query = JobPost::with([
                 'company',
                 'jobCategory',
@@ -29,7 +29,9 @@ class JobsController extends Controller
                 'poster'
             ])
             ->where('is_active', true)
-            ->latest();
+            ->whereNotNull('published_at')  // ← ONLY show jobs that have been published
+            ->where('published_at', '<=', now())  // ← Only show jobs published at or before now
+            ->latest('published_at');  // ← Order by published_at (newest first)
             
             // Apply keyword search if provided
             if ($request->has('keyword') && !empty($request->keyword)) {
@@ -43,7 +45,7 @@ class JobsController extends Controller
                     ->orWhere('responsibilities', 'LIKE', "%{$keyword}%")
                     ->orWhereHas('company', function($q) use ($keyword) {
                         $q->where('name', 'LIKE', "%{$keyword}%")
-                            ->orWhere('slug', 'LIKE', "%{$keyword}%"); // ← add slug search
+                            ->orWhere('slug', 'LIKE', "%{$keyword}%");
                     })
                     ->orWhereHas('jobLocation', function($q) use ($keyword) {
                         $q->where('country', 'LIKE', "%{$keyword}%")
@@ -61,14 +63,13 @@ class JobsController extends Controller
             // Apply location search if provided
             if ($request->has('location') && !empty($request->location)) {
                 $location = $request->location;
-                // Log::info('Searching for location: ' . $location);
                 
                 $query->where(function($q) use ($location) {
                     $q->where('duty_station', 'LIKE', "%{$location}%")
-                      ->orWhereHas('jobLocation', function($locationQuery) use ($location) {
-                          $locationQuery->where('country', 'LIKE', "%{$location}%")
-                                       ->orWhere('district', 'LIKE', "%{$location}%");
-                      });
+                    ->orWhereHas('jobLocation', function($locationQuery) use ($location) {
+                        $locationQuery->where('country', 'LIKE', "%{$location}%")
+                                    ->orWhere('district', 'LIKE', "%{$location}%");
+                    });
                 });
             }
 
@@ -76,7 +77,7 @@ class JobsController extends Controller
             if ($request->has('sort')) {
                 switch ($request->sort) {
                     case 'oldest':
-                        $query->orderBy('created_at', 'asc');
+                        $query->orderBy('published_at', 'asc');
                         break;
                     case 'salary_high':
                         $query->orderBy('salary_amount', 'desc');
@@ -85,17 +86,17 @@ class JobsController extends Controller
                         $query->orderBy('salary_amount', 'asc');
                         break;
                     default:
-                        $query->orderBy('created_at', 'desc');
+                        $query->orderBy('published_at', 'desc');
                 }
             } else {
-                $query->orderBy('created_at', 'desc');
+                $query->orderBy('published_at', 'desc');
             }
 
             // Filter by category slug
             if ($request->has('category') && !empty($request->category)) {
                 $query->whereHas('jobCategory', function ($q) use ($request) {
                     $q->where('slug', $request->category)
-                    ->orWhere('id', $request->category); // fallback for id-based links
+                    ->orWhere('id', $request->category);
                 });
             }
 
@@ -138,8 +139,8 @@ class JobsController extends Controller
             // Paginate results
             $jobs = $query->paginate(20);
             
-            // Log::info('Jobs fetched successfully: ' . $jobs->total() . ' total, showing ' . $jobs->count());
             $total = $jobs->total();
+            
             // Transform the data to include formatted fields
             $jobs->getCollection()->transform(function ($job) {
                 return $this->formatJobData($job);

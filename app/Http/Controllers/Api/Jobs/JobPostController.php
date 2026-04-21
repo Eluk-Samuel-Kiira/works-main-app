@@ -17,7 +17,7 @@ class JobPostController extends Controller
     use ApiResponse;
 
     /**
-     * GET /api/v1/job-posts
+     * GET /api/v1/job-posts (BACKEND/ADMIN - shows ALL jobs)
      */
     public function index(Request $request): JsonResponse
     {
@@ -31,8 +31,6 @@ class JobPostController extends Controller
             'company_id', 'job_location_id', 'job_category_id',
             'industry_id', 'job_type_id', 'poster_id',
         ])
-        ->whereNotNull('published_at')
-        ->where('published_at', '<=', now())
         ->with([
             'company:id,name,logo',
             'jobLocation:id,district,country',
@@ -40,7 +38,7 @@ class JobPostController extends Controller
             'industry:id,name',
             'jobType:id,name',
             'poster:id,first_name,last_name,email',
-        ])->latest('published_at');
+        ])->latest();  // ← Order by created_at, not published_at
 
         if ($request->filled('search')) {
             $query->where('job_title', 'like', "%{$request->search}%");
@@ -73,7 +71,7 @@ class JobPostController extends Controller
         $sortBy = in_array($request->sort_by, [
             'published_at', 'deadline', 'salary_amount',
             'seo_score', 'view_count', 'created_at',
-        ]) ? $request->sort_by : 'published_at';
+        ]) ? $request->sort_by : 'created_at';  // ← Default to created_at
 
         $query->orderBy($sortBy, $request->sort_dir === 'asc' ? 'asc' : 'desc');
 
