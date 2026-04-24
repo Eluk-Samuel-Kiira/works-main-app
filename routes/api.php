@@ -180,3 +180,54 @@ Route::post('/v1/seo/bulk-index', function (Request $request) {
     $result = app(GoogleIndexingService::class)->submitBatch($jobIds);
     return response()->json(['data' => $result]);
 });
+
+
+
+// ============================================================
+// ADD TO routes/api.php — inside your existing auth middleware group
+// ============================================================
+ 
+use App\Http\Controllers\Api\Blog\{ BlogController, BlogSeoController, BlogImageController };
+ 
+// ── Blog CRUD ────────────────────────────────────────────────────────────────
+Route::prefix('v1/blogs')->name('api.v1.blogs.')->group(function () {
+    Route::get('/',                    [BlogController::class, 'index']);
+    Route::get('/public',              [BlogController::class, 'publicIndex']);       // no auth, used by frontend
+    Route::get('/categories',          [BlogController::class, 'categories']);
+    Route::get('/related/{slug}',      [BlogController::class, 'related']);
+    Route::get('/{slug}',              [BlogController::class, 'show']);
+ 
+    // Protected
+    // Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/',               [BlogController::class, 'store']);
+        Route::patch('/{slug}',        [BlogController::class, 'update']);
+        Route::delete('/{slug}',       [BlogController::class, 'destroy']);
+        Route::patch('/{slug}/publish',   [BlogController::class, 'publish']);
+        Route::patch('/{slug}/unpublish', [BlogController::class, 'unpublish']);
+        Route::patch('/{slug}/feature',   [BlogController::class, 'feature']);
+    // });
+ 
+    // Public increment routes
+    Route::post('/{slug}/increment-view',  [BlogController::class, 'incrementView']);
+    Route::post('/{blog}/increment-share', [BlogController::class, 'incrementShare']);
+});
+ 
+// ── Blog SEO / Ping / Indexing ────────────────────────────────────────────────
+Route::prefix('v1/blog-seo')->name('api.v1.blog-seo.')->group(function () {
+    Route::get('/ping-stats',           [BlogSeoController::class, 'pingStats']);
+    Route::get('/indexing-stats',       [BlogSeoController::class, 'indexingStats']);
+    Route::post('/ping-blog/{slug}',    [BlogSeoController::class, 'pingBlog']);
+    Route::post('/index-blog/{slug}',   [BlogSeoController::class, 'indexBlog']);
+    Route::post('/bulk-ping',           [BlogSeoController::class, 'bulkPing']);
+    Route::post('/bulk-index',          [BlogSeoController::class, 'bulkIndex']);
+});
+
+// Blog image uploads
+Route::prefix('v1/blog-images')->group(function () {
+    Route::post('/upload', [BlogImageController::class, 'upload']);
+    Route::post('/cover', [BlogImageController::class, 'uploadCover']);
+});
+Route::post('/v1/upload-image', [BlogImageController::class, 'uploadEditorImage']);
+
+Route::get('/v1/blogs/categories/list', [BlogController::class, 'categoriesList']);
+Route::get('/v1/blogs/tags/list', [BlogController::class, 'tagsList']);

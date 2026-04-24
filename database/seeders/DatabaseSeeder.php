@@ -33,6 +33,7 @@ class DatabaseSeeder extends Seeder
             TransactionSeeder::class,
 
             JobPostSeeder::class,
+            BlogSeeder::class,
 
             // API System (run last)
             // ApiCredentialsSeeder::class,

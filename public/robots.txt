@@ -1,7 +1,9 @@
 User-agent: *
 Allow: /
+Allow: /blog/
 Disallow: /api/
 Disallow: /admin/
 Disallow: /dashboard/
 
 Sitemap: http://127.0.0.1:8001/sitemap.xml
+Sitemap: http://127.0.0.1:8001/blog-sitemap.xml

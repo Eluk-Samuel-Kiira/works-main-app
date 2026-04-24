@@ -28,6 +28,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/whatsapp-docs', function () {
         return view('home.whatsapp-docs.index');
     })->name('whatsapp-docs');
+    Route::get('/blogs',[DashboardController::class, 'blogs'])->name('blogs.index');
+    Route::get('/create-blog',[DashboardController::class, 'createBlog'])->name('blogs.create');
+    Route::get('blog/edit/{id}', [DashboardController::class, 'editBlog'])->name('blogs.edit');
 });
 
 Route::middleware(['auth'])->prefix('admin')->group(function () {
@@ -54,6 +57,10 @@ Route::get('/clear-cache-temp', function () {
     Artisan::call('optimize:clear');
     return 'Done';
 });
+
+
+
+
 
 
 // Fallback Route (404)

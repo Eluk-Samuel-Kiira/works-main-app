@@ -94,6 +94,37 @@
                         </li>
                     </ul>
                 </li>
+                
+                <li class="nav-small-cap">
+                    <iconify-icon icon="solar:menu-dots-bold" class="nav-small-cap-icon fs-4"></iconify-icon>
+                    <span class="hide-menu">{{__('Blog Posting')}}</span>
+                </li>
+                <li class="sidebar-item">
+                    <a class="sidebar-link has-arrow" href="javascript:void(0)" aria-expanded="false">
+                        <iconify-icon icon="solar:document-text-linear" class="aside-icon"></iconify-icon>
+                        <span class="hide-menu">{{__('Blog Posts')}}</span>
+                    </a>
+                    <ul aria-expanded="false" class="collapse first-level">
+                        <li class="sidebar-item">
+                            <a href="{{ route('blogs.index') }}" class="sidebar-link sublink">
+                                <div class="round-16 d-flex align-items-center justify-content-center">
+                                <iconify-icon icon="solar:document-text-linear"></iconify-icon>
+                                </div>
+                                <span class="hide-menu">{{__('Articles')}}</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a href="{{ route('blogs.create') }}" class="sidebar-link sublink">
+                                <div class="round-16 d-flex align-items-center justify-content-center">
+                                <iconify-icon icon="solar:pen-new-square-linear"></iconify-icon>
+                                </div>
+                                <span class="hide-menu">{{__('New Blog')}}</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                
+
 
                 <li class="nav-small-cap">
                     <iconify-icon icon="solar:menu-dots-bold" class="nav-small-cap-icon fs-4"></iconify-icon>
@@ -131,7 +162,6 @@
                         </li>
                     </ul>
                 </li>
-
                 
                 <li class="sidebar-item">
                     <a class="sidebar-link" href="{{ route('social-media') }}">
