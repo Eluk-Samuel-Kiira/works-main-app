@@ -19,12 +19,6 @@
 |--------------------------------------------------------------------------
 --}}
 
-{{-- ============================================================
-     BLADE COMPONENT FILE: resources/views/components/rich-editor.blade.php
-     Include like: <x-rich-editor id="descEditor" name="job_description" />
-     Or use the raw include below directly.
-============================================================ --}}
-
 @props([
     'id'          => 'richEditor',
     'name'        => 'content',
@@ -64,10 +58,17 @@
 
         <div class="re-sep"></div>
 
-        {{-- Headings --}}
-        <button type="button" class="re-btn re-btn-text" onclick="reFmt('{{ $id }}','formatBlock','h2')" title="Heading 2">H2</button>
-        <button type="button" class="re-btn re-btn-text" onclick="reFmt('{{ $id }}','formatBlock','h3')" title="Heading 3">H3</button>
-        <button type="button" class="re-btn re-btn-text" onclick="reFmt('{{ $id }}','formatBlock','p')"  title="Paragraph">P</button>
+        {{-- Headings (Full H1-H6) --}}
+        <select class="re-select" onchange="reFmt('{{ $id }}','formatBlock',this.value)" title="Heading">
+            <option value="">Heading</option>
+            <option value="h1">H1</option>
+            <option value="h2">H2</option>
+            <option value="h3">H3</option>
+            <option value="h4">H4</option>
+            <option value="h5">H5</option>
+            <option value="h6">H6</option>
+            <option value="p">Paragraph</option>
+        </select>
 
         <div class="re-sep"></div>
 
@@ -100,9 +101,15 @@
 
         <div class="re-sep"></div>
 
-        {{-- Link --}}
+        {{-- Link, Image, Video --}}
         <button type="button" class="re-btn" onclick="reInsertLink('{{ $id }}')" title="Insert link">
             <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        </button>
+        <button type="button" class="re-btn" onclick="reInsertImage('{{ $id }}')" title="Insert image">
+            <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="2.5"/><path d="M21 15l-5-5-6 6-3-3-5 5"/></svg>
+        </button>
+        <button type="button" class="re-btn" onclick="reInsertVideo('{{ $id }}')" title="Insert video">
+            <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><polygon points="9 8 15 12 9 16 9 8"/></svg>
         </button>
 
         <div class="re-sep"></div>
@@ -203,8 +210,12 @@
 .rich-editor-body ul { list-style-type: disc !important; padding-left: 1.5em !important; margin: 0.5em 0; }
 .rich-editor-body ol { list-style-type: decimal !important; padding-left: 1.5em !important; margin: 0.5em 0; }
 .rich-editor-body li { display: list-item !important; }
-.rich-editor-body h2 { font-size: 1.3em; font-weight: 600; margin: 0.5em 0; }
-.rich-editor-body h3 { font-size: 1.1em; font-weight: 600; margin: 0.5em 0; }
+.rich-editor-body h1 { font-size: 2em; font-weight: 600; margin: 0.67em 0; }
+.rich-editor-body h2 { font-size: 1.5em; font-weight: 600; margin: 0.75em 0; }
+.rich-editor-body h3 { font-size: 1.17em; font-weight: 600; margin: 0.83em 0; }
+.rich-editor-body h4 { font-size: 1em; font-weight: 600; margin: 1em 0; }
+.rich-editor-body h5 { font-size: 0.83em; font-weight: 600; margin: 1.5em 0; }
+.rich-editor-body h6 { font-size: 0.67em; font-weight: 600; margin: 1.67em 0; }
 </style>
 @endpush
 
@@ -227,7 +238,6 @@ function reInsertList(id, ordered) {
 
     const sel = window.getSelection();
     if (!sel || !sel.rangeCount) {
-        // No selection — wrap any existing plain text
         document.execCommand(ordered ? 'insertOrderedList' : 'insertUnorderedList', false, null);
         richEditorSync(id);
         return;
@@ -237,11 +247,9 @@ function reInsertList(id, ordered) {
     const ancestor = range.commonAncestorContainer;
     const listTag  = ordered ? 'OL' : 'UL';
 
-    // Check if already in a list of same type — toggle off
     let listParent = ancestor.nodeType === 3 ? ancestor.parentNode : ancestor;
     while (listParent && listParent !== el) {
         if (listParent.tagName === listTag) {
-            // Already in list — unwrap
             document.execCommand(ordered ? 'insertOrderedList' : 'insertUnorderedList', false, null);
             richEditorSync(id);
             return;
@@ -249,7 +257,6 @@ function reInsertList(id, ordered) {
         listParent = listParent.parentNode;
     }
 
-    // Insert new list
     document.execCommand(ordered ? 'insertOrderedList' : 'insertUnorderedList', false, null);
     richEditorSync(id);
 }
@@ -269,6 +276,87 @@ function reInsertLink(id) {
         document.execCommand('insertHTML', false,
             `<a href="${url}" target="_blank" rel="noopener">${url}</a>`);
     }
+    richEditorSync(id);
+}
+
+// ── Image insertion with file picker ──
+function reInsertImage(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    
+    input.onchange = async function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        try {
+            const response = await fetch('/api/v1/upload-image', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
+                },
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success && result.url) {
+                el.focus();
+                const imgHtml = `<img src="${result.url}" alt="${file.name}" style="max-width:100%; border-radius:8px; margin:10px 0;">`;
+                document.execCommand('insertHTML', false, imgHtml);
+                if (typeof showToast === 'function') showToast('success', 'Image uploaded successfully!');
+            } else {
+                throw new Error(result.message || 'Upload failed');
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            if (typeof showToast === 'function') showToast('error', 'Image upload failed');
+        }
+        
+        richEditorSync(id);
+    };
+    
+    input.click();
+}
+
+// ── Video insertion ──
+function reInsertVideo(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    
+    const url = prompt('Enter video URL (YouTube, Vimeo, or direct MP4):', 'https://www.youtube.com/watch?v=...');
+    if (!url) return;
+    
+    el.focus();
+    
+    let videoHtml = '';
+    
+    if (url.includes('youtube.com/watch') || url.includes('youtu.be/')) {
+        let videoId = '';
+        if (url.includes('youtu.be/')) {
+            videoId = url.split('youtu.be/')[1].split('?')[0];
+        } else if (url.includes('watch?v=')) {
+            videoId = url.split('watch?v=')[1].split('&')[0];
+        }
+        if (videoId) {
+            videoHtml = `<div style="position:relative;padding-bottom:56.25%;height:0;margin:10px 0;"><iframe src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:8px;"></iframe></div>`;
+        }
+    } else if (url.includes('vimeo.com/')) {
+        const videoId = url.split('vimeo.com/')[1].split('?')[0];
+        videoHtml = `<div style="position:relative;padding-bottom:56.25%;height:0;margin:10px 0;"><iframe src="https://player.vimeo.com/video/${videoId}" frameborder="0" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:8px;"></iframe></div>`;
+    } else if (url.match(/\.(mp4|webm|ogg)$/i)) {
+        videoHtml = `<video controls style="width:100%; border-radius:8px; margin:10px 0;"><source src="${url}" type="video/mp4">Your browser does not support the video tag.</video>`;
+    } else {
+        videoHtml = `<a href="${url}" target="_blank" rel="noopener">${url}</a>`;
+    }
+    
+    document.execCommand('insertHTML', false, videoHtml);
     richEditorSync(id);
 }
 
@@ -299,7 +387,7 @@ function richEditorClear(id) {
     document.getElementById(id)?.focus();
 }
 
-// ── Keyboard shortcuts (active only when editor focused) ──
+// ── Keyboard shortcuts ──
 document.addEventListener('keydown', e => {
     const active = document.activeElement;
     if (!active || active.getAttribute('contenteditable') !== 'true') return;

@@ -36,6 +36,22 @@ class DashboardController extends Controller
         return view('home.whatsapp-docs.index');
     }
 
+    public function blogs()
+    {
+        return view('blog.index');
+    }
+
+    public function createBlog()
+    {
+        return view('blog.create');
+    }
+
+    public function editBlog($id)
+    {
+        \Log::info('it is here sir');
+        return view('blog.edit', ['blogId' => $id]);
+    }
+
     /**
      * Get job counts by category for filter dropdown
      */
