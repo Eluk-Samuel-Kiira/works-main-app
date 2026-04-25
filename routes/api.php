@@ -192,7 +192,7 @@ use App\Http\Controllers\Api\Blog\{ BlogController, BlogSeoController, BlogImage
 // ── Blog CRUD ────────────────────────────────────────────────────────────────
 Route::prefix('v1/blogs')->name('api.v1.blogs.')->group(function () {
     Route::get('/',                    [BlogController::class, 'index']);
-    Route::get('/public',              [BlogController::class, 'publicIndex']);       // no auth, used by frontend
+    Route::get('/public',              [BlogController::class, 'publicIndex']);       
     Route::get('/categories',          [BlogController::class, 'categories']);
     Route::get('/related/{slug}',      [BlogController::class, 'related']);
     Route::get('/{slug}',              [BlogController::class, 'show']);

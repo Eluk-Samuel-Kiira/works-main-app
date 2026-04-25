@@ -54,10 +54,6 @@ Schedule::call(function () {
         ->update(['deleted_at' => now()]);
 })->dailyAt('03:00')->name('soft-delete-old-jobs');
 
-// ── Cleanup temporary images ──────────────────────────────────────────────────
-Schedule::call(function () {
-    \App\Helpers\ImageHelper::cleanupTempImages();
-})->daily();
 
 // ── Force delete old jobs ─────────────────────────────────────────────────────
 Schedule::call(function () {

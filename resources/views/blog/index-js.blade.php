@@ -63,7 +63,6 @@ async function apiFetch(url, options = {}) {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
             'X-CSRF-TOKEN': CSRF_TOKEN,
-            'X-Admin-Panel': 'true',
             ...(options.headers ?? {}),
         },
     });
