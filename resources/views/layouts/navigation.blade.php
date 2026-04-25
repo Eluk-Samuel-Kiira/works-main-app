@@ -110,7 +110,7 @@
                                 <div class="round-16 d-flex align-items-center justify-content-center">
                                 <iconify-icon icon="solar:document-text-linear"></iconify-icon>
                                 </div>
-                                <span class="hide-menu">{{__('Articles')}}</span>
+                                <span class="hide-menu">{{__('Blogs')}}</span>
                             </a>
                         </li>
                         <li class="sidebar-item">

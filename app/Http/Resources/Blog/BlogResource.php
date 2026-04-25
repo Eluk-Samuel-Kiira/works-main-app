@@ -9,18 +9,13 @@ class BlogResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        // Check if this is admin panel (index) or single view
-        $includeContent = $request->routeIs('*.show') || 
-                          $request->get('with_content') === 'true' ||
-                          // Also include content for admin edit view (you can add a custom header)
-                          $request->header('X-Admin-Panel') === 'true';
 
         return [
             'id'                      => $this->id,
             'title'                   => $this->title,
             'slug'                    => $this->slug,
             'excerpt'                 => $this->excerpt_or_auto,
-            'content'                 => $this->when($includeContent, $this->content),
+            'content'                 => $this->content,
             'cover_image'             => $this->cover_image,
             'cover_image_alt'         => $this->cover_image_alt,
             'cover_image_caption'     => $this->cover_image_caption,

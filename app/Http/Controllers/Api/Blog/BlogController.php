@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\{ Auth, DB, Storage };
 class BlogController extends Controller
 {
 
+    // ── GET /api/v1/blogs ─────────────────────────────────────────────────────
     public function index(Request $request): JsonResponse
     {
         $query = Blog::with('author')
@@ -57,42 +58,6 @@ class BlogController extends Controller
         ]);
     }
 
-    // ── GET /api/v1/blogs/public ─────────────────────────────────────────────
-    public function publicIndex(Request $request): JsonResponse
-    {
-        $query = Blog::with('author')
-            ->published()
-            ->when($request->category, fn($q, $c) => $q->where('category', $c))
-            ->when($request->search, fn($q, $s) =>
-                $q->where('title', 'like', "%{$s}%")
-                  ->orWhere('excerpt', 'like', "%{$s}%"))
-            ->when($request->tag, fn($q, $tag) =>
-                $q->whereJsonContains('tags', $tag))
-            ->when($request->filled('featured'), fn($q) => $q->featured());
-
-        $blogs = $query->orderByDesc('published_at')
-                       ->paginate($request->per_page ?? 12);
-
-        return response()->json([
-            'data' => BlogResource::collection($blogs->items()),
-            'meta' => [
-                'current_page' => $blogs->currentPage(),
-                'last_page'    => $blogs->lastPage(),
-                'per_page'     => $blogs->perPage(),
-                'total'        => $blogs->total(),
-                'from'         => $blogs->firstItem(),
-                'to'           => $blogs->lastItem(),
-            ],
-        ]);
-    }
-
-    // ── GET /api/v1/blogs/{slug} ─────────────────────────────────────────────
-    public function show(string $slug): JsonResponse
-    {
-        $blog = Blog::with('author')->where('slug', $slug)->firstOrFail();
-        return response()->json(['data' => new BlogResource($blog)]);
-    }
-
     // ── POST /api/v1/blogs ───────────────────────────────────────────────────
     public function store(BlogRequest $request): JsonResponse
     {
@@ -110,16 +75,63 @@ class BlogController extends Controller
             $data['updated_by'] = auth()->id();
 
             // Handle tags (convert string to array if needed)
-            if (isset($data['tags']) && is_string($data['tags'])) {
-                $data['tags'] = array_map('trim', explode(',', $data['tags']));
+            if (isset($data['tags'])) {
+                if (is_string($data['tags'])) {
+                    // Try to decode if it's JSON
+                    $decoded = json_decode($data['tags'], true);
+                    if (is_array($decoded)) {
+                        $data['tags'] = $decoded;
+                    } else {
+                        // Split by comma and clean
+                        $data['tags'] = array_map('trim', explode(',', $data['tags']));
+                    }
+                }
+                
+                // Clean each tag - remove quotes, slashes, and empty values
+                if (is_array($data['tags'])) {
+                    $data['tags'] = array_filter(array_map(function($tag) {
+                        // Remove surrounding quotes if any
+                        $tag = trim($tag, '"\'');
+                        // Remove escaped slashes
+                        $tag = stripslashes($tag);
+                        // Remove any remaining JSON artifacts
+                        $tag = preg_replace('/[\[\]"]/', '', $tag);
+                        // Clean and trim
+                        $tag = trim($tag);
+                        // Convert spaces to hyphens
+                        $tag = str_replace(' ', '-', $tag);
+                        return !empty($tag) ? $tag : null;
+                    }, $data['tags']));
+                    
+                    // Re-index array
+                    $data['tags'] = array_values($data['tags']);
+                }
             }
 
-            // Process cover image if it's a base64 or temporary file
+            // Auto-generate meta fields if empty
+            if (empty($data['meta_title']) && !empty($data['title'])) {
+                $data['meta_title'] = $this->generateMetaTitle($data['title']);
+            }
+            
+            if (empty($data['meta_description'])) {
+                $data['meta_description'] = $this->generateMetaDescription($data);
+            }
+            
+            if (empty($data['keywords']) && !empty($data['tags'])) {
+                $data['keywords'] = implode(', ', $data['tags']);
+            }
+            
+            // Ensure meta_description is truncated to 200 chars
+            if (!empty($data['meta_description'])) {
+                $data['meta_description'] = $this->truncateTo200($data['meta_description']);
+            }
+
+            // Process cover image
             if (isset($data['cover_image']) && !empty($data['cover_image'])) {
                 $data['cover_image'] = $this->processCoverImage($data['cover_image']);
             }
 
-            // Process content images (replace temporary URLs with permanent ones)
+            // Process content images
             if (isset($data['content']) && !empty($data['content'])) {
                 $data['content'] = $this->processContentImages($data['content']);
             }
@@ -141,7 +153,6 @@ class BlogController extends Controller
             DB::rollBack();
             return response()->json([
                 'message' => 'Failed to create blog: ' . $e->getMessage(),
-                'trace' => $e->getTraceAsString()
             ], 500);
         }
     }
@@ -157,9 +168,59 @@ class BlogController extends Controller
             
             $data['updated_by'] = auth()->id();
 
-            // Handle tags (convert string to array if needed)
-            if (isset($data['tags']) && is_string($data['tags'])) {
-                $data['tags'] = array_map('trim', explode(',', $data['tags']));
+            // Handle tags (convert string to array and clean)
+            if (isset($data['tags'])) {
+                if (is_string($data['tags'])) {
+                    // Try to decode if it's JSON
+                    $decoded = json_decode($data['tags'], true);
+                    if (is_array($decoded)) {
+                        $data['tags'] = $decoded;
+                    } else {
+                        // Split by comma and clean
+                        $data['tags'] = array_map('trim', explode(',', $data['tags']));
+                    }
+                }
+                
+                // Clean each tag - remove quotes, slashes, and empty values
+                if (is_array($data['tags'])) {
+                    $data['tags'] = array_filter(array_map(function($tag) {
+                        // Remove surrounding quotes if any
+                        $tag = trim($tag, '"\'');
+                        // Remove escaped slashes
+                        $tag = stripslashes($tag);
+                        // Remove any remaining JSON artifacts
+                        $tag = preg_replace('/[\[\]"]/', '', $tag);
+                        // Clean and trim
+                        $tag = trim($tag);
+                        // Convert spaces to hyphens
+                        $tag = str_replace(' ', '-', $tag);
+                        return !empty($tag) ? $tag : null;
+                    }, $data['tags']));
+                    
+                    // Re-index array
+                    $data['tags'] = array_values($data['tags']);
+                }
+            }
+
+            // Auto-generate meta fields if empty and relevant data exists
+            if (empty($data['meta_title']) && !empty($data['title'])) {
+                $data['meta_title'] = $this->generateMetaTitle($data['title']);
+            } elseif (empty($data['meta_title']) && !empty($blog->title)) {
+                $data['meta_title'] = $this->generateMetaTitle($blog->title);
+            }
+            
+            if (empty($data['meta_description'])) {
+                $metaData = [
+                    'title' => $data['title'] ?? $blog->title,
+                    'excerpt' => $data['excerpt'] ?? $blog->excerpt,
+                    'content' => $data['content'] ?? $blog->content,
+                ];
+                $data['meta_description'] = $this->generateMetaDescription($metaData);
+            }
+            
+            // Ensure meta_description is truncated to 200 chars
+            if (!empty($data['meta_description'])) {
+                $data['meta_description'] = $this->truncateTo200($data['meta_description']);
             }
 
             // Process cover image
@@ -196,9 +257,106 @@ class BlogController extends Controller
             DB::rollBack();
             return response()->json([
                 'message' => 'Failed to update blog: ' . $e->getMessage(),
-                'trace' => $e->getTraceAsString()
             ], 500);
         }
+    }
+
+    // ── GET /api/v1/blogs/public ─────────────────────────────────────────────
+    public function publicIndex(Request $request): JsonResponse
+    {
+        $query = Blog::with('author')
+            ->published()
+            ->when($request->category, fn($q, $c) => $q->where('category', $c))
+            ->when($request->search, fn($q, $s) =>
+                $q->where('title', 'like', "%{$s}%")
+                  ->orWhere('excerpt', 'like', "%{$s}%"))
+            ->when($request->tag, fn($q, $tag) =>
+                $q->whereJsonContains('tags', $tag))
+            ->when($request->filled('featured'), fn($q) => $q->featured());
+
+        $blogs = $query->orderByDesc('published_at')
+                       ->paginate($request->per_page ?? 12);
+
+        return response()->json([
+            'data' => BlogResource::collection($blogs->items()),
+            'meta' => [
+                'current_page' => $blogs->currentPage(),
+                'last_page'    => $blogs->lastPage(),
+                'per_page'     => $blogs->perPage(),
+                'total'        => $blogs->total(),
+                'from'         => $blogs->firstItem(),
+                'to'           => $blogs->lastItem(),
+            ],
+        ]);
+    }
+
+    // ── GET /api/v1/blogs/{slug} ─────────────────────────────────────────────
+    public function show(string $slug): JsonResponse
+    {
+        $blog = Blog::with('author')->where('slug', $slug)->firstOrFail();
+        return response()->json(['data' => new BlogResource($blog)]);
+    }
+
+     /**
+     * Generate meta description from excerpt or content (max 200 chars)
+     */
+    private function generateMetaDescription(array $data): string
+    {
+        $text = '';
+        
+        // Use excerpt first
+        if (!empty($data['excerpt'])) {
+            $text = strip_tags($data['excerpt']);
+        } 
+        // Fall back to content
+        elseif (!empty($data['content'])) {
+            $text = strip_tags($data['content']);
+            // Take first ~250 chars before truncation
+            $text = substr($text, 0, 300);
+        }
+        // Fall back to title
+        elseif (!empty($data['title'])) {
+            $text = "Read our latest blog post: " . $data['title'];
+        }
+        
+        if (empty($text)) {
+            return 'Latest blog post from Stardena Works. Get career tips, job search advice, and industry insights.';
+        }
+        
+        return $this->truncateTo200($text);
+    }
+
+    /**
+     * Truncate text to exactly 200 characters, ending at the last full word.
+     */
+    private function truncateTo200(string $text): string
+    {
+        $maxLength = 200;
+        
+        // Strip HTML tags and decode HTML entities
+        $plainText = html_entity_decode(strip_tags($text), ENT_QUOTES, 'UTF-8');
+        
+        // Remove extra whitespace
+        $plainText = preg_replace('/\s+/', ' ', trim($plainText));
+        
+        // If already shorter than or equal to max length, return as is
+        if (mb_strlen($plainText) <= $maxLength) {
+            return $plainText;
+        }
+        
+        // Truncate to max length
+        $truncated = mb_substr($plainText, 0, $maxLength);
+        
+        // Find the last space to cut at a word boundary
+        $lastSpace = mb_strrpos($truncated, ' ');
+        
+        if ($lastSpace !== false && $lastSpace > $maxLength - 30) {
+            // Cut at the last space
+            $truncated = mb_substr($truncated, 0, $lastSpace);
+        }
+        
+        // Add ellipsis
+        return trim($truncated) . '...';
     }
 
     // ── DELETE /api/v1/blogs/{slug} ──────────────────────────────────────────
@@ -402,6 +560,14 @@ class BlogController extends Controller
             ->get()
             ->pluck('tags')
             ->flatten()
+            ->map(function($tag) {
+                // Clean each tag
+                $tag = trim($tag, '"\'');
+                $tag = stripslashes($tag);
+                $tag = preg_replace('/[\[\]"]/', '', $tag);
+                return trim($tag);
+            })
+            ->filter()
             ->unique()
             ->sort()
             ->values();
