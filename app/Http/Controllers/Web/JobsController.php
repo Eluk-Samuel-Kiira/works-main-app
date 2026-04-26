@@ -137,7 +137,7 @@ class JobsController extends Controller
             }
             
             // Paginate results
-            $jobs = $query->paginate(20);
+            $jobs = $query->paginate(18);
             
             $total = $jobs->total();
             
