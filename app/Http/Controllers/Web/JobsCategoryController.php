@@ -19,7 +19,7 @@ class JobsCategoryController extends Controller
                     ->where('is_active', true)
                     ->where('deadline', '>=', now())
             ])
-            ->with('industry:id,name');
+            ->with(['industry:id,name', 'location:id,district,country']);
 
         // Search by name
         if ($request->filled('search')) {
@@ -53,6 +53,10 @@ class JobsCategoryController extends Controller
                 'is_verified' => $c->is_verified,
                 'jobs_count'  => $c->job_posts_count,
                 'industry'    => $c->industry ? ['name' => $c->industry->name] : null,
+                'location'    => $c->location ? [
+                    'district' => $c->location->district,
+                    'country'  => $c->location->country,
+                ] : null,
             ]),
             'total'        => $companies->total(),
             'current_page' => $companies->currentPage(),
@@ -60,6 +64,5 @@ class JobsCategoryController extends Controller
             'per_page'     => $companies->perPage(),
         ]);
     }
-
 
 }
