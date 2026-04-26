@@ -25,7 +25,7 @@ class ArtisanCommandController extends Controller
         'queue:restart'        => 'Restart queue workers',
         'migrate'              => 'Run database migrations',
         'migrate:status'       => 'Show migration status',
-        'db:seed --class=BlogSeeder'              => 'Seed the database',
+        // 'db:seed --class=BlogSeeder'              => 'Seed the database',
         // 'migrate:fresh --seed' => 'Migrate and Seed the database a fresh',
     ];
 
