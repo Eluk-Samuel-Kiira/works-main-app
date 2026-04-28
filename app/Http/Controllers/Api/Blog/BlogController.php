@@ -297,6 +297,27 @@ class BlogController extends Controller
         return response()->json(['data' => new BlogResource($blog)]);
     }
 
+    /**
+     * Generate meta title from blog title
+     */
+    private function generateMetaTitle(string $title): string
+    {
+        // Remove any extra whitespace
+        $title = trim($title);
+        
+        // Truncate to 60 characters (optimal for SEO)
+        if (mb_strlen($title) > 60) {
+            $title = mb_substr($title, 0, 57) . '...';
+        }
+        
+        // Add default suffix if not present
+        if (!str_contains($title, 'Stardena Works')) {
+            $title = $title . ' | Stardena Works';
+        }
+        
+        return $title;
+    }
+
      /**
      * Generate meta description from excerpt or content (max 200 chars)
      */

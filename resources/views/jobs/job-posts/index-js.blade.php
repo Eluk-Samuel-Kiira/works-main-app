@@ -261,6 +261,7 @@
             resume:   job.is_resume_required,
             cover:    job.is_cover_letter_required,
             academic: job.is_academic_documents_required,
+            application: job.is_application_required, 
         };
 
         return `
@@ -393,6 +394,7 @@
                     <li class="mb-1">${req.resume   ? '✅' : '❌'} Resume / CV</li>
                     <li class="mb-1">${req.cover    ? '✅' : '❌'} Cover Letter</li>
                     <li class="mb-1">${req.academic ? '✅' : '❌'} Academic Documents</li>
+                    <li class="mb-1">${req.application ? '✅' : '❌'} Application Letter</li>
                 </ul>
 
                 <h6 class="fw-bold text-uppercase text-muted small mb-3">Contact</h6>
@@ -796,6 +798,11 @@
                             <label class="form-check-label" for="chkAcademic">Academic Documents</label>
                         </div>
                         <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="is_application_required"
+                                id="chkAppLetter" value="1" ${job.is_application_required ? 'checked' : ''}>
+                            <label class="form-check-label" for="chkAppLetter">Application Letter</label>
+                        </div>
+                        <div class="form-check">
                             <input class="form-check-input" type="checkbox" name="is_whatsapp_contact"
                                 id="chkWA" value="1" ${job.is_whatsapp_contact ? 'checked' : ''}>
                             <label class="form-check-label" for="chkWA">WhatsApp Contact</label>
@@ -858,11 +865,20 @@
             }
         }
         
-        // Checkboxes — FormData omits unchecked ones
-        ['is_resume_required','is_cover_letter_required',
-        'is_academic_documents_required','is_whatsapp_contact','is_telephone_call',
-        'is_simple_job','is_quick_gig']
-            .forEach(k => { data[k] = data[k] === '1'; });
+        const checkboxFields = [
+            'is_resume_required',
+            'is_cover_letter_required',
+            'is_academic_documents_required',
+            'is_application_required',
+            'is_whatsapp_contact',
+            'is_telephone_call',
+            'is_simple_job',
+            'is_quick_gig'
+        ];
+        
+        checkboxFields.forEach(k => { 
+            data[k] = data[k] === '1'; 
+        });
 
         document.getElementById('editBtnText').textContent = 'Saving…';
         document.getElementById('editBtnSpinner').classList.remove('d-none');

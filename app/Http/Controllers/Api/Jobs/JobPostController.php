@@ -1033,6 +1033,7 @@ class JobPostController extends Controller
                 'is_resume_required'                => (bool) ($job->is_resume_required               ?? true),
                 'is_cover_letter_required'          => (bool) ($job->is_cover_letter_required          ?? false),
                 'is_academic_documents_required'    => (bool) ($job->is_academic_documents_required    ?? false),
+                'is_application_required'           => (bool) ($job->is_application_required           ?? false),   
 
                 // Counters
                 'view_count'            => (int) ($job->view_count        ?? 0),
