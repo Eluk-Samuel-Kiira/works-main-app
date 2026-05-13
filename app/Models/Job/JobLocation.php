@@ -6,6 +6,8 @@ use App\Models\Auth\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use App\Models\Job\JobPost;
+use App\Models\Job\Company;
 
 class JobLocation extends Model
 {
@@ -74,6 +76,16 @@ class JobLocation extends Model
     public function getUrlAttribute()
     {
         return url("/jobs-in-{$this->slug}");
+    }
+
+    public function jobPosts()
+    {
+        return $this->hasMany(JobPost::class, 'job_location_id');
+    }
+
+    public function companies()
+    {
+        return $this->hasMany(Company::class, 'location_id');
     }
 
     public function creator()

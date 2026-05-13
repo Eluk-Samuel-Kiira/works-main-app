@@ -72,3 +72,4 @@ Route::fallback(function () {
 require __DIR__.'/auth.php';
 require __DIR__.'/magic.php';
 require __DIR__.'/jobs.php';
+require __DIR__.'/analytics.php';

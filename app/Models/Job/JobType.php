@@ -6,6 +6,7 @@ use App\Models\Auth\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use App\Models\Job\JobPost;
 
 class JobType extends Model
 {
@@ -69,6 +70,11 @@ class JobType extends Model
     public function getUrlAttribute()
     {
         return url("/{$this->slug}");
+    }
+
+    public function jobPosts()
+    {
+        return $this->hasMany(JobPost::class, 'job_type_id');
     }
 
     public function creator()

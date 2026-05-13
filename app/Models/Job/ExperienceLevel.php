@@ -201,6 +201,11 @@ class ExperienceLevel extends Model
         return $this->hasMany(JobPost::class, 'experience_level_id');
     }
 
+    public function jobPosts()
+    {
+        return $this->hasMany(JobPost::class, 'experience_level_id');
+    }
+
     /**
      * Get the creator of this experience level.
      */

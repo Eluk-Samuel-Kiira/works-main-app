@@ -51,7 +51,7 @@ class PaymentPlan extends Model
     // Relationships
     public function transactions()
     {
-        return $this->hasMany(Transaction::class);
+        return $this->hasMany(Transaction::class, 'plan_id');
     }
 
     // Scopes

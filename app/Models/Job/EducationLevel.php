@@ -62,6 +62,11 @@ class EducationLevel extends Model
         return url("/education/{$this->slug}");
     }
 
+    public function jobPosts()
+    {
+        return $this->hasMany(JobPost::class, 'education_level_id');
+    }
+
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');

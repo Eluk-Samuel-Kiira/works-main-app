@@ -6,6 +6,8 @@ use App\Models\Auth\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use App\Models\Job\JobPost;
+use App\Models\Job\Company;
 
 class Industry extends Model
 {
@@ -84,21 +86,13 @@ class Industry extends Model
         return url("/industry/{$this->slug}");
     }
 
-    // Relationship with jobs (if you have Job model)
-    public function jobs()
+    public function jobPosts()
     {
-        return $this->hasMany(Job::class);
+        return $this->hasMany(JobPost::class, 'industry_id');
     }
 
-    // Get all active industries
-    // $industries = Industry::active()->orderBy('sort_order')->get();
-
-    // // Get popular industries
-    // $popularIndustries = Industry::active()->popular()->get();
-
-    // // Get jobs by industry
-    // $bankingJobs = Job::where('industry_id', $bankingIndustry->id)->get();
-
-    // // Get URL for industry page
-    // $industryUrl = $industry->url; // /industry/banking
+    public function companies()
+    {
+        return $this->hasMany(Company::class, 'industry_id');
+    }
 }
