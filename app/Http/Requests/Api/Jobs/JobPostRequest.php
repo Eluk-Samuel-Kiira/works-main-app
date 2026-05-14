@@ -28,8 +28,8 @@ class JobPostRequest extends FormRequest
             'qualifications'        => 'nullable|string',
             'deadline'              => "{$required}|date|after_or_equal:today",
             'application_procedure' => 'nullable|string|max:600',
-            'email'                 => 'nullable|email|max:255',
-            'telephone'             => 'nullable|string|max:50',
+            'email'                 => 'nullable|string|max:255',
+            'telephone'             => 'nullable|string|max:255',
 
             // ----------------------------------------------------------------
             // Relationships
@@ -115,7 +115,59 @@ class JobPostRequest extends FormRequest
             $this->validateJobDescription($validator);
             $this->validateContactMethods($validator);
             $this->validateApplicationProcedure($validator);
+            $this->validateMultipleEmails($validator); // Add this
+            $this->validateMultipleTelephones($validator); // Add this
         });
+    }
+
+    /**
+     * Validate multiple email addresses
+     */
+    protected function validateMultipleEmails($validator)
+    {
+        $email = $this->input('email');
+        
+        if (empty($email)) {
+            return;
+        }
+        
+        $emails = array_map('trim', explode(',', $email));
+        
+        foreach ($emails as $singleEmail) {
+            if (!filter_var($singleEmail, FILTER_VALIDATE_EMAIL)) {
+                $validator->errors()->add(
+                    'email',
+                    "The email address '{$singleEmail}' is not valid. Please enter valid email addresses separated by commas."
+                );
+            }
+        }
+    }
+
+    /**
+     * Validate multiple telephone numbers
+     */
+    protected function validateMultipleTelephones($validator)
+    {
+        $telephone = $this->input('telephone');
+        
+        if (empty($telephone)) {
+            return;
+        }
+        
+        $numbers = array_map('trim', explode(',', $telephone));
+        
+        foreach ($numbers as $number) {
+            // Remove spaces and special characters for validation
+            $cleaned = preg_replace('/[^0-9+]/', '', $number);
+            
+            // Validate phone format (adjust pattern as needed)
+            if (!preg_match('/^\+?[0-9]{7,15}$/', $cleaned)) {
+                $validator->errors()->add(
+                    'telephone',
+                    "The phone number '{$number}' is not valid. Please enter valid phone numbers separated by commas (e.g., +1234567890, 1234567890)."
+                );
+            }
+        }
     }
 
     /**
@@ -179,24 +231,27 @@ class JobPostRequest extends FormRequest
         $isWhatsappContact = $this->input('is_whatsapp_contact');
         $isTelephoneCall = $this->input('is_telephone_call');
         
-        // If phone number is provided, at least one contact method must be enabled
-        if (!empty($telephone)) {
+        // Check if any telephone number is provided (not just empty)
+        $hasTelephone = !empty($telephone);
+        
+        // If phone number(s) are provided, at least one contact method must be enabled
+        if ($hasTelephone) {
             if (!$isWhatsappContact && !$isTelephoneCall) {
                 $validator->errors()->add(
                     'is_whatsapp_contact',
-                    'When a telephone number is provided, you must specify if it\'s for WhatsApp contact and/or phone calls.'
+                    'When telephone number(s) are provided, you must specify if they\'re for WhatsApp contact and/or phone calls.'
                 );
                 $validator->errors()->add(
                     'is_telephone_call',
-                    'When a telephone number is provided, you must specify if it\'s for WhatsApp contact and/or phone calls.'
+                    'When telephone number(s) are provided, you must specify if they\'re for WhatsApp contact and/or phone calls.'
                 );
             }
         } else {
-            // If no phone number, contact method flags should be false or null
+            // If no phone numbers, contact method flags should be false or null
             if ($isWhatsappContact || $isTelephoneCall) {
                 $validator->errors()->add(
                     'telephone',
-                    'Telephone number is required when enabling WhatsApp contact or phone call options.'
+                    'Telephone number(s) are required when enabling WhatsApp contact or phone call options.'
                 );
             }
         }
@@ -289,8 +344,8 @@ class JobPostRequest extends FormRequest
             'job_title' => 'job title',
             'job_description' => 'job description',
             'deadline' => 'application deadline',
-            'email' => 'contact email',
-            'telephone' => 'telephone number',
+            'email' => 'contact email(s)',
+            'telephone' => 'telephone number(s)',
             'location_type' => 'location type',
             'employment_type' => 'employment type',
             'payment_period' => 'payment period',
@@ -322,6 +377,8 @@ class JobPostRequest extends FormRequest
             'salary_amount.min' => 'The :attribute must be at least 0.',
             'base_salary.numeric' => 'The :attribute must be a valid number.',
             'base_salary.min' => 'The :attribute must be at least 0.',
+            'email.string' => 'The :attribute field must contain valid email addresses separated by commas.',
+            'telephone.string' => 'The :attribute field must contain valid phone numbers separated by commas.',
         ];
     }
 
@@ -330,10 +387,46 @@ class JobPostRequest extends FormRequest
      */
     protected function prepareForValidation()
     {
-        // Sanitize phone number (remove spaces and special characters for validation)
-        if ($this->has('telephone')) {
+        // Handle telephone numbers (multiple separated by commas)
+        if ($this->has('telephone') && !empty($this->telephone)) {
+            // Split by commas, trim each number, remove empty values
+            $numbers = array_map('trim', explode(',', $this->telephone));
+            $numbers = array_filter($numbers);
+            
+            // Validate each number format (optional - keeps original format)
+            foreach ($numbers as $number) {
+                // Remove any non-digit except + for validation
+                $cleaned = preg_replace('/[^0-9+]/', '', $number);
+                // Custom validation - you can adjust the pattern
+                if (!preg_match('/^\+?[0-9]{7,15}$/', $cleaned)) {
+                    // Don't fail validation, just log or let it pass
+                    // You can add custom error if needed
+                }
+            }
+            
+            // Store as comma-separated string (cleaned)
             $this->merge([
-                'telephone' => preg_replace('/[^0-9+]/', '', $this->telephone)
+                'telephone' => implode(', ', $numbers)
+            ]);
+        }
+        
+        // Handle emails (multiple separated by commas)
+        if ($this->has('email') && !empty($this->email)) {
+            $emails = array_map('trim', explode(',', $this->email));
+            $emails = array_filter($emails);
+            
+            // Validate each email format
+            foreach ($emails as $email) {
+                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $this->merge([
+                        '_invalid_emails' => true
+                    ]);
+                }
+            }
+            
+            // Store as comma-separated string
+            $this->merge([
+                'email' => implode(', ', $emails)
             ]);
         }
         

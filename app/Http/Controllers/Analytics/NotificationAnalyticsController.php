@@ -34,7 +34,7 @@ class NotificationAnalyticsController extends Controller
         $avgResolution = DB::table('notifications')
             ->whereNotNull('resolved_at')
             ->whereNotNull('created_at')
-            ->selectRaw("AVG(EXTRACT(EPOCH FROM (resolved_at::timestamp - created_at::timestamp)) / 3600) as avg_hours")
+            ->selectRaw("AVG(TIMESTAMPDIFF(SECOND, created_at, resolved_at) / 3600) as avg_hours")
             ->value('avg_hours');
         $kpis['avg_resolution_hours'] = round((float) $avgResolution, 1);
 

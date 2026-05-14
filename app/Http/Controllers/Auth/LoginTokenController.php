@@ -18,7 +18,7 @@ class LoginTokenController extends Controller
     public function showLogin()
     {
         if (Auth::check()) {
-            return redirect()->route('dashboard')->with('success', 'You are already logged in.');
+            return redirect()->route('analytics.dashboard')->with('success', 'You are already logged in.');
         }
         return view('auth.login');
     }
@@ -29,7 +29,7 @@ class LoginTokenController extends Controller
     public function showRegister()
     {
         if (Auth::check()) {
-            return redirect()->route('dashboard')->with('info', 'You are already logged in.');
+            return redirect()->route('analytics.dashboard')->with('info', 'You are already logged in.');
         }
         return view('auth.register');
     }
@@ -155,7 +155,7 @@ class LoginTokenController extends Controller
                 'email'   => $user->email,
             ]);
 
-            return redirect()->route('dashboard')
+            return redirect()->route('analytics.dashboard')
                 ->with('success', 'Welcome back, ' . $user->full_name . '!');
 
         } catch (\Exception $e) {

@@ -114,7 +114,7 @@ class RevenueAnalyticsController extends Controller
         // ── Monthly revenue comparison (last 6 months) ─────────────────────────
         $monthlyRevenue = Transaction::where('status', 'successful')
             ->where('created_at', '>=', now()->subMonths(6)->startOfMonth())
-            ->selectRaw("TO_CHAR(created_at, 'Mon YYYY') as month, DATE_TRUNC('month', created_at) as month_start, SUM(net_amount) as total")
+            ->selectRaw("DATE_FORMAT(created_at, '%b %Y') as month, DATE_FORMAT(created_at, '%Y-%m-01') as month_start, SUM(net_amount) as total")
             ->groupBy('month', 'month_start')
             ->orderBy('month_start')
             ->get();
