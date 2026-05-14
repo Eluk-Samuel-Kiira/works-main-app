@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Auth\{User, LoginToken};
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\{Auth, Mail, Log};
+use Illuminate\Support\Facades\{Auth, Mail, Log, Artisan};
 use Illuminate\Support\Str;
 use App\Mail\Auth\MagicLoginLink;
 use Spatie\Permission\Models\Role;
@@ -150,6 +150,7 @@ class LoginTokenController extends Controller
             // ── 7. Clean up old expired tokens ───────────────────────────────
             $this->clearExpiredTokens($user->id);
 
+            \Artisan::call('optimize:clear');
             Log::info('User authenticated via magic link', [
                 'user_id' => $user->id,
                 'email'   => $user->email,
