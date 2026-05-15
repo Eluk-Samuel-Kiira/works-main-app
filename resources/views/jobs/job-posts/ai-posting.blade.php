@@ -163,8 +163,10 @@
                 </span>
                 <h6 class="mb-0 fw-semibold">Job Description</h6>
             </div>
-            <button type="button" class="btn btn-sm btn-outline-primary"
-                    onclick="aiEnhanceField('job_description','Enhance and professionally rewrite this job description for SEO and clarity')">
+            <button type="button"
+                    id="btn-enhance-job_description"
+                    class="btn btn-sm btn-outline-primary"
+                    onclick="aiEnhanceField('job_description','Enhance and professionally rewrite this job description for SEO and clarity. Use clean HTML with <p> tags.')">
                 <i class="ti ti-sparkles me-1"></i>AI Enhance
             </button>
         </div>
@@ -186,8 +188,10 @@
                 </span>
                 <h6 class="mb-0 fw-semibold">Key Responsibilities</h6>
             </div>
-            <button type="button" class="btn btn-sm btn-outline-primary"
-                    onclick="aiEnhanceField('responsibilities','Rewrite as a clear bulleted list of key responsibilities')">
+            <button type="button"
+                    id="btn-enhance-responsibilities"
+                    class="btn btn-sm btn-outline-primary"
+                    onclick="aiEnhanceField('responsibilities','Rewrite as a clear, action-oriented HTML <ul><li> list of 6-8 key responsibilities. Each item should start with a strong verb.')">
                 <i class="ti ti-sparkles me-1"></i>AI Format
             </button>
         </div>
@@ -206,8 +210,10 @@
                 </span>
                 <h6 class="mb-0 fw-semibold">Qualifications</h6>
             </div>
-            <button type="button" class="btn btn-sm btn-outline-primary"
-                    onclick="aiEnhanceField('qualifications','Rewrite as a clear bulleted list of required and preferred qualifications')">
+            <button type="button"
+                    id="btn-enhance-qualifications"
+                    class="btn btn-sm btn-outline-primary"
+                    onclick="aiEnhanceField('qualifications','Rewrite as a professional HTML <ul><li> list with Required and Preferred sections. Be specific and clear.')">
                 <i class="ti ti-sparkles me-1"></i>AI Format
             </button>
         </div>
@@ -226,8 +232,10 @@
                 </span>
                 <h6 class="mb-0 fw-semibold">Required Skills</h6>
             </div>
-            <button type="button" class="btn btn-sm btn-outline-primary"
-                    onclick="aiEnhanceField('skills','Extract and list all required technical and soft skills as a comma-separated list')">
+            <button type="button"
+                    id="btn-enhance-skills"
+                    class="btn btn-sm btn-outline-primary"
+                    onclick="aiEnhanceField('skills','Extract and list all relevant technical and soft skills as a clean comma-separated list. Include 8-12 skills total.')">
                 <i class="ti ti-sparkles me-1"></i>AI Extract
             </button>
         </div>
@@ -247,8 +255,10 @@
                 </span>
                 <h6 class="mb-0 fw-semibold">Application Procedure</h6>
             </div>
-            <button type="button" class="btn btn-sm btn-outline-primary"
-                    onclick="aiEnhanceField('application_procedure','Rewrite the application instructions clearly and professionally')">
+            <button type="button"
+                    id="btn-enhance-application_procedure"
+                    class="btn btn-sm btn-outline-primary"
+                    onclick="aiEnhanceField('application_procedure','Rewrite these application instructions clearly and professionally. Include any email, URL, or deadline mentioned.')">
                 <i class="ti ti-sparkles me-1"></i>AI Rewrite
             </button>
         </div>
