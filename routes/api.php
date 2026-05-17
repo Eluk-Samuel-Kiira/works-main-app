@@ -231,3 +231,15 @@ Route::post('/v1/upload-image', [BlogImageController::class, 'uploadEditorImage'
 
 Route::get('/v1/blogs/categories/list', [BlogController::class, 'categoriesList']);
 Route::get('/v1/blogs/tags/list', [BlogController::class, 'tagsList']);
+
+
+
+use App\Http\Controllers\Auth\{ LoginTokenController };
+
+// Works web Auth process
+Route::prefix('auth')->group(function () {
+    Route::post('/send-login-link', [LoginTokenController::class, 'sendLoginLinkApi']);
+    Route::post('/register',        [LoginTokenController::class, 'registerApi']);
+    Route::post('/verify-token',    [LoginTokenController::class, 'verifyTokenApi']);
+});
+

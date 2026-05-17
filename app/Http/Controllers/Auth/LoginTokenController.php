@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Auth\{User, LoginToken};
-use Illuminate\Http\Request;
+use Illuminate\Http\{Request, JsonResponse};
 use Illuminate\Support\Facades\{Auth, Mail, Log, Artisan};
 use Illuminate\Support\Str;
-use App\Mail\Auth\MagicLoginLink;
+use App\Mail\Auth\{ MagicLoginLink, WebMagicLoginLink };
 use Spatie\Permission\Models\Role;
 
 class LoginTokenController extends Controller
@@ -268,4 +268,189 @@ class LoginTokenController extends Controller
             Log::error('Error clearing expired tokens: ' . $e->getMessage());
         }
     }
+
+
+
+    
+    // ─────────────────────────────────────────────────────────────────────────
+    // API: Send magic link  →  link goes to works-web
+    // POST /api/auth/send-login-link
+    // ─────────────────────────────────────────────────────────────────────────
+
+
+    public function sendLoginLinkApi(Request $request): JsonResponse
+    {
+        $request->validate(['email' => 'required|email|max:255']);
+ 
+        $user = User::where('email', $request->email)->first();
+ 
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No account found with this email address. Please register first.',
+            ], 404);
+        }
+ 
+        if (!$user->is_active) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your account is deactivated. Please contact support.',
+            ], 403);
+        }
+ 
+        // Delete existing unused tokens for this user
+        LoginToken::where('user_id', $user->id)->whereNull('used_at')->delete();
+ 
+        $token = Str::random(64);
+ 
+        LoginToken::create([
+            'user_id'    => $user->id,
+            'token'      => $token,
+            'expires_at' => now()->addHours(24),
+        ]);
+ 
+        try {
+            // WebMagicLoginLink points the link at works-web, not works-main
+            Mail::to($user->email)->send(new WebMagicLoginLink($token));
+ 
+            return response()->json(['success' => true, 'message' => 'Magic link sent.']);
+ 
+        } catch (\Exception $e) {
+            Log::error('WebMagicLoginLink send failed: ' . $e->getMessage());
+ 
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to send email right now. Please try again.',
+            ], 500);
+        }
+    }
+ 
+    // ─────────────────────────────────────────────────────────────────────────
+    // API: Register seeker / employer  →  link goes to works-web
+    // POST /api/auth/register
+    // ─────────────────────────────────────────────────────────────────────────
+    public function registerApi(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'first_name'   => 'required|string|max:255',
+            'last_name'    => 'required|string|max:255',
+            'email'        => 'required|email|max:255|unique:users,email',
+            'phone'        => 'nullable|string|max:25',
+            'role'         => 'nullable|string|in:job_seeker,employer',
+            'country_code' => 'nullable|string|max:3',
+            'terms'        => 'required|accepted',
+        ], [
+            'email.unique'   => 'An account with this email already exists. Try logging in instead.',
+            'terms.accepted' => 'You must accept the Terms of Service to continue.',
+        ]);
+ 
+        try {
+            $roleName    = $validated['role'] ?? 'job_seeker';
+            $defaultRole = Role::where('name', $roleName)->first()
+                        ?? Role::where('name', 'job_seeker')->first();
+ 
+            $user = User::create([
+                'first_name'        => $validated['first_name'],
+                'last_name'         => $validated['last_name'],
+                'email'             => $validated['email'],
+                'phone'             => $validated['phone'] ?? null,
+                'role_id'           => $defaultRole?->id,
+                'country_code'      => $validated['country_code'] ?? 'UG',
+                'is_active'         => true,
+                'email_verified_at' => now(),
+            ]);
+ 
+            $token = Str::random(64);
+ 
+            LoginToken::create([
+                'user_id'    => $user->id,
+                'token'      => $token,
+                'expires_at' => now()->addHours(24),
+            ]);
+ 
+            // isNew = true so the email says "welcome" instead of "sign in"
+            Mail::to($user->email)->send(new WebMagicLoginLink($token, true));
+ 
+            return response()->json(['success' => true, 'message' => 'Account created. Check your email.']);
+ 
+        } catch (\Exception $e) {
+            Log::error('Web registration API error: ' . $e->getMessage());
+ 
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to create account. Please try again.',
+            ], 500);
+        }
+    }
+ 
+    // ─────────────────────────────────────────────────────────────────────────
+    // API: Verify token  →  called by works-web after user clicks the link
+    // POST /api/auth/verify-token
+    //
+    // Returns the user data so works-web can build its own session.
+    // Does NOT log anyone into works-main.
+    // ─────────────────────────────────────────────────────────────────────────
+    public function verifyTokenApi(Request $request): JsonResponse
+    {
+        $request->validate(['token' => 'required|string|size:64']);
+ 
+        $loginToken = LoginToken::with('user')->where('token', $request->token)->first();
+ 
+        if (!$loginToken || !$loginToken->user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid or expired magic link.',
+            ], 401);
+        }
+ 
+        if (!$loginToken->isValid()) {
+            $reason = $loginToken->used_at ? 'already been used' : 'expired';
+            $loginToken->delete();
+ 
+            return response()->json([
+                'success' => false,
+                'message' => "This link has {$reason}. Please request a new one.",
+            ], 401);
+        }
+ 
+        if (!$loginToken->user->is_active) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This account has been deactivated. Please contact support.',
+            ], 403);
+        }
+ 
+        $user = $loginToken->user;
+ 
+        // Mark token used + update last_login
+        $loginToken->markAsUsed();
+        $user->update(['last_login_at' => now()]);
+ 
+        // Clean up stale tokens
+        LoginToken::where('user_id', $user->id)
+            ->where(function ($q) {
+                $q->where('expires_at', '<', now())->orWhereNotNull('used_at');
+            })
+            ->delete();
+ 
+        // Return user payload — works-web creates the session from this
+        return response()->json([
+            'success' => true,
+            'user'    => [
+                'id'         => $user->id,
+                'uuid'       => $user->uuid,
+                'email'      => $user->email,
+                'first_name' => $user->first_name,
+                'last_name'  => $user->last_name,
+                'full_name'  => $user->full_name,
+                'phone'      => $user->phone,
+                'role'       => $user->role?->name,
+                'role_id'    => $user->role_id,
+                'country_code' => $user->country_code,
+                'is_active'  => $user->is_active,
+                'last_login_at' => $user->last_login_at,
+            ],
+        ]);
+    }
+
 }
