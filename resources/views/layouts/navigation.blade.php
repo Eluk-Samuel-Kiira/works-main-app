@@ -12,16 +12,27 @@
                     <iconify-icon icon="solar:menu-dots-bold" class="nav-small-cap-icon fs-4"></iconify-icon>
                     <span class="hide-menu">{{__('Dashboards')}}</span>
                 </li>
+                @unlessrole('employer')
                 <li class="sidebar-item">
                     <a class="sidebar-link {{ request()->routeIs('analytics.dashboard') ? 'active' : '' }}"  href="{{ route('analytics.dashboard') }}" id="get-url">
                         <iconify-icon icon="solar:screencast-2-linear" class="aside-icon"></iconify-icon>
                         <span class="hide-menu">{{__('Overview')}}</span>
                     </a>
                 </li>
+                @endunlessrole
+
+                {{-- Employer analytics --}}
+                @role('employer')
+                <li class="sidebar-item">
+                    <a class="sidebar-link" href="{{ route('analytics.employer.dashboard') }}">
+                        <iconify-icon icon="solar:chart-2-linear" class="aside-icon"></iconify-icon>
+                        <span class="hide-menu">{{__('My Analytics')}}</span>
+                    </a>
+                </li>
+                @endrole
 
                 
-                {{-- Analytics Sub-menu (admin/moderator) --}}
-                @if(auth()->user()?->isAdmin() || auth()->user()?->isModerator())
+                @unlessrole('employer')
                 <li class="nav-small-cap">
                     <iconify-icon icon="solar:box-minimalistic-linear" class="nav-small-cap-icon fs-4"></iconify-icon>
                     <span class="hide-menu">{{__('Analytical')}}</span>
@@ -100,18 +111,11 @@
                         @endif
                     </ul>
                 </li>
-                @endif
+                @endunlessrole
 
-                {{-- Employer analytics --}}
-                @if(auth()->user()?->isEmployer())
-                <li class="sidebar-item">
-                    <a class="sidebar-link" href="{{ route('analytics.employer.dashboard') }}">
-                        <iconify-icon icon="solar:chart-2-linear" class="aside-icon"></iconify-icon>
-                        <span class="hide-menu">{{__('My Analytics')}}</span>
-                    </a>
-                </li>
-                @endif
 
+                
+                @unlessrole('employer')
                 <li class="nav-small-cap">
                     <iconify-icon icon="solar:menu-dots-bold" class="nav-small-cap-icon fs-4"></iconify-icon>
                     <span class="hide-menu">{{__('Job Posting')}}</span>
@@ -180,7 +184,10 @@
                         </li>
                     </ul>
                 </li>
+                @endunlessrole
                 
+                
+                @unlessrole('employer')
                 <li class="nav-small-cap">
                     <iconify-icon icon="solar:menu-dots-bold" class="nav-small-cap-icon fs-4"></iconify-icon>
                     <span class="hide-menu">{{__('Blog Posting')}}</span>
@@ -209,9 +216,10 @@
                         </li>
                     </ul>
                 </li>
+                @endunlessrole
                 
 
-
+                @unlessrole('employer')
                 <li class="nav-small-cap">
                     <iconify-icon icon="solar:menu-dots-bold" class="nav-small-cap-icon fs-4"></iconify-icon>
                     <span class="hide-menu">{{__('Lookups')}}</span>
@@ -248,7 +256,10 @@
                         </li>
                     </ul>
                 </li>
+                @endunlessrole
                 
+                
+                @unlessrole('employer')
                 <li class="sidebar-item">
                     <a class="sidebar-link" href="{{ route('social-media') }}">
                         <iconify-icon icon="solar:share-linear" class="aside-icon"></iconify-icon>
@@ -273,7 +284,10 @@
                         <span class="hide-menu">{{__('Users')}}</span>
                     </a>
                 </li>
+                @endunlessrole
 
+
+                @role('super_admin')
                 <li class="nav-small-cap">
                     <iconify-icon icon="solar:menu-dots-bold" class="nav-small-cap-icon fs-4"></iconify-icon>
                     <span class="hide-menu">{{__('Config Settings')}}</span>
@@ -294,6 +308,8 @@
                         </li>
                     </ul>
                 </li>
+                @endrole
+
             </ul>
         </nav>
 

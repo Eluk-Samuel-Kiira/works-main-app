@@ -18,21 +18,25 @@ class AnalyticsAccess
 
         match ($level) {
             'admin'    => abort_unless(
-                $user->isAdmin() || $user->isModerator(),
+                $user->hasAnyRole(['super_admin', 'admin', 'moderator']),
                 403,
                 'Analytics access is restricted to administrators and moderators.'
             ),
             'revenue'  => abort_unless(
-                $user->isAdmin(),
+                $user->hasAnyRole(['super_admin', 'admin']),
                 403,
                 'Revenue analytics is restricted to administrators.'
             ),
             'employer' => abort_unless(
-                $user->isAdmin() || $user->isModerator() || $user->isEmployer(),
+                $user->hasAnyRole(['super_admin', 'admin', 'moderator', 'employer']),
                 403,
                 'Employer analytics access is restricted.'
             ),
-            default    => abort_unless($user->isAdmin(), 403, 'Access restricted.'),
+            default    => abort_unless(
+                $user->hasAnyRole(['super_admin', 'admin']),
+                403,
+                'Access restricted.'
+            ),
         };
 
         return $next($request);

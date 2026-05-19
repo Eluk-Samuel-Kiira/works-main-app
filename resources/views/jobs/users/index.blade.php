@@ -33,7 +33,7 @@
         <div class="card mb-4">
             <div class="card-body py-3">
                 <div class="row g-2 align-items-end">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <input type="text" id="filterSearch" class="form-control form-control-sm"
                             placeholder="Search name or email…" oninput="debounceLoad()">
                     </div>
@@ -42,6 +42,12 @@
                             <option value="">All Statuses</option>
                             <option value="1">Active</option>
                             <option value="0">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="filterRole" class="form-select form-select-sm" onchange="loadItems(1)">
+                            <option value="">All Roles</option>
+                            <!-- Role options will be loaded dynamically -->
                         </select>
                     </div>
                     <div class="col-md-2">
@@ -68,13 +74,14 @@
                                 <th>Name</th>
                                 <th>Email</th>
                                 <th>Phone</th>
+                                <th>Role</th>
                                 <th>Status</th>
                                 <th>Last Login</th>
                                 <th width="130">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="tableBody">
-                            <tr><td colspan="7" class="text-center py-4">
+                            <tr><td colspan="8" class="text-center py-4">
                                 <div class="spinner-border text-primary"></div>
                             </td></tr>
                         </tbody>
@@ -137,6 +144,13 @@
                         <div class="col-md-3">
                             <label class="form-label">Country Code</label>
                             <input type="text" class="form-control" id="formCountryCode" placeholder="UG">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Role</label>
+                            <select id="formRole" class="form-select">
+                                <option value="">Select Role</option>
+                                <!-- Role options will be loaded dynamically -->
+                            </select>
                         </div>
                         <div class="col-md-6">
                             <div class="form-check form-switch mt-4">

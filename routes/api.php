@@ -44,12 +44,15 @@ Route::prefix('v2')->name('api.v1.')->group(function () {
     Route::get('/social-media', [SocialMediaController::class, 'indexPublic']);
 });
 
+
+
 // ─── v1 CRUD API ─────────────────────────────────────────────────────────────
 Route::prefix('v1')->name('api.v1.')->group(function () {
 
     // Users    
     Route::get('users/list', [UserController::class, 'list']);
     Route::apiResource('users', UserController::class);
+    Route::get('/roles', [UserController::class, 'getRoles']);
 
     // Job-related lookups
     Route::apiResource('companies',        CompanyController::class);

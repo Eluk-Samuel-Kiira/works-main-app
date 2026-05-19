@@ -156,8 +156,23 @@ class LoginTokenController extends Controller
                 'email'   => $user->email,
             ]);
 
-            return redirect()->route('analytics.dashboard')
-                ->with('success', 'Welcome back, ' . $user->full_name . '!');
+            // ── 8. Redirect based on role ─────────────────────────────────────
+            $welcome = 'Welcome back, ' . $user->full_name . '!';
+
+            $welcome = 'Welcome back, ' . $user->full_name . '!';
+
+            $welcome = 'Welcome back, ' . $user->full_name . '!';
+
+            if ($user->hasRole('employer')) {
+                return redirect('/analytics/employer')->with('success', $welcome);
+            }
+
+            if ($user->hasRole('super_admin') || $user->hasRole('admin') || $user->hasRole('moderator')) {
+                return redirect('/analytics')->with('success', $welcome);
+            }
+
+            // fallback
+            return redirect('/dashboard')->with('success', $welcome);
 
         } catch (\Exception $e) {
             Log::error('Authentication error: ' . $e->getMessage(), [
@@ -189,19 +204,39 @@ class LoginTokenController extends Controller
         ]);
 
         try {
-            $defaultRole = Role::where('name', 'job_seeker')->first();
+            // ── 1. Resolve the role first, before user creation ──────────────
+            $role = $request->role_id
+                ? Role::find($request->role_id)
+                : Role::where('name', 'job_seeker')->first();
 
+            // Fallback safety — if somehow role still null
+            if (!$role) {
+                $role = Role::where('name', 'job_seeker')->firstOrFail();
+            }
+
+            // ── 2. Create the user with the confirmed role_id ─────────────────
             $user = User::create([
                 'first_name'        => $request->first_name,
                 'last_name'         => $request->last_name,
                 'email'             => $request->email,
                 'phone'             => $request->phone,
-                'role_id'           => $request->role_id ?? ($defaultRole?->id),
+                'role_id'           => $role->id,
                 'country_code'      => $request->country_code ?? 'UG',
                 'is_active'         => true,
                 'email_verified_at' => now(),
             ]);
 
+            // ── 3. Explicitly assign Spatie role ──────────────────────────────
+            //    syncRoles ensures no stale roles from previous state
+            $user->syncRoles([$role->name]);
+
+            Log::info('User registered and Spatie role assigned', [
+                'user_id' => $user->id,
+                'email'   => $user->email,
+                'role'    => $role->name,
+            ]);
+
+            // ── 4. Create magic link token ────────────────────────────────────
             $token = Str::random(64);
 
             LoginToken::create([
@@ -210,10 +245,19 @@ class LoginTokenController extends Controller
                 'expires_at' => now()->addHours(24),
             ]);
 
+            // ── 5. Send correct magic link based on role ──────────────────────
             try {
-                Mail::to($user->email)->send(new MagicLoginLink($token, true));
+                if ($user->isJobSeeker()) {
+                    // Job seekers → works-web
+                    Mail::to($user->email)->send(new WebMagicLoginLink($token, true));
+                } else {
+                    // Employers and any other role → works-main admin dashboard
+                    Mail::to($user->email)->send(new MagicLoginLink($token, true));
+                }
+
                 return redirect()->route('login')
                     ->with('success', 'Account created! Check your email for the magic login link.');
+
             } catch (\Exception $e) {
                 Log::error('Failed to send welcome email: ' . $e->getMessage());
                 return redirect()->route('login')
@@ -278,52 +322,59 @@ class LoginTokenController extends Controller
     // ─────────────────────────────────────────────────────────────────────────
 
 
+
     public function sendLoginLinkApi(Request $request): JsonResponse
     {
         $request->validate(['email' => 'required|email|max:255']);
- 
+
         $user = User::where('email', $request->email)->first();
- 
+
         if (!$user) {
             return response()->json([
                 'success' => false,
                 'message' => 'No account found with this email address. Please register first.',
             ], 404);
         }
- 
+
         if (!$user->is_active) {
             return response()->json([
                 'success' => false,
                 'message' => 'Your account is deactivated. Please contact support.',
             ], 403);
         }
- 
+
         // Delete existing unused tokens for this user
         LoginToken::where('user_id', $user->id)->whereNull('used_at')->delete();
- 
+
         $token = Str::random(64);
- 
+
         LoginToken::create([
             'user_id'    => $user->id,
             'token'      => $token,
             'expires_at' => now()->addHours(24),
         ]);
- 
+
         try {
-            // WebMagicLoginLink points the link at works-web, not works-main
-            Mail::to($user->email)->send(new WebMagicLoginLink($token));
- 
+            if ($user->isJobSeeker()) {
+                // Job seekers stay on works-web
+                Mail::to($user->email)->send(new WebMagicLoginLink($token));
+            } else {
+                // Employers, admins, moderators, support → works-main admin dashboard
+                Mail::to($user->email)->send(new MagicLoginLink($token));
+            }
+
             return response()->json(['success' => true, 'message' => 'Magic link sent.']);
- 
+
         } catch (\Exception $e) {
-            Log::error('WebMagicLoginLink send failed: ' . $e->getMessage());
- 
+            Log::error('Magic link send failed: ' . $e->getMessage());
+
             return response()->json([
                 'success' => false,
                 'message' => 'Unable to send email right now. Please try again.',
             ], 500);
         }
     }
+
  
     // ─────────────────────────────────────────────────────────────────────────
     // API: Register seeker / employer  →  link goes to works-web
@@ -343,39 +394,56 @@ class LoginTokenController extends Controller
             'email.unique'   => 'An account with this email already exists. Try logging in instead.',
             'terms.accepted' => 'You must accept the Terms of Service to continue.',
         ]);
- 
+
         try {
-            $roleName    = $validated['role'] ?? 'job_seeker';
-            $defaultRole = Role::where('name', $roleName)->first()
-                        ?? Role::where('name', 'job_seeker')->first();
- 
+            // ── 1. Resolve role — only job_seeker or employer allowed here ────
+            $roleName = $validated['role'] ?? 'job_seeker';
+            $role     = Role::where('name', $roleName)->first()
+                    ?? Role::where('name', 'job_seeker')->firstOrFail();
+
+            // ── 2. Create user with confirmed role_id ─────────────────────────
             $user = User::create([
                 'first_name'        => $validated['first_name'],
                 'last_name'         => $validated['last_name'],
                 'email'             => $validated['email'],
                 'phone'             => $validated['phone'] ?? null,
-                'role_id'           => $defaultRole?->id,
+                'role_id'           => $role->id,
                 'country_code'      => $validated['country_code'] ?? 'UG',
                 'is_active'         => true,
                 'email_verified_at' => now(),
             ]);
- 
+
+            // ── 3. Explicitly assign Spatie role ──────────────────────────────
+            $user->syncRoles([$role->name]);
+
+            Log::info('Web API user registered and Spatie role assigned', [
+                'user_id' => $user->id,
+                'email'   => $user->email,
+                'role'    => $role->name,
+            ]);
+
+            // ── 4. Create magic link token ────────────────────────────────────
             $token = Str::random(64);
- 
+
             LoginToken::create([
                 'user_id'    => $user->id,
                 'token'      => $token,
                 'expires_at' => now()->addHours(24),
             ]);
- 
-            // isNew = true so the email says "welcome" instead of "sign in"
-            Mail::to($user->email)->send(new WebMagicLoginLink($token, true));
- 
+
+            // ── 5. Route mail based on role ───────────────────────────────────
+            //    job_seeker → works-web   |   employer → works-main dashboard
+            if ($user->isJobSeeker()) {
+                Mail::to($user->email)->send(new WebMagicLoginLink($token, true));
+            } else {
+                Mail::to($user->email)->send(new MagicLoginLink($token, true));
+            }
+
             return response()->json(['success' => true, 'message' => 'Account created. Check your email.']);
- 
+
         } catch (\Exception $e) {
             Log::error('Web registration API error: ' . $e->getMessage());
- 
+
             return response()->json([
                 'success' => false,
                 'message' => 'Unable to create account. Please try again.',
@@ -383,6 +451,7 @@ class LoginTokenController extends Controller
         }
     }
  
+    
     // ─────────────────────────────────────────────────────────────────────────
     // API: Verify token  →  called by works-web after user clicks the link
     // POST /api/auth/verify-token

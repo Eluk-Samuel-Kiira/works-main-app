@@ -31,6 +31,8 @@ Route::middleware('auth')->group(function () {
     Route::resource('user', UserController::class)->only(['index']);
 });
 
+Route::get('/roles', [UserController::class, 'getRoles']);
+
 
 
 

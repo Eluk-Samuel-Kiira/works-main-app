@@ -9,7 +9,7 @@
         <div class="card-body px-0">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <h4 class="font-weight-medium mb-0">My Analytics</h4>
+                    <h4 class="font-weight-medium mb-0">My Analytics - (Everything is coming soon be patient- We will notify you via email)</h4>
                     <nav aria-label="breadcrumb"><ol class="breadcrumb">
                         <li class="breadcrumb-item"><a class="text-muted text-decoration-none" href="{{ route('dashboard') }}">Home</a></li>
                         <li class="breadcrumb-item text-muted" aria-current="page">My Analytics</li>
