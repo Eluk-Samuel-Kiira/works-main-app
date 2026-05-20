@@ -42,6 +42,7 @@ class AiJobController extends Controller
         try {
             $prompt = $this->buildExtractionPrompt($request->content);
             $result = $this->callAiApi($model, $apiKey, $prompt);
+            $result = $this->ensureArray($result, $model);
             $result = $this->applySmartDefaults($result, $model, $apiKey);
 
             return response()->json(['success' => true, 'data' => $result]);
@@ -71,6 +72,7 @@ class AiJobController extends Controller
         try {
             $prompt = $this->buildExtractionPrompt('Extract all job information visible in this image.');
             $result = $this->callAiApi($model, $apiKey, $prompt, $request->image_base64);
+            $result = $this->ensureArray($result, $model);
             $result = $this->applySmartDefaults($result, $model, $apiKey);
 
             return response()->json(['success' => true, 'data' => $result]);
@@ -179,6 +181,7 @@ PROMPT;
 
         try {
             $result = $this->callAiApi($model, $apiKey, $prompt);
+            $result = $this->ensureArray($result, $model);
             $result = $this->applySmartDefaults($result, $model, $apiKey);
 
             return response()->json(['success' => true, 'data' => $result]);
@@ -586,7 +589,7 @@ PROMPT;
         $endpoints = [
             'openai'  => 'https://api.openai.com/v1/chat/completions',
             'claude'  => 'https://api.anthropic.com/v1/messages',
-            'gemini'  => 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent',
+            'gemini'  => 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent',
             'cohere'  => 'https://api.cohere.ai/v2/chat',
         ];
 
@@ -686,11 +689,58 @@ PROMPT;
             case 'cohere': $text = $data['message']['content'][0]['text'] ?? '';   break;
         }
 
-        // If the prompt expected JSON, try to parse it
-        $clean   = preg_replace('/```json\n?|```\n?/', '', $text);
-        $decoded = json_decode(trim($clean), true);
+        // Aggressively strip markdown fences Gemini (and others) sometimes wrap around JSON
+        $clean = $text;
+        $clean = preg_replace('/^```(?:json)?\s*/i', '', $clean); // opening fence
+        $clean = preg_replace('/\s*```\s*$/i', '', $clean);       // closing fence
+        $clean = trim($clean);
+
+        // If it still looks like it has a fence inside (multi-fence edge case), strip all
+        if (str_contains($clean, '```')) {
+            $clean = preg_replace('/```(?:json)?/i', '', $clean);
+            $clean = trim($clean);
+        }
+
+        $decoded = json_decode($clean, true);
 
         return $decoded ?? $text;
+    }
+
+    // =========================================================
+    // HELPER: guarantee callAiApi returns an array for JSON prompts.
+    // Gemini (and sometimes others) may return a still-encoded JSON
+    // string even after one parse attempt — this catches that case.
+    // =========================================================
+    private function ensureArray(mixed $result, string $model): array
+    {
+        if (is_array($result)) {
+            return $result;
+        }
+
+        if (is_string($result)) {
+            // Strip any remaining markdown fences and try again
+            $clean = preg_replace('/^```(?:json)?\s*/i', '', $result);
+            $clean = preg_replace('/\s*```\s*$/i', '', $clean);
+            $clean = preg_replace('/```(?:json)?/i', '', $clean);
+            $clean = trim($clean);
+
+            $decoded = json_decode($clean, true);
+
+            if (is_array($decoded)) {
+                return $decoded;
+            }
+
+            // Last resort: the model returned prose instead of JSON.
+            // Log it so we can investigate, then return an empty array
+            // so applySmartDefaults can still apply all its defaults.
+            Log::warning("callAiApi [{$model}] returned unparseable string; falling back to empty array.", [
+                'snippet' => mb_substr($result, 0, 300),
+            ]);
+
+            return [];
+        }
+
+        return [];
     }
 
     // =========================================================
