@@ -42,7 +42,7 @@ class AiJobController extends Controller
         try {
             $prompt = $this->buildExtractionPrompt($request->content);
             $result = $this->callAiApi($model, $apiKey, $prompt);
-            $result = $this->applySmartDefaults($result);
+            $result = $this->applySmartDefaults($result, $model, $apiKey);
 
             return response()->json(['success' => true, 'data' => $result]);
         } catch (\Exception $e) {
@@ -71,7 +71,7 @@ class AiJobController extends Controller
         try {
             $prompt = $this->buildExtractionPrompt('Extract all job information visible in this image.');
             $result = $this->callAiApi($model, $apiKey, $prompt, $request->image_base64);
-            $result = $this->applySmartDefaults($result);
+            $result = $this->applySmartDefaults($result, $model, $apiKey);
 
             return response()->json(['success' => true, 'data' => $result]);
         } catch (\Exception $e) {
@@ -158,28 +158,28 @@ PROMPT;
         $deadline = Carbon::now()->addWeeks(2)->format('Y-m-d');
 
         $prompt = <<<PROMPT
-            You are an expert HR professional and job board agent. Generate a complete, professional job posting for a "{$request->title}"{$company} in Uganda/East Africa.
+You are an expert HR professional and job board agent. Generate a complete, professional job posting for a "{$request->title}"{$company} in Uganda/East Africa.
 
-            Return ONLY a valid JSON object — no explanation, no markdown, no code blocks.
+Return ONLY a valid JSON object — no explanation, no markdown, no code blocks.
 
-            {
-            "job_description": "3-4 paragraph description as HTML with <p> tags — include role overview, company culture, and why someone should apply",
-            "responsibilities": "6-8 responsibilities as HTML <ul><li> list — be specific and action-oriented",
-            "qualifications": "required and preferred qualifications as HTML <ul><li> list with two sections",
-            "skills": "comma-separated list of 8-12 relevant skills",
-            "meta_description": "155-character SEO meta description",
-            "keywords": "comma-separated SEO keywords",
-            "experience_level_name": "entry level|junior|mid level|senior|executive",
-            "education_level_name": "Certificate|Diploma|Bachelor's Degree|Master's Degree",
-            "employment_type": "full-time|part-time|contract|internship|volunteer|temporary",
-            "location_type": "on-site|remote|hybrid",
-            "deadline": "{$deadline}"
-            }
-            PROMPT;
+{
+  "job_description": "3-4 paragraph description as HTML with <p> tags — include role overview, company culture, and why someone should apply",
+  "responsibilities": "6-8 responsibilities as HTML <ul><li> list — be specific and action-oriented",
+  "qualifications": "required and preferred qualifications as HTML <ul><li> list with two sections",
+  "skills": "comma-separated list of 8-12 relevant skills",
+  "meta_description": "155-character SEO meta description",
+  "keywords": "comma-separated SEO keywords",
+  "experience_level_name": "entry level|junior|mid level|senior|executive",
+  "education_level_name": "Certificate|Diploma|Bachelor's Degree|Master's Degree",
+  "employment_type": "full-time|part-time|contract|internship|volunteer|temporary",
+  "location_type": "on-site|remote|hybrid",
+  "deadline": "{$deadline}"
+}
+PROMPT;
 
         try {
             $result = $this->callAiApi($model, $apiKey, $prompt);
-            $result = $this->applySmartDefaults($result);
+            $result = $this->applySmartDefaults($result, $model, $apiKey);
 
             return response()->json(['success' => true, 'data' => $result]);
         } catch (\Exception $e) {
@@ -189,10 +189,11 @@ PROMPT;
 
     // =========================================================
     // SMART DEFAULTS — applied after every extraction
+    // Now passes model + apiKey so fallbacks can call the AI
     // =========================================================
-    private function applySmartDefaults(array $data): array
+    private function applySmartDefaults(array $data, string $model, ?string $apiKey): array
     {
-        // 1. Job type → default full-time
+        // 1. Employment type → default full-time
         if (empty($data['employment_type'])) {
             $data['employment_type'] = 'full-time';
         }
@@ -212,68 +213,298 @@ PROMPT;
             $data['education_level_name'] = 'Certificate';
         }
 
-        // 5. Phone provided but no explicit WhatsApp mention → telephone call only
-        if (!empty($data['telephone']) && empty($data['is_whatsapp_contact'])) {
-            $data['is_telephone_call']    = true;
-            $data['is_whatsapp_contact']  = false;
+        // 5. Currency → UGX
+        if (empty($data['currency'])) {
+            $data['currency'] = 'UGX';
         }
 
-        // 6. Job description is null/empty → draft from job title
+        // 6. Location type → on-site
+        if (empty($data['location_type'])) {
+            $data['location_type'] = 'on-site';
+        }
+
+        // 7. Phone provided but no explicit WhatsApp mention → telephone call only
+        if (!empty($data['telephone']) && empty($data['is_whatsapp_contact'])) {
+            $data['is_telephone_call']   = true;
+            $data['is_whatsapp_contact'] = false;
+        }
+
+        // 8. Job description missing → generate via AI using the actual job title
         $hasDesc = !empty($data['job_description']) &&
                    strip_tags($data['job_description']) !== '';
 
         if (!$hasDesc && !empty($data['job_title'])) {
-            $data['job_description'] = $this->generateFallbackDescription($data['job_title']);
+            $data['job_description'] = $this->generateFallbackDescription(
+                $data['job_title'],
+                $data['company_name'] ?? null,
+                $data['duty_station'] ?? null,
+                $model,
+                $apiKey
+            );
         }
 
-        // 7. Responsibilities null → draft from job title
+        // 9. Responsibilities missing → generate via AI using the actual job title
         $hasResp = !empty($data['responsibilities']) &&
                    strip_tags($data['responsibilities']) !== '';
 
         if (!$hasResp && !empty($data['job_title'])) {
-            $data['responsibilities'] = $this->generateFallbackResponsibilities($data['job_title']);
+            $data['responsibilities'] = $this->generateFallbackResponsibilities(
+                $data['job_title'],
+                $data['company_name'] ?? null,
+                $model,
+                $apiKey
+            );
         }
 
-        // 8. Skills null → draft from job title
+        // 10. Qualifications missing → generate via AI
+        $hasQual = !empty($data['qualifications']) &&
+                   strip_tags($data['qualifications']) !== '';
+
+        if (!$hasQual && !empty($data['job_title'])) {
+            $data['qualifications'] = $this->generateFallbackQualifications(
+                $data['job_title'],
+                $model,
+                $apiKey
+            );
+        }
+
+        // 11. Skills missing → generate via AI
         if (empty($data['skills']) && !empty($data['job_title'])) {
-            $data['skills'] = $this->generateFallbackSkills($data['job_title']);
+            $data['skills'] = $this->generateFallbackSkills(
+                $data['job_title'],
+                $model,
+                $apiKey
+            );
+        }
+
+        // 12. Meta description missing → generate via AI
+        if (empty($data['meta_description']) && !empty($data['job_title'])) {
+            $data['meta_description'] = $this->generateFallbackMetaDescription(
+                $data['job_title'],
+                $data['company_name'] ?? null,
+                $data['duty_station'] ?? null,
+                $model,
+                $apiKey
+            );
+        }
+
+        // 13. Keywords missing → generate via AI
+        if (empty($data['keywords']) && !empty($data['job_title'])) {
+            $data['keywords'] = $this->generateFallbackKeywords(
+                $data['job_title'],
+                $data['industry_name'] ?? null,
+                $model,
+                $apiKey
+            );
         }
 
         return $data;
     }
 
     // =========================================================
-    // FALLBACK GENERATORS (AI-driven, used when fields are empty)
+    // FALLBACK GENERATORS — all AI-driven, never static
+    // Each one is unique per job title → no duplicate content
     // =========================================================
-    private function generateFallbackDescription(string $title): string
-    {
-        return "<p>We are looking for a qualified and motivated <strong>{$title}</strong> to join our team. "
-             . "The successful candidate will play a key role in delivering results aligned to our organisational goals.</p>"
-             . "<p>This is an excellent opportunity for a professional who is passionate about their field, "
-             . "eager to grow, and ready to contribute meaningfully in a dynamic environment.</p>"
-             . "<p>The role requires someone who is detail-oriented, a team player, and capable of working "
-             . "independently with minimal supervision.</p>";
+
+    /**
+     * Generate a unique job description via AI.
+     * Falls back to a minimal non-generic sentence only if AI fails.
+     */
+    private function generateFallbackDescription(
+        string $title,
+        ?string $company,
+        ?string $location,
+        string $model,
+        ?string $apiKey
+    ): string {
+        $companyContext  = $company  ? " at {$company}"   : '';
+        $locationContext = $location ? " based in {$location}" : ' in Uganda';
+
+        $prompt = <<<PROMPT
+You are an expert HR copywriter writing for a Uganda/East Africa job board.
+
+Write a compelling, unique job description for a "{$title}"{$companyContext}{$locationContext}.
+
+RULES:
+- Return ONLY clean HTML — no explanations, no markdown, no code blocks.
+- Use 3 <p> tags: (1) role overview, (2) what the candidate will do day-to-day, (3) why this is a great opportunity.
+- Be specific to this job title. Do NOT use generic filler phrases like "play a key role" or "dynamic environment".
+- Keep it between 150-250 words total.
+- Write in second/third person, professional tone.
+PROMPT;
+
+        return $this->callFallbackAi($prompt, $model, $apiKey)
+            ?? "<p>We are recruiting a <strong>{$title}</strong>{$companyContext}{$locationContext}. "
+             . "If you have the right qualifications and experience, we encourage you to apply.</p>";
     }
 
-    private function generateFallbackResponsibilities(string $title): string
-    {
-        return "<ul>"
-             . "<li>Carry out all core duties associated with the <strong>{$title}</strong> role as directed by management.</li>"
-             . "<li>Prepare regular reports and documentation related to your area of work.</li>"
-             . "<li>Collaborate with cross-functional teams to achieve shared objectives.</li>"
-             . "<li>Maintain accurate records and uphold data integrity standards.</li>"
-             . "<li>Identify challenges in your work area and propose practical solutions.</li>"
-             . "<li>Participate in team meetings, trainings, and continuous improvement initiatives.</li>"
-             . "<li>Adhere to organisational policies, standards, and code of conduct at all times.</li>"
-             . "</ul>";
+    /**
+     * Generate unique, role-specific responsibilities via AI.
+     */
+    private function generateFallbackResponsibilities(
+        string $title,
+        ?string $company,
+        string $model,
+        ?string $apiKey
+    ): string {
+        $companyContext = $company ? " at {$company}" : '';
+
+        $prompt = <<<PROMPT
+You are an expert HR copywriter writing for a Uganda/East Africa job board.
+
+Write 7 specific, action-oriented key responsibilities for a "{$title}"{$companyContext} role.
+
+RULES:
+- Return ONLY a clean HTML <ul> with <li> items — nothing else.
+- Each <li> must start with a strong action verb (e.g. Manage, Develop, Coordinate, Ensure, Prepare).
+- Be specific to this job title — avoid vague generic bullets.
+- Do NOT include markdown, code blocks, or any explanation.
+PROMPT;
+
+        return $this->callFallbackAi($prompt, $model, $apiKey)
+            ?? "<ul><li>Perform all duties related to the <strong>{$title}</strong> role as assigned.</li></ul>";
     }
 
-    private function generateFallbackSkills(string $title): string
-    {
-        $generic = 'Communication, Teamwork, Problem Solving, Time Management, Microsoft Office, '
-                 . 'Report Writing, Attention to Detail, Adaptability';
+    /**
+     * Generate unique, role-specific qualifications via AI.
+     */
+    private function generateFallbackQualifications(
+        string $title,
+        string $model,
+        ?string $apiKey
+    ): string {
+        $prompt = <<<PROMPT
+You are an expert HR copywriter writing for a Uganda/East Africa job board.
 
-        return $generic;
+Write realistic qualifications for a "{$title}" role, split into two sections: Required and Preferred.
+
+RULES:
+- Return ONLY clean HTML.
+- Use <p><strong>Required Qualifications</strong></p> then a <ul><li> list.
+- Use <p><strong>Preferred Qualifications</strong></p> then a <ul><li> list.
+- Be specific to this job title — reflect real-world requirements for this role in East Africa.
+- Do NOT include markdown, code blocks, or any explanation.
+PROMPT;
+
+        return $this->callFallbackAi($prompt, $model, $apiKey)
+            ?? "<p><strong>Required Qualifications</strong></p><ul><li>Relevant qualification or experience for the {$title} role.</li></ul>";
+    }
+
+    /**
+     * Generate unique, role-specific skills as a comma-separated list via AI.
+     */
+    private function generateFallbackSkills(
+        string $title,
+        string $model,
+        ?string $apiKey
+    ): string {
+        $prompt = <<<PROMPT
+List exactly 10 relevant professional skills for a "{$title}" role in Uganda/East Africa.
+
+RULES:
+- Return ONLY a plain comma-separated list of skills — no HTML, no bullets, no explanation.
+- Mix technical skills specific to the role AND relevant soft skills.
+- Be specific to this job title, not generic.
+
+Example format: Skill One, Skill Two, Skill Three
+PROMPT;
+
+        return $this->callFallbackAi($prompt, $model, $apiKey)
+            ?? 'Communication, Teamwork, Problem Solving, Time Management, Report Writing, Attention to Detail';
+    }
+
+    /**
+     * Generate a unique SEO meta description via AI (max 155 chars).
+     */
+    private function generateFallbackMetaDescription(
+        string $title,
+        ?string $company,
+        ?string $location,
+        string $model,
+        ?string $apiKey
+    ): string {
+        $companyPart  = $company  ? " at {$company}"  : '';
+        $locationPart = $location ? " in {$location}" : ' in Uganda';
+
+        $prompt = <<<PROMPT
+Write a single SEO meta description for a job posting.
+
+Job: {$title}{$companyPart}{$locationPart}
+
+RULES:
+- Return ONLY the meta description text — no HTML, no quotes, no explanation.
+- Maximum 155 characters.
+- Include the job title and location naturally.
+- Write in a way that encourages clicks from job seekers.
+PROMPT;
+
+        $result = $this->callFallbackAi($prompt, $model, $apiKey);
+
+        if ($result) {
+            // Strip any accidental HTML and trim to 155 chars
+            $result = strip_tags($result);
+            return mb_substr(trim($result), 0, 155);
+        }
+
+        return mb_substr("Apply for the {$title} position{$companyPart}{$locationPart} today.", 0, 155);
+    }
+
+    /**
+     * Generate unique SEO keywords via AI.
+     */
+    private function generateFallbackKeywords(
+        string $title,
+        ?string $industry,
+        string $model,
+        ?string $apiKey
+    ): string {
+        $industryContext = $industry ? " in the {$industry} industry" : '';
+
+        $prompt = <<<PROMPT
+Generate SEO keywords for a "{$title}" job posting{$industryContext} in Uganda/East Africa.
+
+RULES:
+- Return ONLY a comma-separated list of 10-15 keywords — no HTML, no explanation.
+- Include variations of the job title, relevant skills, and location-based terms (Uganda, Kampala, East Africa).
+- Be specific to this role.
+PROMPT;
+
+        return $this->callFallbackAi($prompt, $model, $apiKey)
+            ?? "{$title}, jobs in Uganda, {$title} Uganda, Kampala jobs";
+    }
+
+    // =========================================================
+    // SHARED FALLBACK AI CALLER
+    // Tries the primary model first, then falls through the
+    // remaining configured models. Returns null only if all fail.
+    // =========================================================
+    private function callFallbackAi(string $prompt, string $preferredModel, ?string $preferredKey): ?string
+    {
+        // Build priority list: preferred model first, then others
+        $order = array_unique(array_merge(
+            [$preferredModel],
+            array_keys(array_filter($this->apiKeys))
+        ));
+
+        foreach ($order as $model) {
+            $apiKey = $this->apiKeys[$model] ?? $preferredKey;
+            if (empty($apiKey)) continue;
+
+            try {
+                $result = $this->callAiApi($model, $apiKey, $prompt);
+                $text   = $this->extractTextFromResult($result);
+                $text   = trim(preg_replace('/```html\n?|```\n?/', '', $text));
+
+                if (!empty($text)) {
+                    return $text;
+                }
+            } catch (\Exception $e) {
+                Log::warning("Fallback AI call failed [{$model}]", ['error' => $e->getMessage()]);
+                // Try next model
+            }
+        }
+
+        return null; // All models failed — caller provides minimal safe default
     }
 
     // =========================================================
@@ -284,66 +515,67 @@ PROMPT;
         $twoWeeksAhead = Carbon::now()->addWeeks(2)->format('Y-m-d');
 
         return <<<PROMPT
-            You are an expert job-board agent. Your job is to extract ALL available information from the provided content and return a complete JSON object ready to populate a job posting form.
+You are an expert job-board agent. Your job is to extract ALL available information from the provided content and return a complete JSON object ready to populate a job posting form.
 
-            CRITICAL RULES:
-            1. Return ONLY a valid JSON object — no explanation, no markdown, no code blocks.
-            2. For every field you cannot find, apply the smart defaults listed below — NEVER return null for defaulted fields.
-            3. For HTML fields, use proper <p> and <ul><li> formatting — convert bullet points and line breaks to HTML.
-            4. If job_description is empty or vague, write 2-3 professional paragraphs describing what someone in that role does globally.
-            5. If responsibilities is empty, draft 6-8 realistic, action-oriented bullet points based on the job title.
-            6. If skills is empty, infer 8-10 relevant skills from the job title and description.
+CRITICAL RULES:
+1. Return ONLY a valid JSON object — no explanation, no markdown, no code blocks.
+2. For every field you cannot find, apply the smart defaults listed below — NEVER return null for defaulted fields.
+3. For HTML fields, use proper <p> and <ul><li> formatting — convert bullet points and line breaks to HTML.
+4. If job_description is empty or vague, write 2-3 professional paragraphs specific to the extracted job title.
+5. If responsibilities is empty, draft 6-8 realistic, action-oriented bullet points specific to the job title.
+6. If skills is empty, infer 8-10 relevant skills from the job title and description.
+7. Never use generic placeholder phrases — everything must reflect the actual job title extracted.
 
-            SMART DEFAULTS (apply when field is missing):
-            - employment_type: "full-time"
-            - deadline: "{$twoWeeksAhead}"
-            - experience_level_name: "entry level"
-            - education_level_name: "Certificate"
-            - currency: "UGX"
-            - location_type: "on-site"
-            - is_telephone_call: true (if telephone is present but WhatsApp is not explicitly mentioned)
-            - is_whatsapp_contact: false (unless WhatsApp is explicitly mentioned)
+SMART DEFAULTS (apply when field is missing):
+- employment_type: "full-time"
+- deadline: "{$twoWeeksAhead}"
+- experience_level_name: "entry level"
+- education_level_name: "Certificate"
+- currency: "UGX"
+- location_type: "on-site"
+- is_telephone_call: true (if telephone is present but WhatsApp is not explicitly mentioned)
+- is_whatsapp_contact: false (unless WhatsApp is explicitly mentioned)
 
-            FIELDS TO EXTRACT:
-            {
-            "job_title": "exact job title",
-            "company_name": "company name",
-            "job_description": "full job description as HTML — 2-4 paragraphs using <p> tags",
-            "responsibilities": "key responsibilities as HTML <ul><li> list — minimum 5 items",
-            "qualifications": "required qualifications as HTML <ul><li> list",
-            "skills": "comma-separated list of required skills — minimum 6",
-            "application_procedure": "how to apply — email, URL, or clear instructions",
-            "email": "contact email if mentioned, else null",
-            "telephone": "phone number if mentioned, else null",
-            "deadline": "application deadline in YYYY-MM-DD format",
-            "duty_station": "office or work location, else null",
-            "location_type": "remote|hybrid|on-site",
-            "employment_type": "full-time|part-time|contract|internship|volunteer|temporary",
-            "salary_amount": "numeric salary amount or null",
-            "currency": "UGX|USD|EUR|KES",
-            "payment_period": "monthly|yearly|weekly|daily|hourly or null",
-            "meta_description": "150-character SEO description of this job",
-            "keywords": "comma-separated SEO keywords",
-            "experience_level_name": "entry level|junior|mid level|senior|executive",
-            "education_level_name": "Certificate|Diploma|Bachelor's Degree|Master's Degree",
-            "industry_name": "industry sector name",
-            "category_name": "job category name",
-            "is_urgent": false,
-            "is_featured": false,
-            "is_resume_required": true,
-            "is_cover_letter_required": false,
-            "is_academic_documents_required": false,
-            "is_application_required": false,
-            "is_whatsapp_contact": false,
-            "is_telephone_call": false,
-            "work_hours": "work schedule if mentioned, else null"
-            }
+FIELDS TO EXTRACT:
+{
+  "job_title": "exact job title",
+  "company_name": "company name",
+  "job_description": "full job description as HTML — 2-4 paragraphs using <p> tags, specific to this role",
+  "responsibilities": "key responsibilities as HTML <ul><li> list — minimum 5 items, specific to this role",
+  "qualifications": "required qualifications as HTML <ul><li> list",
+  "skills": "comma-separated list of required skills — minimum 6, specific to this role",
+  "application_procedure": "how to apply — email, URL, or clear instructions",
+  "email": "contact email if mentioned, else null",
+  "telephone": "phone number if mentioned, else null",
+  "deadline": "application deadline in YYYY-MM-DD format",
+  "duty_station": "office or work location, else null",
+  "location_type": "remote|hybrid|on-site",
+  "employment_type": "full-time|part-time|contract|internship|volunteer|temporary",
+  "salary_amount": "numeric salary amount or null",
+  "currency": "UGX|USD|EUR|KES",
+  "payment_period": "monthly|yearly|weekly|daily|hourly or null",
+  "meta_description": "155-character SEO description — must mention job title and location",
+  "keywords": "comma-separated SEO keywords — include job title variations and Uganda/East Africa terms",
+  "experience_level_name": "entry level|junior|mid level|senior|executive",
+  "education_level_name": "Certificate|Diploma|Bachelor's Degree|Master's Degree",
+  "industry_name": "industry sector name",
+  "category_name": "job category name",
+  "is_urgent": false,
+  "is_featured": false,
+  "is_resume_required": true,
+  "is_cover_letter_required": false,
+  "is_academic_documents_required": false,
+  "is_application_required": false,
+  "is_whatsapp_contact": false,
+  "is_telephone_call": false,
+  "work_hours": "work schedule if mentioned, else null"
+}
 
-            CONTENT TO EXTRACT FROM:
-            ---
-            {$content}
-            ---
-            PROMPT;
+CONTENT TO EXTRACT FROM:
+---
+{$content}
+---
+PROMPT;
     }
 
     // =========================================================
@@ -379,9 +611,9 @@ PROMPT;
                     ]
                     : $prompt;
                 $body = [
-                    'model'       => 'gpt-4o',
-                    'max_tokens'  => 4096,
-                    'messages'    => [['role' => 'user', 'content' => $content]],
+                    'model'      => 'gpt-4o',
+                    'max_tokens' => 4096,
+                    'messages'   => [['role' => 'user', 'content' => $content]],
                 ];
                 break;
 
@@ -393,7 +625,7 @@ PROMPT;
                 ];
                 $messages = $imageBase64
                     ? [[
-                        'role' => 'user',
+                        'role'    => 'user',
                         'content' => [
                             ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => 'image/jpeg', 'data' => $imageBase64]],
                             ['type' => 'text', 'text' => $prompt],
@@ -449,12 +681,12 @@ PROMPT;
 
         switch ($model) {
             case 'openai': $text = $data['choices'][0]['message']['content'] ?? ''; break;
-            case 'claude': $text = $data['content'][0]['text'] ?? ''; break;
+            case 'claude': $text = $data['content'][0]['text'] ?? '';              break;
             case 'gemini': $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? ''; break;
-            case 'cohere': $text = $data['message']['content'][0]['text'] ?? ''; break;
+            case 'cohere': $text = $data['message']['content'][0]['text'] ?? '';   break;
         }
 
-        // If the prompt expected JSON, parse it
+        // If the prompt expected JSON, try to parse it
         $clean   = preg_replace('/```json\n?|```\n?/', '', $text);
         $decoded = json_decode(trim($clean), true);
 
