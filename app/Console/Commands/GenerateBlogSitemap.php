@@ -17,12 +17,13 @@ class GenerateBlogSitemap extends Command
 
         $urls = [];
 
-        // ── Static blog pages ──────────────────────────────────────────────────
-        $urls[] = $this->makeUrl($webUrl . '/blog',                    'daily',   '0.9');
-        $urls[] = $this->makeUrl($webUrl . '/blog/categories',         'weekly',  '0.7');
-        $urls[] = $this->makeUrl($webUrl . '/blog/tags',               'weekly',  '0.6');
+        // ── Static blog + tool pages ───────────────────────────────────────────
+        $urls[] = $this->makeUrl($webUrl . '/blog',            'daily',  '0.9');
+        $urls[] = $this->makeUrl($webUrl . '/blog/categories', 'weekly', '0.7');
+        $urls[] = $this->makeUrl($webUrl . '/blog/tags',       'weekly', '0.6');
+        $urls[] = $this->makeUrl($webUrl . '/cv-builder',      'weekly', '0.9'); // CV tool
 
-        // ── Category pages (from existing categories) ─────────────────────────
+        // ── Category pages ────────────────────────────────────────────────────
         $categories = Blog::where('is_active', true)
             ->where('is_published', true)
             ->whereNotNull('category')
@@ -40,7 +41,7 @@ class GenerateBlogSitemap extends Command
             );
         }
 
-        // ── Tag pages (from existing tags) ────────────────────────────────────
+        // ── Tag pages ─────────────────────────────────────────────────────────
         $tags = Blog::where('is_active', true)
             ->where('is_published', true)
             ->whereNotNull('tags')
@@ -97,13 +98,11 @@ class GenerateBlogSitemap extends Command
         $xml .= implode('', $urls);
         $xml .= '</urlset>';
 
-        // Save to public directory
         file_put_contents(public_path('blog-sitemap.xml'), $xml);
 
         $this->info("✓ Blog sitemap generated: {$total} URLs total");
         $this->info('✓ Sitemap URL: ' . $webUrl . '/blog-sitemap.xml');
-        
-        // Also update robots.txt to include blog sitemap
+
         $this->updateRobotsTxt($webUrl);
     }
 
@@ -127,16 +126,17 @@ class GenerateBlogSitemap extends Command
     private function updateRobotsTxt(string $webUrl): void
     {
         $robotsPath = public_path('robots.txt');
-        $content = "User-agent: *\n";
-        $content .= "Allow: /\n";
-        $content .= "Allow: /blog/\n";
-        $content .= "Disallow: /api/\n";
-        $content .= "Disallow: /admin/\n";
-        $content .= "Disallow: /dashboard/\n\n";
-        $content .= "Sitemap: {$webUrl}/sitemap.xml\n";
-        $content .= "Sitemap: {$webUrl}/blog-sitemap.xml\n";
-        
+        $content    = "User-agent: *\n";
+        $content   .= "Allow: /\n";
+        $content   .= "Allow: /blog/\n";
+        $content   .= "Allow: /cv-builder\n";
+        $content   .= "Disallow: /api/\n";
+        $content   .= "Disallow: /admin/\n";
+        $content   .= "Disallow: /dashboard/\n\n";
+        $content   .= "Sitemap: {$webUrl}/sitemap.xml\n";
+        $content   .= "Sitemap: {$webUrl}/blog-sitemap.xml\n";
+
         file_put_contents($robotsPath, $content);
-        $this->info('✓ Updated robots.txt with blog sitemap');
+        $this->info('✓ Updated robots.txt');
     }
 }

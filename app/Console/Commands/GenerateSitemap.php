@@ -18,12 +18,13 @@ class GenerateSitemap extends Command
         $urls = [];
 
         // ── Static pages ──────────────────────────────────────────────────────
-        $urls[] = $this->makeUrl($webUrl,                    'daily',  '1.0');
-        $urls[] = $this->makeUrl($webUrl . '/jobs',          'hourly', '0.9');
-        $urls[] = $this->makeUrl($webUrl . '/companies',     'daily',  '0.8');
-        $urls[] = $this->makeUrl($webUrl . '/about',         'monthly','0.5');
-        $urls[] = $this->makeUrl($webUrl . '/contact',       'monthly','0.4');
-        $urls[] = $this->makeUrl($webUrl . '/privacy-policy','monthly','0.3');
+        $urls[] = $this->makeUrl($webUrl,                      'daily',   '1.0');
+        $urls[] = $this->makeUrl($webUrl . '/jobs',            'hourly',  '0.9');
+        $urls[] = $this->makeUrl($webUrl . '/cv-builder',      'weekly',  '0.9'); // CV tool
+        $urls[] = $this->makeUrl($webUrl . '/companies',       'daily',   '0.8');
+        $urls[] = $this->makeUrl($webUrl . '/about',           'monthly', '0.5');
+        $urls[] = $this->makeUrl($webUrl . '/contact',         'monthly', '0.4');
+        $urls[] = $this->makeUrl($webUrl . '/privacy-policy',  'monthly', '0.3');
 
         // ── Category pages ────────────────────────────────────────────────────
         $categories = \App\Models\Job\JobCategory::where('is_active', true)
@@ -59,7 +60,6 @@ class GenerateSitemap extends Command
         $this->info("Adding {$companies->count()} company pages...");
 
         foreach ($companies as $company) {
-            // Company jobs filter page
             $urls[] = $this->makeUrl(
                 $webUrl . '/jobs?company=' . $company->slug,
                 'weekly',
@@ -111,7 +111,6 @@ class GenerateSitemap extends Command
 
     private function makeUrl(string $loc, string $changefreq, string $priority, ?string $lastmod = null): string
     {
-        // Skip empty URLs entirely
         if (empty(trim($loc)) || !filter_var($loc, FILTER_VALIDATE_URL)) {
             return '';
         }
