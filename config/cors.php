@@ -1,4 +1,5 @@
-// MAIN APP: config/cors.php
+<?php
+
 
 return [
     'paths' => ['api/*', 'sanctum/csrf-cookie', 'auth/*', 'login-register/*'],
