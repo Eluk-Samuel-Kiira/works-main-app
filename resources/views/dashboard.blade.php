@@ -1,17 +1,19 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Dashboard') }}
-        </h2>
-    </x-slot>
+ 
+# // ═══════════════════════════════════════════════════════════════════════════
+# // ONE-TIME: Register your IPN URL with Pesapal (run once in tinker on Main)
+# // ═══════════════════════════════════════════════════════════════════════════
+# /*
+# php artisan tinker
+# >>> $svc = app(\App\Services\PesapalService::class);
+# >>> $result = $svc->registerIpn('http://your-main-domain.com/api/v1/payments/ipn', 'GET');
+# >>> $result
+# // Copy the 'ipn_id' from the result and put it in .env as PESAPAL_IPN_ID
+# */
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
-                    {{ __("You're logged in!") }}
-                </div>
-            </div>
-        </div>
-    </div>
-</x-app-layout>
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN APP — .env  (add these)
+// ═══════════════════════════════════════════════════════════════════════════
+/*
