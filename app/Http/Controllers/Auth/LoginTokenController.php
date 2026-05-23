@@ -459,66 +459,87 @@ class LoginTokenController extends Controller
     // Returns the user data so works-web can build its own session.
     // Does NOT log anyone into works-main.
     // ─────────────────────────────────────────────────────────────────────────
-    public function verifyTokenApi(Request $request): JsonResponse
+
+    public function verifyToken(Request $request)
     {
-        $request->validate(['token' => 'required|string|size:64']);
- 
-        $loginToken = LoginToken::with('user')->where('token', $request->token)->first();
- 
-        if (!$loginToken || !$loginToken->user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid or expired magic link.',
-            ], 401);
+        // Log::info('🔐 [MAIN] verify-token called', [
+        //     'token_prefix' => substr($request->token ?? '', 0, 8) . '...',
+        //     'ip'           => $request->ip(),
+        // ]);
+
+        $loginToken = LoginToken::with('user')
+            ->where('token', $request->token)
+            ->first();
+
+        if (!$loginToken) {
+            // Log::warning('🔐 [MAIN] Token not found in DB');
+            return response()->json(['message' => 'Invalid or expired token.'], 401);
         }
- 
+
         if (!$loginToken->isValid()) {
-            $reason = $loginToken->used_at ? 'already been used' : 'expired';
-            $loginToken->delete();
- 
-            return response()->json([
-                'success' => false,
-                'message' => "This link has {$reason}. Please request a new one.",
-            ], 401);
+            // Log::warning('🔐 [MAIN] Token invalid (used or expired)', [
+            //     'used_at'    => $loginToken->used_at,
+            //     'expires_at' => $loginToken->expires_at,
+            // ]);
+            return response()->json(['message' => 'Invalid or expired token.'], 401);
         }
- 
-        if (!$loginToken->user->is_active) {
-            return response()->json([
-                'success' => false,
-                'message' => 'This account has been deactivated. Please contact support.',
-            ], 403);
+
+        if (!$loginToken->user) {
+            // Log::error('🔐 [MAIN] Orphaned token — no user attached', [
+            //     'token_id' => $loginToken->id,
+            // ]);
+            return response()->json(['message' => 'Invalid or expired token.'], 401);
         }
- 
+
         $user = $loginToken->user;
- 
-        // Mark token used + update last_login
+
+        Log::info('🔐 [MAIN] Token valid — user found', [
+            'user_id' => $user->id,
+            'email'   => $user->email,
+            'role'    => $user->role,
+        ]);
+
+        // Delete old Sanctum tokens
+        $deletedCount = $user->tokens()->count();
+        $user->tokens()->delete();
+
+        // Log::info('🔐 [MAIN] Old Sanctum tokens deleted', [
+        //     'deleted_count' => $deletedCount,
+        //     'user_id'       => $user->id,
+        // ]);
+
+        // Issue fresh Sanctum token
+        $apiToken = $user->createToken(
+            'web-session',
+            ['*'],
+            now()->addDays(30)
+        )->plainTextToken;
+
+        // Log::info('🔐 [MAIN] Sanctum token created', [
+        //     'user_id'      => $user->id,
+        //     'email'        => $user->email,
+        //     'token_prefix' => substr($apiToken, 0, 12) . '...',  // never log the full token in production
+        //     'expires_at'   => now()->addDays(30)->toISOString(),
+        // ]);
+
         $loginToken->markAsUsed();
-        $user->update(['last_login_at' => now()]);
- 
-        // Clean up stale tokens
-        LoginToken::where('user_id', $user->id)
-            ->where(function ($q) {
-                $q->where('expires_at', '<', now())->orWhereNotNull('used_at');
-            })
-            ->delete();
- 
-        // Return user payload — works-web creates the session from this
+
+        // Log::info('🔐 [MAIN] Magic link marked as used, returning token to Web');
+
         return response()->json([
-            'success' => true,
-            'user'    => [
-                'id'         => $user->id,
-                'uuid'       => $user->uuid,
-                'email'      => $user->email,
-                'first_name' => $user->first_name,
-                'last_name'  => $user->last_name,
-                'full_name'  => $user->full_name,
-                'phone'      => $user->phone,
-                'role'       => $user->role?->name,
-                'role_id'    => $user->role_id,
+            'user' => [
+                'id'           => $user->id,
+                'uuid'         => $user->uuid,
+                'email'        => $user->email,
+                'first_name'   => $user->first_name,
+                'last_name'    => $user->last_name,
+                'full_name'    => $user->full_name,
+                'phone'        => $user->phone,
+                'role'         => $user->role,
+                'role_id'      => $user->role_id,
                 'country_code' => $user->country_code,
-                'is_active'  => $user->is_active,
-                'last_login_at' => $user->last_login_at,
             ],
+            'api_token' => $apiToken,
         ]);
     }
 

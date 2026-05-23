@@ -77,18 +77,28 @@ class Company extends Model
         return $this->hasMany(JobPost::class);
     }
 
-    public function getLogoUrlAttribute()
+
+    public function getLogoUrlAttribute(): string
     {
         if (!$this->logo) {
-            // Use a proper default image URL
             return url('/images/default-company-logo.png');
         }
 
+        // Already a full URL (e.g. S3, CDN, external)
         if (filter_var($this->logo, FILTER_VALIDATE_URL)) {
             return $this->logo;
         }
 
-        return Storage::url($this->logo);
+        // Local storage path — use url() not Storage::url()
+        // Storage::url() can return a relative path in local env
+        // url() always returns http://127.0.0.1:8000/storage/...
+        $path = ltrim($this->logo, '/');
+
+        if (str_starts_with($path, 'storage/')) {
+            return url($path);
+        }
+
+        return url('storage/' . $path);
     }
 
     public function scopeActive($query)
