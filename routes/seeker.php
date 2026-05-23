@@ -5,7 +5,6 @@ use App\Http\Controllers\Api\Payments\PaymentController;
 
 use App\Http\Controllers\Api\Seeker\{ 
     SeekerCVController,
-    SeekerCVPDFController,
     RecommendationController,
 };
 
@@ -23,10 +22,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/recommendations/refresh', [RecommendationController::class, 'refresh']);
     });
 
-    
-    // PDF Routes
-    // Route::post('/seeker/cv/generate-pdf', [SeekerCVPDFController::class, 'generatePDF']);
-    // Route::post('/seeker/cv/preview-pdf', [SeekerCVPDFController::class, 'previewPDF']);
+
     
 });
 
