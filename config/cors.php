@@ -2,7 +2,7 @@
 
 
 return [
-    'paths' => ['api/*', 'sanctum/csrf-cookie', 'auth/*', 'login-register/*'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'auth/*', 'login-register/*', 'v1/cv-enhancement/*'],
     'allowed_methods' => ['*'],
     'allowed_origins' => [
         'http://127.0.0.1:8001',
@@ -16,7 +16,7 @@ return [
     ],
     'allowed_origins_patterns' => [],
     'allowed_headers' => ['*'],
-    'exposed_headers' => [],
+    'exposed_headers' => ['Content-Disposition'],
     'max_age' => 0,
     'supports_credentials' => true,
 ];
