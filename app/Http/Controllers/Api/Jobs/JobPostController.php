@@ -83,6 +83,8 @@ class JobPostController extends Controller
         return $this->paginated($paginated, 'Job posts retrieved successfully');
     }
 
+
+    
     /**
      * Check for duplicate jobs
      */
@@ -91,26 +93,58 @@ class JobPostController extends Controller
         $request->validate([
             'job_title' => 'required|string|max:255',
             'company_id' => 'required|integer|exists:companies,id',
+            'job_location_id' => 'nullable|integer|exists:job_locations,id',
+            'email' => 'nullable|string',
+            'telephone' => 'nullable|string',
         ]);
 
         $jobTitle = $request->job_title;
         $companyId = $request->company_id;
+        $locationId = $request->job_location_id;
+        $email = $request->email;
+        $telephone = $request->telephone;
 
-        // Get existing jobs for this company
+        // Get existing jobs for this company from last 30 days
         $existingJobs = JobPost::where('company_id', $companyId)
-            ->where('created_at', '>=', now()->subDays(30)) // Only check last 30 days
-            ->get(['id', 'job_title', 'created_at']);
+            ->where('created_at', '>=', now()->subDays(30))
+            ->get(['id', 'job_title', 'job_location_id', 'email', 'telephone', 'created_at']);
 
         $duplicates = [];
         
         foreach ($existingJobs as $existing) {
             $similarity = $this->calculateSimilarity($jobTitle, $existing->job_title);
             
-            if ($similarity >= 75) {
+            // Check location match
+            $locationMatch = false;
+            if ($locationId && $existing->job_location_id) {
+                $locationMatch = ($locationId == $existing->job_location_id);
+            }
+            
+            // Check email match (if both have emails)
+            $emailMatch = false;
+            if (!empty($email) && !empty($existing->email)) {
+                $emailMatch = ($this->normalizeContactField($email) == $this->normalizeContactField($existing->email));
+            }
+            
+            // Check telephone match (if both have telephones)
+            $telephoneMatch = false;
+            if (!empty($telephone) && !empty($existing->telephone)) {
+                $telephoneMatch = ($this->normalizeContactField($telephone) == $this->normalizeContactField($existing->telephone));
+            }
+            
+            // Determine if this is a duplicate based on:
+            // - High title similarity (>= 75%) AND
+            // - At least one of: location match, email match, or telephone match
+            $isDuplicate = ($similarity >= 75) && ($locationMatch || $emailMatch || $telephoneMatch);
+            
+            if ($isDuplicate) {
                 $duplicates[] = [
                     'id' => $existing->id,
                     'job_title' => $existing->job_title,
                     'similarity' => round($similarity, 2),
+                    'location_match' => $locationMatch,
+                    'email_match' => $emailMatch,
+                    'telephone_match' => $telephoneMatch,
                     'posted_at' => $existing->created_at->format('Y-m-d H:i:s'),
                     'posted_date' => $existing->created_at->diffForHumans(),
                 ];
@@ -123,6 +157,7 @@ class JobPostController extends Controller
                 'similarity' => $duplicates[0]['similarity'],
                 'existing_job_title' => $duplicates[0]['job_title'],
                 'existing_job_date' => $duplicates[0]['posted_date'],
+                'match_reason' => $this->getMatchReason($duplicates[0]),
                 'duplicates' => $duplicates,
                 'message' => "A similar job already exists for this company."
             ], 'Duplicate job detected');
@@ -132,6 +167,44 @@ class JobPostController extends Controller
             'is_duplicate' => false,
             'message' => 'No duplicate found'
         ], 'Job title is unique');
+    }
+
+    /**
+     * Normalize contact fields for comparison (remove spaces, lowercase)
+     */
+    private function normalizeContactField(string $value): string
+    {
+        // Convert to lowercase
+        $value = strtolower($value);
+        
+        // Remove all whitespace
+        $value = preg_replace('/\s+/', '', $value);
+        
+        // For telephone, remove any non-digit characters except '+'
+        if (preg_match('/^\+?[0-9]/', $value)) {
+            $value = preg_replace('/[^0-9+]/', '', $value);
+        }
+        
+        return trim($value);
+    }
+
+    /**
+     * Get human-readable match reason
+     */
+    private function getMatchReason(array $duplicate): string
+    {
+        $reasons = [];
+        if ($duplicate['location_match']) {
+            $reasons[] = 'same location';
+        }
+        if ($duplicate['email_match']) {
+            $reasons[] = 'same email';
+        }
+        if ($duplicate['telephone_match']) {
+            $reasons[] = 'same telephone';
+        }
+        
+        return 'Similar job title (' . $duplicate['similarity'] . '% match) and ' . implode(' / ', $reasons);
     }
 
     /**
@@ -358,33 +431,56 @@ class JobPostController extends Controller
         try {
             $validated = $request->validated();
             
-            // Check for duplicate job before creating
             $existingJob = JobPost::where('company_id', $validated['company_id'])
-                ->where('job_title', 'LIKE', '%' . $validated['job_title'] . '%')
                 ->where('created_at', '>=', now()->subDays(30))
-                ->first();
+                ->get()
+                ->first(function ($job) use ($validated) {
+                    $similarity = $this->calculateSimilarity($validated['job_title'], $job->job_title);
+                    
+                    if ($similarity < 75) {
+                        return false;
+                    }
+                    
+                    // Check location match
+                    $locationMatch = false;
+                    if (!empty($validated['job_location_id']) && !empty($job->job_location_id)) {
+                        $locationMatch = ($validated['job_location_id'] == $job->job_location_id);
+                    }
+                    
+                    // Check email match
+                    $emailMatch = false;
+                    if (!empty($validated['email']) && !empty($job->email)) {
+                        $emailMatch = ($this->normalizeContactField($validated['email']) == $this->normalizeContactField($job->email));
+                    }
+                    
+                    // Check telephone match
+                    $telephoneMatch = false;
+                    if (!empty($validated['telephone']) && !empty($job->telephone)) {
+                        $telephoneMatch = ($this->normalizeContactField($validated['telephone']) == $this->normalizeContactField($job->telephone));
+                    }
+                    
+                    return ($locationMatch || $emailMatch || $telephoneMatch);
+                });
             
             if ($existingJob) {
                 $similarity = $this->calculateSimilarity($validated['job_title'], $existingJob->job_title);
                 
-                if ($similarity >= 75) {
-                    return $this->error(
-                        "A similar job already exists for this company. " .
-                        "Existing job: '{$existingJob->job_title}' ({$similarity}% similar). " .
-                        "Please check before posting.",
-                        409,
-                        [
-                            'is_duplicate' => true,
-                            'similarity' => round($similarity, 2),
-                            'existing_job' => [
-                                'id' => $existingJob->id,
-                                'title' => $existingJob->job_title,
-                                'slug' => $existingJob->slug,
-                                'posted_at' => $existingJob->created_at->format('Y-m-d H:i:s'),
-                            ]
+                return $this->error(
+                    "A similar job already exists for this company. " .
+                    "Existing job: '{$existingJob->job_title}' (" . round($similarity, 2) . "% similar). " .
+                    "Please check before posting.",
+                    409,
+                    [
+                        'is_duplicate' => true,
+                        'similarity' => round($similarity, 2),
+                        'existing_job' => [
+                            'id' => $existingJob->id,
+                            'title' => $existingJob->job_title,
+                            'slug' => $existingJob->slug,
+                            'posted_at' => $existingJob->created_at->format('Y-m-d H:i:s'),
                         ]
-                    );
-                }
+                    ]
+                );
             }
             
             // Generate SEO-friendly slug

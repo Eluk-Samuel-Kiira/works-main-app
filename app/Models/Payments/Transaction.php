@@ -98,7 +98,6 @@ class Transaction extends Model
     // ─────────────────────────────────────────────────────────────────────
     // Scopes
     // ─────────────────────────────────────────────────────────────────────
-    public function scopeSuccessful($q) { return $q->where('status', 'successful'); }
     public function scopePending($q)    { return $q->where('status', 'pending'); }
     public function scopeProcessing($q) { return $q->where('status', 'processing'); }
     public function scopeFailed($q)     { return $q->where('status', 'failed'); }
@@ -167,17 +166,35 @@ class Transaction extends Model
         ]);
     }
 
-    public function markAsSuccessful(?array $gatewayResponse = null): void
+
+    public function markAsSuccessful($gatewayResponse = null)
     {
         $this->update([
-            'status'           => 'successful',
+            'status' => 'successful',
             'gateway_response' => $gatewayResponse,
-            'gateway_status'   => 'success',
-            'gateway_message'  => 'Payment completed successfully',
-            'confirmed_at'     => now(),
+            'gateway_status' => 'success',
+            'gateway_message' => 'Payment completed successfully',
+            'confirmed_at' => now()
         ]);
 
-        $this->processPostPayment();
+        // Trigger subscription activation event
+        event(new \App\Events\SubscriptionActivated($this));
+    }
+
+    public function scopeSuccessful($query)
+    {
+        return $query->where('status', 'successful');
+    }
+
+    public function scopeActiveSubscription($query, $userId)
+    {
+        return $query->where('user_id', $userId)
+            ->where('transaction_type', 'subscription')
+            ->where('status', 'successful')
+            ->where(function($q) {
+                $q->whereNull('expires_at')
+                ->orWhere('expires_at', '>', now());
+            });
     }
 
     public function markAsFailed(?array $gatewayResponse = null, ?string $message = null): void

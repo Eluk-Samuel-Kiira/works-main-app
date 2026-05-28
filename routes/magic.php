@@ -24,7 +24,14 @@ Route::middleware('guest')->group(function () {
 Route::get('/invalid-token', [LoginTokenController::class, 'invalidToken'])->name('auth.invalid-token');
 
 // Logout Route (Accessible to both authenticated and guest users)
-Route::post('/logout', [LoginTokenController::class, 'logout'])->name('auth.logout');
+// Route::post('/logout', [LoginTokenController::class, 'logout'])->name('auth.logout');
+
+Route::get('/logout', function (Request $request) {
+    Auth::logout();
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
+    return redirect('/')->with('info', 'Logged out successfully.');
+})->name('auth.logout');
 
 
 

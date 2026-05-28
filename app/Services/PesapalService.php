@@ -1,6 +1,5 @@
 <?php
 // MAIN APP: app/Services/PesapalService.php
-// Handles all Pesapal API communication
 
 namespace App\Services;
 
@@ -12,18 +11,27 @@ class PesapalService
     private string $consumerKey;
     private string $consumerSecret;
     private string $ipnId;
+    private bool $isSandbox;
 
     public function __construct()
     {
-        $sandbox = config('pesapal.sandbox', true);
+        $this->isSandbox = config('pesapal.sandbox', true);
 
-        $this->baseUrl       = $sandbox
+        $this->baseUrl = $this->isSandbox
             ? 'https://cybqa.pesapal.com/pesapalv3'
             : 'https://pay.pesapal.com/v3';
 
-        $this->consumerKey    = config('pesapal.consumer_key');
+        $this->consumerKey = config('pesapal.consumer_key');
         $this->consumerSecret = config('pesapal.consumer_secret');
-        $this->ipnId          = config('pesapal.ipn_id');
+        $this->ipnId = config('pesapal.ipn_id');
+
+        Log::info('[Pesapal] Service initialized', [
+            'sandbox' => $this->isSandbox,
+            'base_url' => $this->baseUrl,
+            'has_key' => !empty($this->consumerKey),
+            'has_secret' => !empty($this->consumerSecret),
+            'has_ipn_id' => !empty($this->ipnId),
+        ]);
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -31,21 +39,41 @@ class PesapalService
     // ─────────────────────────────────────────────────────────────────────
     public function getToken(): string
     {
+        if (empty($this->consumerKey) || empty($this->consumerSecret)) {
+            throw new \Exception('Pesapal consumer key or secret is missing. Please check configuration.');
+        }
+
         return Cache::remember('pesapal_token', 240, function () {
-            $res = Http::timeout(15)
+            Log::info('[Pesapal] Requesting new token', [
+                'sandbox' => $this->isSandbox,
+                'key_prefix' => substr($this->consumerKey, 0, 10) . '...'
+            ]);
+
+            $response = Http::timeout(15)
                 ->acceptJson()
                 ->post("{$this->baseUrl}/api/Auth/RequestToken", [
-                    'consumer_key'    => $this->consumerKey,
+                    'consumer_key' => $this->consumerKey,
                     'consumer_secret' => $this->consumerSecret,
                 ]);
 
-            if (!$res->successful() || empty($res->json('token'))) {
-                Log::error('[Pesapal] Token request failed', ['body' => $res->body()]);
-                throw new \Exception('Failed to obtain Pesapal token: ' . $res->body());
+            Log::info('[Pesapal] Token response', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            if (!$response->successful()) {
+                $error = $response->json();
+                $message = $error['error']['message'] ?? $error['error']['code'] ?? 'Unknown error';
+                throw new \Exception("Pesapal token failed ({$this->baseUrl}): {$message}");
+            }
+
+            $token = $response->json('token');
+            if (empty($token)) {
+                throw new \Exception('No token returned from Pesapal');
             }
 
             Log::info('[Pesapal] Token obtained successfully');
-            return $res->json('token');
+            return $token;
         });
     }
 
@@ -54,81 +82,110 @@ class PesapalService
     // ─────────────────────────────────────────────────────────────────────
     public function submitOrder(array $payload): array
     {
+        if (empty($this->ipnId)) {
+            throw new \Exception('IPN ID not configured. Please register IPN first.');
+        }
+
         $token = $this->getToken();
 
-        $res = Http::timeout(30)
+        $payload['notification_id'] = $this->ipnId;
+
+        Log::info('[Pesapal] Submitting order', [
+            'id' => $payload['id'],
+            'amount' => $payload['amount'],
+            'currency' => $payload['currency'],
+        ]);
+
+        $response = Http::timeout(30)
             ->acceptJson()
             ->withToken($token)
             ->post("{$this->baseUrl}/api/Transactions/SubmitOrderRequest", $payload);
 
-        if (!$res->successful()) {
+        if (!$response->successful()) {
             Log::error('[Pesapal] SubmitOrder failed', [
-                'payload'  => $payload,
-                'response' => $res->body(),
+                'payload' => $payload,
+                'response' => $response->body(),
             ]);
-            throw new \Exception('Pesapal order submission failed: ' . $res->body());
+            throw new \Exception('Pesapal order submission failed: ' . $response->body());
         }
 
-        $data = $res->json();
+        $data = $response->json();
 
         Log::info('[Pesapal] Order submitted', [
-            'merchant_reference'  => $data['merchant_reference'] ?? null,
-            'order_tracking_id'   => $data['order_tracking_id']  ?? null,
+            'merchant_reference' => $data['merchant_reference'] ?? null,
+            'order_tracking_id' => $data['order_tracking_id'] ?? null,
+            'redirect_url' => $data['redirect_url'] ?? null,
         ]);
 
         return $data;
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // Step 3 — Get Transaction Status (called from callback + IPN)
+    // Step 3 — Get Transaction Status
     // ─────────────────────────────────────────────────────────────────────
     public function getTransactionStatus(string $orderTrackingId): array
     {
         $token = $this->getToken();
 
-        $res = Http::timeout(15)
+        $response = Http::timeout(15)
             ->acceptJson()
             ->withToken($token)
             ->get("{$this->baseUrl}/api/Transactions/GetTransactionStatus", [
                 'orderTrackingId' => $orderTrackingId,
             ]);
 
-        if (!$res->successful()) {
+        if (!$response->successful()) {
             Log::error('[Pesapal] GetTransactionStatus failed', [
                 'orderTrackingId' => $orderTrackingId,
-                'response'        => $res->body(),
+                'response' => $response->body(),
             ]);
-            throw new \Exception('Failed to get transaction status: ' . $res->body());
+            throw new \Exception('Failed to get transaction status: ' . $response->body());
         }
 
-        return $res->json();
+        return $response->json();
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // Register IPN URL (run once via artisan or on first boot)
+    // Register IPN URL
     // ─────────────────────────────────────────────────────────────────────
-    public function registerIpn(string $ipnUrl, string $method = 'GET'): array
+    public function registerIpn(string $ipnUrl, string $method = 'POST'): array
     {
         $token = $this->getToken();
 
-        $res = Http::timeout(15)
+        Log::info('[Pesapal] Registering IPN', ['url' => $ipnUrl, 'method' => $method]);
+
+        $response = Http::timeout(15)
             ->acceptJson()
             ->withToken($token)
             ->post("{$this->baseUrl}/api/URLSetup/RegisterIPN", [
-                'url'          => $ipnUrl,
+                'url' => $ipnUrl,
                 'ipn_notification_type' => $method,
             ]);
 
-        if (!$res->successful()) {
-            throw new \Exception('IPN registration failed: ' . $res->body());
+        if (!$response->successful()) {
+            throw new \Exception('IPN registration failed: ' . $response->body());
         }
 
-        Log::info('[Pesapal] IPN registered', ['ipn_url' => $ipnUrl, 'response' => $res->json()]);
-        return $res->json();
+        $data = $response->json();
+
+        Log::info('[Pesapal] IPN registered', [
+            'ipn_id' => $data['ipn_id'] ?? null,
+            'url' => $data['url'] ?? null,
+        ]);
+
+        return $data;
     }
 
     public function getIpnId(): string
     {
+        if (empty($this->ipnId)) {
+            throw new \Exception('IPN ID not configured. Please run: php artisan pesapal:register-ipn');
+        }
         return $this->ipnId;
+    }
+
+    public function isSandbox(): bool
+    {
+        return $this->isSandbox;
     }
 }
