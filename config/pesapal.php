@@ -5,15 +5,15 @@
 return [
     'sandbox' => env('PESAPAL_SANDBOX', true),
     
-    // Sandbox Keys - MUST come from .env
+    // Sandbox Keys
     'sandbox_consumer_key' => env('PESAPAL_SANDBOX_CONSUMER_KEY'),
     'sandbox_consumer_secret' => env('PESAPAL_SANDBOX_CONSUMER_SECRET'),
     
-    // Production Keys - MUST come from .env
+    // Production Keys
     'live_consumer_key' => env('PESAPAL_LIVE_CONSUMER_KEY'),
     'live_consumer_secret' => env('PESAPAL_LIVE_CONSUMER_SECRET'),
     
-    // Dynamic consumer key/secret based on environment
+    // Dynamic keys based on environment
     'consumer_key' => env('PESAPAL_SANDBOX', true) 
         ? env('PESAPAL_SANDBOX_CONSUMER_KEY')
         : env('PESAPAL_LIVE_CONSUMER_KEY'),
@@ -24,10 +24,8 @@ return [
     
     'ipn_id' => env('PESAPAL_IPN_ID'),
     
-    // Callback URLs - MUST come from .env
+    // Dynamic URLs based on environment
     'callback_url' => env('PESAPAL_CALLBACK_URL'),
     'cancellation_url' => env('PESAPAL_CANCELLATION_URL'),
-    
-    // IPN URL (where Pesapal sends webhooks) - from .env
     'ipn_url' => env('PESAPAL_IPN_URL'),
 ];
