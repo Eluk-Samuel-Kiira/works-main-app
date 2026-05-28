@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\{Http, Cache, Log};
 
 class PesapalService
 {
+
     private string $baseUrl;
     private string $consumerKey;
     private string $consumerSecret;
@@ -25,13 +26,28 @@ class PesapalService
         $this->consumerSecret = config('pesapal.consumer_secret');
         $this->ipnId = config('pesapal.ipn_id');
 
-        Log::info('[Pesapal] Service initialized', [
-            'sandbox' => $this->isSandbox,
-            'base_url' => $this->baseUrl,
-            'has_key' => !empty($this->consumerKey),
-            'has_secret' => !empty($this->consumerSecret),
-            'has_ipn_id' => !empty($this->ipnId),
-        ]);
+        // Validate required configuration
+        if (empty($this->consumerKey) || empty($this->consumerSecret)) {
+            Log::error('[Pesapal] Missing consumer key or secret', [
+                'sandbox' => $this->isSandbox,
+                'has_key' => !empty($this->consumerKey),
+                'has_secret' => !empty($this->consumerSecret)
+            ]);
+            throw new \Exception('Pesapal configuration error: Missing consumer key or secret. Check your .env file.');
+        }
+
+        if (empty($this->ipnId)) {
+            Log::warning('[Pesapal] IPN ID not configured', [
+                'sandbox' => $this->isSandbox
+            ]);
+        }
+
+        // Log::info('[Pesapal] Service initialized', [
+        //     'sandbox' => $this->isSandbox,
+        //     'base_url' => $this->baseUrl,
+        //     'has_key' => !empty($this->consumerKey),
+        //     'has_ipn_id' => !empty($this->ipnId),
+        // ]);
     }
 
     // ─────────────────────────────────────────────────────────────────────
