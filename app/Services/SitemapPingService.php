@@ -258,7 +258,8 @@ class SitemapPingService
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json; charset=utf-8',
             ])
-            ->timeout(20)
+            ->timeout(45)  // Increased from 20
+            ->retry(2, 200) // Retry twice with 200ms delay
             ->post(self::INDEXNOW_ENDPOINT, $payload);
 
             $status  = $response->status();
