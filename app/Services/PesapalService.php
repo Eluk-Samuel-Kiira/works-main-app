@@ -7,7 +7,6 @@ use Illuminate\Support\Facades\{Http, Cache, Log};
 
 class PesapalService
 {
-
     private string $baseUrl;
     private string $consumerKey;
     private string $consumerSecret;
@@ -26,43 +25,18 @@ class PesapalService
         $this->consumerSecret = config('pesapal.consumer_secret');
         $this->ipnId = config('pesapal.ipn_id');
 
-        // Validate required configuration
         if (empty($this->consumerKey) || empty($this->consumerSecret)) {
-            Log::error('[Pesapal] Missing consumer key or secret', [
-                'sandbox' => $this->isSandbox,
-                'has_key' => !empty($this->consumerKey),
-                'has_secret' => !empty($this->consumerSecret)
-            ]);
-            throw new \Exception('Pesapal configuration error: Missing consumer key or secret. Check your .env file.');
+            Log::error('[Pesapal] Missing consumer key or secret');
+            throw new \Exception('Pesapal configuration error: Missing consumer key or secret.');
         }
-
-        if (empty($this->ipnId)) {
-            Log::warning('[Pesapal] IPN ID not configured', [
-                'sandbox' => $this->isSandbox
-            ]);
-        }
-
-        // Log::info('[Pesapal] Service initialized', [
-        //     'sandbox' => $this->isSandbox,
-        //     'base_url' => $this->baseUrl,
-        //     'has_key' => !empty($this->consumerKey),
-        //     'has_ipn_id' => !empty($this->ipnId),
-        // ]);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Step 1 — Get Bearer Token (cached for 4 mins, expires in 5)
-    // ─────────────────────────────────────────────────────────────────────
     public function getToken(): string
     {
-        if (empty($this->consumerKey) || empty($this->consumerSecret)) {
-            throw new \Exception('Pesapal consumer key or secret is missing. Please check configuration.');
-        }
-
         return Cache::remember('pesapal_token', 240, function () {
-            Log::info('[Pesapal] Requesting new token', [
+            Log::info('[Pesapal] Requesting token', [
                 'sandbox' => $this->isSandbox,
-                'key_prefix' => substr($this->consumerKey, 0, 10) . '...'
+                'url' => "{$this->baseUrl}/api/Auth/RequestToken"
             ]);
 
             $response = Http::timeout(15)
@@ -72,44 +46,38 @@ class PesapalService
                     'consumer_secret' => $this->consumerSecret,
                 ]);
 
-            Log::info('[Pesapal] Token response', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
             if (!$response->successful()) {
                 $error = $response->json();
-                $message = $error['error']['message'] ?? $error['error']['code'] ?? 'Unknown error';
-                throw new \Exception("Pesapal token failed ({$this->baseUrl}): {$message}");
+                $message = $error['error']['message'] ?? $error['error']['code'] ?? $response->body();
+                throw new \Exception("Pesapal token failed: {$message}");
             }
 
-            $token = $response->json('token');
+            $data = $response->json();
+            $token = $data['token'] ?? null;
+
             if (empty($token)) {
                 throw new \Exception('No token returned from Pesapal');
             }
 
-            Log::info('[Pesapal] Token obtained successfully');
+            Log::info('[Pesapal] Token obtained');
             return $token;
         });
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Step 2 — Submit Order Request → returns redirect_url
-    // ─────────────────────────────────────────────────────────────────────
     public function submitOrder(array $payload): array
     {
         if (empty($this->ipnId)) {
-            throw new \Exception('IPN ID not configured. Please register IPN first.');
+            throw new \Exception('IPN ID not configured.');
         }
 
         $token = $this->getToken();
-
         $payload['notification_id'] = $this->ipnId;
 
         Log::info('[Pesapal] Submitting order', [
             'id' => $payload['id'],
             'amount' => $payload['amount'],
             'currency' => $payload['currency'],
+            'callback_url' => $payload['callback_url'] ?? 'not set',
         ]);
 
         $response = Http::timeout(30)
@@ -117,28 +85,36 @@ class PesapalService
             ->withToken($token)
             ->post("{$this->baseUrl}/api/Transactions/SubmitOrderRequest", $payload);
 
-        if (!$response->successful()) {
-            Log::error('[Pesapal] SubmitOrder failed', [
-                'payload' => $payload,
-                'response' => $response->body(),
-            ]);
-            throw new \Exception('Pesapal order submission failed: ' . $response->body());
-        }
-
-        $data = $response->json();
-
-        Log::info('[Pesapal] Order submitted', [
-            'merchant_reference' => $data['merchant_reference'] ?? null,
-            'order_tracking_id' => $data['order_tracking_id'] ?? null,
-            'redirect_url' => $data['redirect_url'] ?? null,
+        $responseData = $response->json();
+        
+        Log::info('[Pesapal] SubmitOrder response', [
+            'status' => $response->status(),
+            'has_error' => isset($responseData['error']),
+            'response' => $responseData
         ]);
 
-        return $data;
+        if (!$response->successful() || isset($responseData['error'])) {
+            $error = $responseData['error']['message'] ?? $responseData['message'] ?? 'Order submission failed';
+            throw new \Exception("Pesapal order failed: {$error}");
+        }
+
+        // Check for required fields - Pesapal v3 uses different field names
+        $merchantReference = $responseData['merchant_reference'] ?? $responseData['MerchantReference'] ?? null;
+        $orderTrackingId = $responseData['order_tracking_id'] ?? $responseData['OrderTrackingId'] ?? null;
+        $redirectUrl = $responseData['redirect_url'] ?? $responseData['RedirectURL'] ?? null;
+
+        if (empty($redirectUrl)) {
+            Log::error('[Pesapal] No redirect_url in response', ['response' => $responseData]);
+            throw new \Exception('Pesapal did not return a payment URL. Please check your configuration.');
+        }
+
+        return [
+            'merchant_reference' => $merchantReference,
+            'order_tracking_id' => $orderTrackingId,
+            'redirect_url' => $redirectUrl,
+        ];
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Step 3 — Get Transaction Status
-    // ─────────────────────────────────────────────────────────────────────
     public function getTransactionStatus(string $orderTrackingId): array
     {
         $token = $this->getToken();
@@ -151,24 +127,17 @@ class PesapalService
             ]);
 
         if (!$response->successful()) {
-            Log::error('[Pesapal] GetTransactionStatus failed', [
-                'orderTrackingId' => $orderTrackingId,
-                'response' => $response->body(),
-            ]);
             throw new \Exception('Failed to get transaction status: ' . $response->body());
         }
 
         return $response->json();
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Register IPN URL
-    // ─────────────────────────────────────────────────────────────────────
     public function registerIpn(string $ipnUrl, string $method = 'POST'): array
     {
         $token = $this->getToken();
 
-        Log::info('[Pesapal] Registering IPN', ['url' => $ipnUrl, 'method' => $method]);
+        Log::info('[Pesapal] Registering IPN', ['url' => $ipnUrl]);
 
         $response = Http::timeout(15)
             ->acceptJson()
@@ -183,19 +152,17 @@ class PesapalService
         }
 
         $data = $response->json();
-
-        Log::info('[Pesapal] IPN registered', [
-            'ipn_id' => $data['ipn_id'] ?? null,
-            'url' => $data['url'] ?? null,
-        ]);
-
-        return $data;
+        
+        return [
+            'ipn_id' => $data['ipn_id'] ?? $data['IPNId'] ?? null,
+            'url' => $data['url'] ?? $data['Url'] ?? null,
+        ];
     }
 
     public function getIpnId(): string
     {
         if (empty($this->ipnId)) {
-            throw new \Exception('IPN ID not configured. Please run: php artisan pesapal:register-ipn');
+            throw new \Exception('IPN ID not configured.');
         }
         return $this->ipnId;
     }
