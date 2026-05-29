@@ -590,7 +590,7 @@ PROMPT;
             'openai'  => 'https://api.openai.com/v1/chat/completions',
             'claude'  => 'https://api.anthropic.com/v1/messages',
             'gemini'  => 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent',
-            'cohere'  => 'https://api.coherchate.ai/v2/',
+            'cohere'  => 'https://api.cohere.ai/v2/chat',
         ];
 
         if (!isset($endpoints[$model])) {
