@@ -20,6 +20,7 @@ class PaymentController extends Controller
     // ─────────────────────────────────────────────────────────────────────
     // POST /api/v1/payments/initiate
     // ─────────────────────────────────────────────────────────────────────
+
     public function initiate(Request $request): JsonResponse
     {
         Log::info('[Payment] Initiate called', ['user_id' => $request->user()->id]);
@@ -40,13 +41,11 @@ class PaymentController extends Controller
         $user = $request->user();
 
         return DB::transaction(function () use ($validated, $user) {
-
-            // ── Create transaction — no company_id or plan_id needed ──────
             $transaction = Transaction::create([
                 'user_id'             => $user->id,
                 'transaction_type'    => 'subscription',
-                'subscription_plan'   => $validated['plan'],    // basic/pro/elite
-                'subscription_period' => $validated['period'],  // monthly/yearly
+                'subscription_plan'   => $validated['plan'],
+                'subscription_period' => $validated['period'],
                 'amount'              => $validated['amount_local'],
                 'currency'            => $validated['currency'],
                 'status'              => 'pending',
@@ -64,12 +63,9 @@ class PaymentController extends Controller
             Log::info('[Payment] Transaction created', [
                 'reference' => $transaction->reference,
                 'user_id'   => $user->id,
-                'plan'      => $validated['plan'],
-                'amount'    => $validated['amount_local'],
-                'currency'  => $validated['currency'],
             ]);
 
-            // ── Build Pesapal payload ─────────────────────────────────────
+            // Build callback URL
             $callbackUrl = rtrim(config('pesapal.callback_url'), '/')
                 . '?reference=' . urlencode($transaction->reference);
 
@@ -77,11 +73,9 @@ class PaymentController extends Controller
                 'id'               => $transaction->reference,
                 'currency'         => $validated['currency'],
                 'amount'           => (float) $validated['amount_local'],
-                'description'      => 'Stardena Works ' . ucfirst($validated['plan'])
-                                      . ' (' . ucfirst($validated['period']) . ')',
+                'description'      => 'Stardena Works ' . ucfirst($validated['plan']) . ' Plan',
                 'callback_url'     => $callbackUrl,
                 'cancellation_url' => config('pesapal.cancellation_url'),
-                'notification_id'  => $this->pesapal->getIpnId(),
                 'billing_address'  => [
                     'email_address' => $validated['email'],
                     'phone_number'  => $validated['phone'] ?? '',
@@ -91,23 +85,41 @@ class PaymentController extends Controller
                 ],
             ];
 
-            // ── Submit to Pesapal ─────────────────────────────────────────
-            $pesapalResponse = $this->pesapal->submitOrder($payload);
+            try {
+                $pesapalResponse = $this->pesapal->submitOrder($payload);
+                
+                // Validate response before updating
+                if (empty($pesapalResponse['redirect_url'])) {
+                    throw new \Exception('No redirect URL received from Pesapal');
+                }
 
-            // ── Update transaction with Pesapal's tracking ID ─────────────
-            $transaction->update([
-                'gateway_reference' => $pesapalResponse['order_tracking_id'] ?? null,
-                'gateway_request'   => $payload,
-                'gateway_response'  => $pesapalResponse,
-                'status'            => 'processing',
-            ]);
+                $transaction->update([
+                    'gateway_reference' => $pesapalResponse['order_tracking_id'],
+                    'gateway_request'   => $payload,
+                    'gateway_response'  => $pesapalResponse,
+                    'status'            => 'processing',
+                ]);
 
-            return response()->json([
-                'success'            => true,
-                'redirect_url'       => $pesapalResponse['redirect_url'],
-                'order_tracking_id'  => $pesapalResponse['order_tracking_id'],
-                'merchant_reference' => $transaction->reference,
-            ]);
+                return response()->json([
+                    'success'            => true,
+                    'redirect_url'       => $pesapalResponse['redirect_url'],
+                    'order_tracking_id'  => $pesapalResponse['order_tracking_id'],
+                    'merchant_reference' => $transaction->reference,
+                ]);
+
+            } catch (\Exception $e) {
+                Log::error('[Payment] Pesapal order submission failed', [
+                    'error' => $e->getMessage(),
+                    'reference' => $transaction->reference
+                ]);
+                
+                $transaction->update([
+                    'status' => 'failed',
+                    'error_message' => $e->getMessage()
+                ]);
+                
+                return $this->error('Payment initialization failed: ' . $e->getMessage(), 500);
+            }
         });
     }
 
