@@ -63,3 +63,16 @@ Route::prefix('v1')->group(function () {
 Route::middleware(['auth:sanctum'])->prefix('v1/subscription')->group(function () {
     Route::get('/status', [PaymentPlanWebController::class, 'status']);
 });
+
+
+
+use App\Http\Controllers\Api\{ UserController };
+
+Route::middleware(['auth:sanctum'])->prefix('v1/user')->group(function () {
+    Route::get('/profile', [UserController::class, 'getProfile']);
+    Route::put('/profile', [UserController::class, 'updateProfile']);
+    Route::get('/preferences', [UserController::class, 'getPreferences']);
+    Route::put('/preferences', [UserController::class, 'updatePreferences']);
+    Route::post('/request-email-change', [UserController::class, 'requestEmailChange']);
+    Route::post('/confirm-email-change', [UserController::class, 'confirmEmailChange']);
+});

@@ -9,6 +9,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\DB;
+use App\Models\UserPreferences;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\EmailChangeVerification;
 
 class UserController extends Controller
 {
@@ -220,4 +223,114 @@ class UserController extends Controller
 
         return response()->json(['data' => $users]);
     }
+
+    public function getProfile(Request $request)
+    {
+        $user = $request->user();
+        return $this->success([
+            'id' => $user->id,
+            'first_name' => $user->first_name,
+            'last_name' => $user->last_name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'country_code' => $user->country_code,
+        ]);
+    }
+
+
+    public function updateProfile(Request $request)
+    {
+        $validated = $request->validate([
+            'first_name' => 'nullable|string|max:255',
+            'last_name' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:20',
+        ]);
+        
+        $user = $request->user();
+        $user->update($validated);
+        
+        return $this->success(['user' => $user], 'Profile updated');
+    }
+
+
+    public function getPreferences(Request $request)
+    {
+        $prefs = UserPreferences::firstOrCreate(
+            ['user_id' => $request->user()->id],
+            ['notifications' => [
+                'job_recommendations' => true,
+                'application_updates' => true,
+                'cv_enhancement' => true,
+                'payment_updates' => true,
+                'news_announcements' => false,
+            ]]
+        );
+        
+        return $this->success($prefs);
+    }
+
+    
+    public function updatePreferences(Request $request)
+    {
+        $validated = $request->validate([
+            'notifications' => 'required|array',
+            'notifications.job_recommendations' => 'boolean',
+            'notifications.application_updates' => 'boolean',
+            'notifications.cv_enhancement' => 'boolean',
+            'notifications.payment_updates' => 'boolean',
+            'notifications.news_announcements' => 'boolean',
+        ]);
+        
+        $prefs = UserPreferences::updateOrCreate(
+            ['user_id' => $request->user()->id],
+            ['notifications' => $validated['notifications']]
+        );
+        
+        return $this->success($prefs, 'Preferences updated');
+    }
+
+    
+    public function requestEmailChange(Request $request)
+    {
+        $validated = $request->validate([
+            'new_email' => 'required|email|unique:users,email'
+        ]);
+        
+        $user = $request->user();
+        $token = \Illuminate\Support\Str::random(64);
+        
+        // Store pending email change
+        \Cache::put("email_change_{$user->id}", [
+            'new_email' => $validated['new_email'],
+            'token' => $token
+        ], now()->addHours(24));
+        
+        // Send verification email
+        Mail::to($validated['new_email'])->send(new EmailChangeVerification($user, $token));
+        
+        return $this->success(null, 'Verification link sent to your new email address.');
+    }
+
+    public function confirmEmailChange(Request $request)
+    {
+        $validated = $request->validate([
+            'token' => 'required|string'
+        ]);
+        
+        $pending = \Cache::get("email_change_{$request->user()->id}");
+        
+        if (!$pending || $pending['token'] !== $validated['token']) {
+            return $this->error('Invalid or expired verification link.', 422);
+        }
+        
+        $user = $request->user();
+        $user->email = $pending['new_email'];
+        $user->email_verified_at = now();
+        $user->save();
+        
+        \Cache::forget("email_change_{$user->id}");
+        
+        return $this->success(null, 'Email address updated successfully. Please login again.');
+    }
+
 }
