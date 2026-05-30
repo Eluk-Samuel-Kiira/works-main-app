@@ -25,6 +25,7 @@ class ArtisanCommandController extends Controller
         'queue:restart'        => 'Restart queue workers',
         'migrate'              => 'Run database migrations',
         'migrate:status'       => 'Show migration status',
+        'payment-plans:refresh --fresh'    => 'Refreh the payment plan seeder',
         // 'pesapal:register-ipn'       => 'Pesapal IPN',
         // 'db:seed --class=PaymentPlanWebSeeder'              => 'Seed the database',
         // 'migrate:fresh --seed' => 'Migrate and Seed the database a fresh',

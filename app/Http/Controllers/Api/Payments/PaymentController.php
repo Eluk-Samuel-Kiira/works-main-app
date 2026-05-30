@@ -26,7 +26,7 @@ class PaymentController extends Controller
         Log::info('[Payment] Initiate called', ['user_id' => $request->user()->id]);
 
         $validated = $request->validate([
-            'plan'         => 'required|string|in:basic,pro,elite',
+            'plan'         => 'required|string|in:seeker_basic,seeker_pro,seeker_elite',
             'period'       => 'required|string|in:monthly,yearly',
             'amount_usd'   => 'required|numeric|min:1',
             'currency'     => 'required|string|size:3',
