@@ -67,6 +67,13 @@ class LoginTokenController extends Controller
                 'expires_at' => $expiresAt,
             ]);
 
+            // ✅ Update user record with magic link details
+            $user->update([
+                'magic_link_token' => $token,
+                'magic_link_sent_at' => now(),
+                'magic_link_expires_at' => $expiresAt,
+            ]);
+
             Mail::to($user->email)->send(new MagicLoginLink($token));
 
             return back()->with('success', 'Magic login link sent! Please check your inbox.');
@@ -218,14 +225,14 @@ class LoginTokenController extends Controller
 
             // ── 2. Create the user with the confirmed role_id ─────────────────
             $user = User::create([
-                'first_name'        => $request->first_name,
-                'last_name'         => $request->last_name,
-                'email'             => $request->email,
-                'phone'             => $request->phone,
-                'role_id'           => $role->id,
-                'country_code'      => $request->country_code ?? 'UG',
-                'is_active'         => true,
-                'email_verified_at' => now(),
+                    'first_name'        => $request->first_name,
+                    'last_name'         => $request->last_name,
+                    'email'             => $request->email,
+                    'phone'             => $request->phone,
+                    'role_id'           => $role->id,
+                    'country_code'      => $request->country_code ?? 'UG',
+                    'is_active'         => true,
+                    'email_verified_at' => now(),
             ]);
 
             // ── 3. Explicitly assign Spatie role ──────────────────────────────
@@ -349,19 +356,25 @@ class LoginTokenController extends Controller
         LoginToken::where('user_id', $user->id)->whereNull('used_at')->delete();
 
         $token = Str::random(64);
+        $expiresAt = now()->addHours(24);
 
         LoginToken::create([
             'user_id'    => $user->id,
             'token'      => $token,
-            'expires_at' => now()->addHours(24),
+            'expires_at' => $expiresAt,
+        ]);
+
+        // ✅ Update user record with magic link details
+        $user->update([
+            'magic_link_token' => $token,
+            'magic_link_sent_at' => now(),
+            'magic_link_expires_at' => $expiresAt,
         ]);
 
         try {
             if ($user->isJobSeeker()) {
-                // Job seekers stay on works-web
                 Mail::to($user->email)->send(new WebMagicLoginLink($token));
             } else {
-                // Employers, admins, moderators, support → works-main admin dashboard
                 Mail::to($user->email)->send(new MagicLoginLink($token));
             }
 
@@ -405,14 +418,14 @@ class LoginTokenController extends Controller
 
             // ── 2. Create user with confirmed role_id ─────────────────────────
             $user = User::create([
-                'first_name'        => $validated['first_name'],
-                'last_name'         => $validated['last_name'],
-                'email'             => $validated['email'],
-                'phone'             => $validated['phone'] ?? null,
-                'role_id'           => $role->id,
-                'country_code'      => $validated['country_code'] ?? 'UG',
-                'is_active'         => true,
-                'email_verified_at' => now(),
+                    'first_name'        => $request->first_name,
+                    'last_name'         => $request->last_name,
+                    'email'             => $request->email,
+                    'phone'             => $request->phone,
+                    'role_id'           => $role->id,
+                    'country_code'      => $request->country_code ?? 'UG',
+                    'is_active'         => true,
+                    'email_verified_at' => now(),
             ]);
 
             // ── 3. Explicitly assign Spatie role ──────────────────────────────
@@ -426,11 +439,18 @@ class LoginTokenController extends Controller
 
             // ── 4. Create magic link token ────────────────────────────────────
             $token = Str::random(64);
+            $expiresAt = now()->addHours(24);
 
             LoginToken::create([
                 'user_id'    => $user->id,
                 'token'      => $token,
-                'expires_at' => now()->addHours(24),
+                'expires_at' => $expiresAt,
+            ]);
+
+            $user->update([
+                'magic_link_token' => $token,
+                'magic_link_sent_at' => now(),
+                'magic_link_expires_at' => $expiresAt,
             ]);
 
             // ── 5. Route mail based on role ───────────────────────────────────
