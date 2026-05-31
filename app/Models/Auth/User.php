@@ -196,4 +196,17 @@ class User extends Authenticatable
             $q->where('name', 'support');
         });
     }
+
+    public function recordLogin(): void
+    {
+        try {
+            $this->forceFill(['last_login_at' => now()])->save();
+            \Log::info('Last login recorded', ['user_id' => $this->id]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to record last login', [
+                'user_id' => $this->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
 }
