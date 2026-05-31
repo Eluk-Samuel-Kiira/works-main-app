@@ -59,6 +59,12 @@ Route::get('/clear-cache-temp', function () {
 });
 
 
+use App\Http\Controllers\Api\Payments\FeaturedJobPaymentController;
+
+// Featured job payments — NO auth required
+Route::post('/payment/featured/initiate',          [FeaturedJobPaymentController::class, 'initiate'])->name('payment.featured.initiate');
+Route::get('/payment/featured/callback',           [FeaturedJobPaymentController::class, 'callback'])->name('payment.featured.callback');
+Route::get('/payment/featured/status/{reference}', [FeaturedJobPaymentController::class, 'status'])->name('payment.featured.status');
 
 
 
