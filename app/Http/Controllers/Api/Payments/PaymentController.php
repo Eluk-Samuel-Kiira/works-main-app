@@ -254,4 +254,101 @@ class PaymentController extends Controller
             default => null,
         };
     }
+
+
+
+
+    // public use case
+        /**
+     * Public endpoint to get transaction status
+     * No authentication required - works for both featured jobs and subscriptions
+     */
+    public function publicStatus(Request $request, string $reference): JsonResponse
+    {
+        $transaction = Transaction::where('reference', $reference)->first();
+
+        if (!$transaction) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Transaction not found',
+                'status' => 'not_found'
+            ], 404);
+        }
+
+        // Get metadata
+        $metadata = $transaction->metadata ?? [];
+        
+        // Determine package display name
+        $packageName = $this->getPackageDisplayName($transaction);
+        
+        // Get job summary if featured job
+        $jobSummary = null;
+        $companyName = null;
+        if ($transaction->transaction_type === 'featured_job') {
+            $jobSummary = $metadata['job_details_text'] ?? null;
+            $companyName = $metadata['company_name'] ?? null;
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'reference' => $transaction->reference,
+                'status' => $transaction->status,
+                'transaction_type' => $transaction->transaction_type,
+                'subscription_plan' => $transaction->subscription_plan,
+                'subscription_period' => $transaction->subscription_period,
+                'amount' => $transaction->amount,
+                'currency' => $transaction->currency,
+                'formatted_amount' => $transaction->formatted_amount,
+                'confirmation_code' => $transaction->confirmation_code,
+                'customer_email' => $transaction->customer_email,
+                'customer_name' => $transaction->customer_name,
+                'customer_phone' => $transaction->customer_phone,
+                'package_display_name' => $packageName,
+                'job_summary' => $jobSummary,
+                'company_name' => $companyName,
+                'metadata' => $metadata,
+                'created_at' => $transaction->created_at,
+                'updated_at' => $transaction->updated_at,
+            ]
+        ]);
+    }
+
+    private function getPackageDisplayName(Transaction $transaction): string
+    {
+        $metadata = $transaction->metadata ?? [];
+        
+        // Check if package_display_name exists in metadata
+        if (!empty($metadata['package_display_name'])) {
+            return $metadata['package_display_name'];
+        }
+        
+        // For featured jobs
+        if ($transaction->transaction_type === 'featured_job') {
+            $plan = $transaction->subscription_plan;
+            switch ($plan) {
+                case 'featured_week':
+                    return '⭐ FEATURED - 7 DAYS';
+                case 'featured_21days':
+                    return '🔥 FEATURED - 21 DAYS';
+                case 'featured_40days':
+                    return '🚀 FEATURED - 40 DAYS';
+                default:
+                    return '⭐ FEATURED JOB POSTING';
+            }
+        }
+        
+        // For subscriptions
+        $plan = $transaction->subscription_plan;
+        switch ($plan) {
+            case 'seeker_basic':
+                return '📋 BASIC PLAN';
+            case 'seeker_pro':
+                return '⭐ PRO PLAN';
+            case 'seeker_elite':
+                return '💎 ELITE PLAN';
+            default:
+                return '📋 SUBSCRIPTION PLAN';
+        }
+    }
 }

@@ -41,7 +41,17 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     });
 });
 
+Route::get('/v1/public/transaction/status/{reference}', [PaymentController::class, 'publicStatus']);
 
+use App\Http\Controllers\Api\Payments\FeaturedJobPaymentController;
+
+// Service token auth — called by web proxy
+// Route::middleware('api.service_token')->group(function () {
+    Route::post('/v1/featured-jobs/initiate',          [FeaturedJobPaymentController::class, 'initiate']);
+    Route::get('/v1/featured-jobs/callback',           [FeaturedJobPaymentController::class, 'callback']);
+    Route::get('/v1/featured-jobs/status/{reference}', [FeaturedJobPaymentController::class, 'status']);
+// });
+Route::match(['get', 'post'], '/v1/featured-jobs/ipn', [FeaturedJobPaymentController::class, 'ipn']);
 
 
 use App\Http\Controllers\Api\CV\CVEnhancementController;

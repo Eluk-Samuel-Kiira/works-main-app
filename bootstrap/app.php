@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'analytics.admin'    => \App\Http\Middleware\AnalyticsAccess::class . ':admin',
             'analytics.revenue'  => \App\Http\Middleware\AnalyticsAccess::class . ':revenue',
             'analytics.employer' => \App\Http\Middleware\AnalyticsAccess::class . ':employer',
+            'auth.service_token' => \App\Http\Middleware\AuthServiceToken::class,
         ]);
     })
     ->withMiddleware(function (Middleware $middleware) {

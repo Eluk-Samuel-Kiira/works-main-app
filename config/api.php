@@ -22,6 +22,7 @@ return [
     'web_app' => [
         'url' => env('WEB_APP_URL', 'http://127.0.0.1:8001'),
         'api_base' => env('WEB_APP_URL', 'http://127.0.0.1:8001') . '/api',
+        'service_token' => env('WEB_APP_SERVICE_TOKEN'),
     ],
 
     
