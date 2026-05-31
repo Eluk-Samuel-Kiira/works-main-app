@@ -75,6 +75,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1/subscription')->group(function (
 });
 
 
+// public contact
+Route::post('/v1/contact', [CVEnhancementController::class, 'store']);
+
 
 use App\Http\Controllers\Api\{ UserController };
 

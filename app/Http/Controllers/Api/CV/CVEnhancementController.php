@@ -11,11 +11,13 @@ use App\Models\CV\CvUsageCounter;
 use App\Models\Seeker\SeekerCV;
 use App\Services\CVEnhancementService;
 use Illuminate\Http\{Request, JsonResponse};
-use Illuminate\Support\Facades\{Storage, Log};
+use Illuminate\Support\Facades\{Storage, Log, Mail};
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\SimpleType\Jc;
 use PhpOffice\PhpWord\Style\Paragraph;
+use App\Models\Notification;
+use App\Mail\ContactNotification;
 
 
 class CVEnhancementController extends Controller
@@ -561,4 +563,89 @@ class CVEnhancementController extends Controller
         return trim($content);
     }
 
+
+
+
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name'    => 'required|string|max:100',
+            'email'   => 'required|email',
+            'subject' => 'nullable|string|max:200',
+            'message' => 'required|string|min:10|max:2000',
+        ]);
+
+        try {
+            // Build the message content
+            $messageContent = "Name: {$validated['name']}\n";
+            $messageContent .= "Email: {$validated['email']}\n";
+            $messageContent .= "Subject: " . ($validated['subject'] ?? 'General Inquiry') . "\n";
+            $messageContent .= "Message:\n" . $validated['message'] . "\n";
+            $messageContent .= "IP: " . $request->ip() . "\n";
+            $messageContent .= "User Agent: " . $request->userAgent() . "\n";
+            $messageContent .= "Submitted At: " . now()->format('Y-m-d H:i:s');
+
+            // Store in notifications table using your model's structure
+            $notification = Notification::create([
+                'type' => 'contact_form',
+                'title' => 'New Contact Form Submission',
+                'message' => $messageContent,  // ← Using 'message' field, not 'content'
+                'data' => [  // ← Using 'data' field for structured data
+                    'name' => $validated['name'],
+                    'email' => $validated['email'],
+                    'subject' => $validated['subject'] ?? 'General Inquiry',
+                    'message_text' => $validated['message'],
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                ],
+                'status' => 'unread',
+                'priority' => 'medium',
+                'read_at' => null,
+                'user_id' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // Log::info('Contact form stored in notifications', [
+            //     'notification_id' => $notification->id,
+            //     'email' => $validated['email']
+            // ]);
+                    
+
+            // Send notification email to admins
+            try {
+                $adminEmails = array_filter(array_map('trim', explode(',', env('ADMIN_EMAILS', ''))));
+                if (!empty($adminEmails)) {
+                    Mail::to('jobpost@stardenaworks.com')->cc('stardenaworks26@gmail.com')->send(new ContactNotification($validated, 'admin'));
+                    Log::info('Admin notification emails sent', ['emails' => $adminEmails]);
+                } else {
+                    Mail::to(config('mail.from.address'))->send(new ContactNotification($validated, 'admin'));
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to send admin notification email', ['error' => $e->getMessage()]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Contact form received successfully',
+                'data' => [
+                    'notification_id' => $notification->id,
+                    'name' => $validated['name'],
+                    'email' => $validated['email'],
+                ]
+            ], 201);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to process contact form', [
+                'error' => $e->getMessage(),
+                'data' => $validated
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to process contact form: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

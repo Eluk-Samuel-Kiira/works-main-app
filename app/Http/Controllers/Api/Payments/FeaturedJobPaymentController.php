@@ -520,7 +520,7 @@ class FeaturedJobPaymentController extends Controller
                 $packageName, $days, $reference,
                 $amountFormatted, $hasFile, $fileContents, $fileName
             ) {
-                $mail->to('postjob@stardenaworks.com')
+                $mail->to('jobpost@stardenaworks.com')
                         ->cc('samuelkiiraeluk@gmail.com')
                         ->subject("⭐ Featured Job Request — {$packageName} — {$reference}");
 
