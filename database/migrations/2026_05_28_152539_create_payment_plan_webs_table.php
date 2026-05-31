@@ -1,5 +1,4 @@
 <?php
-// database/migrations/2025_05_30_000001_create_payment_plan_webs_table.php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -9,6 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
+        
         Schema::create('payment_plan_webs', function (Blueprint $table) {
             $table->id();
             $table->enum('audience', ['seeker', 'employer', 'other1', 'other2', 'other3'])->default('seeker')->index();
