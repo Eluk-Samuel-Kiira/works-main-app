@@ -141,8 +141,9 @@ class LoginTokenController extends Controller
             // Store the API token in the session so JS/API calls can read it
             $request->session()->put('api_token', $apiToken);
 
+            
             // ── 5. Update user record ─────────────────────────────────────────
-            $user->update(['last_login_at' => now()]);
+            $user->recordLogin();
 
             // ── 6. Mark magic link token as used ─────────────────────────────
             $loginToken->markAsUsed();
@@ -154,6 +155,7 @@ class LoginTokenController extends Controller
             Log::info('User authenticated via magic link', [
                 'user_id' => $user->id,
                 'email'   => $user->email,
+                'Last Login'   => $user->last_login_at,
             ]);
 
             // ── 8. Redirect based on role ─────────────────────────────────────
@@ -493,11 +495,14 @@ class LoginTokenController extends Controller
 
         $user = $loginToken->user;
 
-        Log::info('🔐 [MAIN] Token valid — user found', [
-            'user_id' => $user->id,
-            'email'   => $user->email,
-            'role'    => $user->role,
-        ]);
+        // Log::info('🔐 [MAIN] Token valid — user found', [
+        //     'user_id' => $user->id,
+        //     'email'   => $user->email,
+        //     'role'    => $user->role,
+        // ]);
+
+        // ── 5. Update user record ─────────────────────────────────────────
+        $user->recordLogin();
 
         // Delete old Sanctum tokens
         $deletedCount = $user->tokens()->count();
