@@ -366,7 +366,7 @@
                 </div>
                 <div class="col-5">
                     <label class="form-label small fw-semibold">Currency</label>
-                    <input type="text" name="currency" id="f_currency" class="form-control" value="UGX">
+                    <input type="text" name="currency" id="f_currency" class="form-control" value="">
                 </div>
                 <div class="col-12">
                     <label class="form-label small fw-semibold">Payment Period</label>

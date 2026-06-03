@@ -147,13 +147,40 @@ class JobPost extends Model
         'last_indexed_at' => 'datetime'
     ];
 
+    private const COUNTRY_CURRENCY_MAP = [
+        'UG' => 'UGX',  // Uganda
+        'KE' => 'KES',  // Kenya
+        'TZ' => 'TZS',  // Tanzania
+        'RW' => 'RWF',  // Rwanda
+        'BI' => 'BIF',  // Burundi
+        'SS' => 'SSP',  // South Sudan
+        'CD' => 'CDF',  // DR Congo
+        'NG' => 'NGN',  // Nigeria
+        'ZA' => 'ZAR',  // South Africa
+        'GH' => 'GHS',  // Ghana
+        'ET' => 'ETB',  // Ethiopia
+        'EG' => 'EGP',  // Egypt
+        'ZM' => 'ZMW',  // Zambia
+        'ZW' => 'ZWL',  // Zimbabwe
+        'MW' => 'MWK',  // Malawi
+        'MZ' => 'MZN',  // Mozambique
+        'AO' => 'AOA',  // Angola
+        'CM' => 'XAF',  // Cameroon
+        'SN' => 'XOF',  // Senegal
+        'CI' => 'XOF',  // Ivory Coast
+        'SD' => 'SDG',  // Sudan
+        'SO' => 'SOS',  // Somalia
+        'ER' => 'ERN',  // Eritrea
+        'DJ' => 'DJF',  // Djibouti
+        'US' => 'USD',  // United States
+        'GB' => 'GBP',  // United Kingdom
+    ];
+
     protected static function boot()
     {
         parent::boot();
 
         static::creating(function ($job) {
-            // if (empty($job->published_at)) $job->published_at = now();
-            $job->currency        = $job->currency        ?? 'UGX';
             $job->location_type   = $job->location_type   ?? 'on-site';
             $job->employment_type = $job->employment_type ?? 'full-time';
             $job->is_resume_required = $job->is_resume_required ?? true;
@@ -164,7 +191,12 @@ class JobPost extends Model
         });
 
 
-        }
+    }
+
+    public static function resolveCurrencyFromCode(string $countryCode): string
+    {
+        return self::COUNTRY_CURRENCY_MAP[strtoupper(trim($countryCode))] ?? 'UGX';
+    }
 
     // Relationships
     public function company()
