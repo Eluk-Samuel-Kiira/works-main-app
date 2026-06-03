@@ -15,14 +15,14 @@
                                 <option value="">Select Country</option>
                                 <option value="UG">Uganda (UG)</option>
                                 <option value="KE">Kenya (KE)</option>
-                                <option value="TZ">Tanzania (TZ)</option>
+                                <!-- <option value="TZ">Tanzania (TZ)</option> -->
                                 <option value="NG">Nigeria (NG)</option>
-                                <option value="ZA">South Africa (ZA)</option>
+                                <!-- <option value="ZA">South Africa (ZA)</option>
                                 <option value="GH">Ghana (GH)</option>
                                 <option value="RW">Rwanda (RW)</option>
                                 <option value="SS">South Sudan (SS)</option>
                                 <option value="CD">DR Congo (CD)</option>
-                                <option value="ET">Ethiopia (ET)</option>
+                                <option value="ET">Ethiopia (ET)</option> -->
                             </select>
                         </div>
                         <div class="col-md-6">
