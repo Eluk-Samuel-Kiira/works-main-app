@@ -25,3 +25,4 @@ Thumbs.db
 .claude
 /public/sitemap.xml
 /public/blog-sitemap.xml
+/public/*.xml

@@ -86,7 +86,9 @@ class JobPostController extends Controller
 
     
     /**
-     * Check for duplicate jobs
+     * Check for duplicate jobs - Simplified version
+     * Returns true if same job title, company, location AND (email OR phone) match
+     * within the last 5 days
      */
     public function checkDuplicate(Request $request): JsonResponse
     {
@@ -104,20 +106,27 @@ class JobPostController extends Controller
         $email = $request->email;
         $telephone = $request->telephone;
 
-        // Get existing jobs for this company from last 30 days
+        // Get existing jobs for this company from last 5 days only
         $existingJobs = JobPost::where('company_id', $companyId)
-            ->where('created_at', '>=', now()->subDays(30))
+            ->where('created_at', '>=', now()->subDays(5))
             ->get(['id', 'job_title', 'job_location_id', 'email', 'telephone', 'created_at']);
 
         $duplicates = [];
         
         foreach ($existingJobs as $existing) {
-            $similarity = $this->calculateSimilarity($jobTitle, $existing->job_title);
+            // Check if job titles match (case-insensitive, trimmed)
+            $titleMatch = (strcasecmp(trim($jobTitle), trim($existing->job_title)) === 0);
             
-            // Check location match
+            if (!$titleMatch) {
+                continue; // Title must match exactly
+            }
+            
+            // Check location match (if both have location IDs)
             $locationMatch = false;
             if ($locationId && $existing->job_location_id) {
                 $locationMatch = ($locationId == $existing->job_location_id);
+            } elseif (!$locationId && !$existing->job_location_id) {
+                $locationMatch = true; // Both have no location
             }
             
             // Check email match (if both have emails)
@@ -132,41 +141,47 @@ class JobPostController extends Controller
                 $telephoneMatch = ($this->normalizeContactField($telephone) == $this->normalizeContactField($existing->telephone));
             }
             
-            // Determine if this is a duplicate based on:
-            // - High title similarity (>= 75%) AND
-            // - At least one of: location match, email match, or telephone match
-            $isDuplicate = ($similarity >= 75) && ($locationMatch || $emailMatch || $telephoneMatch);
+            // A duplicate exists if:
+            // - Title matches AND
+            // - Location matches AND  
+            // - At least one of: email matches OR telephone matches
+            $isDuplicate = $titleMatch && $locationMatch && ($emailMatch || $telephoneMatch);
             
             if ($isDuplicate) {
+                $matchReasons = [];
+                if ($locationMatch) $matchReasons[] = 'same location';
+                if ($emailMatch) $matchReasons[] = 'same email';
+                if ($telephoneMatch) $matchReasons[] = 'same telephone';
+                
                 $duplicates[] = [
                     'id' => $existing->id,
                     'job_title' => $existing->job_title,
-                    'similarity' => round($similarity, 2),
                     'location_match' => $locationMatch,
                     'email_match' => $emailMatch,
                     'telephone_match' => $telephoneMatch,
                     'posted_at' => $existing->created_at->format('Y-m-d H:i:s'),
                     'posted_date' => $existing->created_at->diffForHumans(),
+                    'match_reason' => implode(' and ', $matchReasons),
                 ];
             }
         }
 
         if (count($duplicates) > 0) {
+            $primaryDuplicate = $duplicates[0];
             return $this->success([
                 'is_duplicate' => true,
-                'similarity' => $duplicates[0]['similarity'],
-                'existing_job_title' => $duplicates[0]['job_title'],
-                'existing_job_date' => $duplicates[0]['posted_date'],
-                'match_reason' => $this->getMatchReason($duplicates[0]),
+                'existing_job_title' => $primaryDuplicate['job_title'],
+                'existing_job_date' => $primaryDuplicate['posted_date'],
+                'match_reason' => $primaryDuplicate['match_reason'],
                 'duplicates' => $duplicates,
-                'message' => "A similar job already exists for this company."
+                'message' => "A duplicate job '{$primaryDuplicate['job_title']}' was found posted {$primaryDuplicate['posted_date']} with {$primaryDuplicate['match_reason']}."
             ], 'Duplicate job detected');
         }
 
         return $this->success([
             'is_duplicate' => false,
-            'message' => 'No duplicate found'
-        ], 'Job title is unique');
+            'message' => 'No duplicate found. You can proceed with posting.'
+        ], 'Job is unique');
     }
 
     /**
@@ -189,77 +204,9 @@ class JobPostController extends Controller
     }
 
     /**
-     * Get human-readable match reason
-     */
-    private function getMatchReason(array $duplicate): string
-    {
-        $reasons = [];
-        if ($duplicate['location_match']) {
-            $reasons[] = 'same location';
-        }
-        if ($duplicate['email_match']) {
-            $reasons[] = 'same email';
-        }
-        if ($duplicate['telephone_match']) {
-            $reasons[] = 'same telephone';
-        }
-        
-        return 'Similar job title (' . $duplicate['similarity'] . '% match) and ' . implode(' / ', $reasons);
-    }
-
-    /**
-     * Calculate similarity between two strings using Levenshtein distance
-     */
-    private function calculateSimilarity(string $str1, string $str2): float
-    {
-        // Normalize strings: lowercase, remove special characters, trim
-        $normalize = function($str) {
-            $str = strtolower($str);
-            $str = preg_replace('/[^\w\s]/', '', $str);
-            $str = preg_replace('/\s+/', ' ', $str);
-            return trim($str);
-        };
-        
-        $str1 = $normalize($str1);
-        $str2 = $normalize($str2);
-        
-        // If strings are identical
-        if ($str1 === $str2) {
-            return 100;
-        }
-        
-        // Calculate Levenshtein distance
-        $distance = levenshtein($str1, $str2);
-        $maxLength = max(strlen($str1), strlen($str2));
-        
-        if ($maxLength === 0) {
-            return 0;
-        }
-        
-        // Convert distance to similarity percentage
-        $similarity = (1 - ($distance / $maxLength)) * 100;
-        
-        // Also check for keyword overlap
-        $words1 = explode(' ', $str1);
-        $words2 = explode(' ', $str2);
-        
-        $commonWords = array_intersect($words1, $words2);
-        $totalUniqueWords = count(array_unique(array_merge($words1, $words2)));
-        
-        $wordSimilarity = $totalUniqueWords > 0 
-            ? (count($commonWords) / $totalUniqueWords) * 100 
-            : 0;
-        
-        // Weighted average: 70% Levenshtein, 30% word overlap
-        $finalSimilarity = ($similarity * 0.7) + ($wordSimilarity * 0.3);
-        
-        return min(100, $finalSimilarity);
-    }
-
-
-    /**
-     * Generate a unique SEO-friendly slug with "job" keyword after the title
+     * Generate a unique SEO-friendly slug with country code
      * Example: mechanical-engineer-job-at-mtn-uganda
+     * With country code: mechanical-engineer-job-at-mtn-ug-ke
      */
     private function generateSlug(string $title, ?int $companyId = null, ?int $locationId = null): string
     {
@@ -272,12 +219,11 @@ class JobPostController extends Controller
         $slugParts = [$cleanTitle];
         
         // Add "job" after the title (not before)
-        // This creates: mechanical-engineer-job-at-mtn-uganda
         if (!preg_match('/\b(job|position|career|opportunity|vacancy)\b/i', $cleanTitle)) {
             $slugParts[] = 'job';
         }
         
-        // Add company name if provided
+        // Add "at" + company name if provided
         if ($companyId) {
             $company = Company::find($companyId);
             if ($company && $company->name) {
@@ -288,15 +234,24 @@ class JobPostController extends Controller
             }
         }
         
-        // Add location if provided
+        // Add location (district + country code) if provided
         if ($locationId) {
             $location = JobLocation::find($locationId);
-            if ($location && ($location->district || $location->country)) {
-                $locationName = $location->district ?? $location->country;
-                $locationName = preg_replace('/[^\w\s-]/', '', $locationName);
-                $locationName = Str::slug($locationName);
+            if ($location) {
                 $slugParts[] = 'in';
-                $slugParts[] = $locationName;
+                
+                // Add district if exists
+                if ($location->district) {
+                    $districtName = preg_replace('/[^\w\s-]/', '', $location->district);
+                    $districtName = Str::slug($districtName);
+                    $slugParts[] = $districtName;
+                }
+                
+                // ⭐ CRITICAL: Add country code (UG, KE, TZ, etc.)
+                if ($location->country) {
+                    $countryCode = strtolower($location->country);
+                    $slugParts[] = $countryCode;
+                }
             }
         }
         
@@ -431,13 +386,15 @@ class JobPostController extends Controller
         try {
             $validated = $request->validated();
             
+            // Simplified duplicate check - within last 5 days only
             $existingJob = JobPost::where('company_id', $validated['company_id'])
-                ->where('created_at', '>=', now()->subDays(30))
+                ->where('created_at', '>=', now()->subDays(5))
                 ->get()
                 ->first(function ($job) use ($validated) {
-                    $similarity = $this->calculateSimilarity($validated['job_title'], $job->job_title);
+                    // Check exact title match (case-insensitive)
+                    $titleMatch = (strcasecmp(trim($validated['job_title']), trim($job->job_title)) === 0);
                     
-                    if ($similarity < 75) {
+                    if (!$titleMatch) {
                         return false;
                     }
                     
@@ -445,6 +402,8 @@ class JobPostController extends Controller
                     $locationMatch = false;
                     if (!empty($validated['job_location_id']) && !empty($job->job_location_id)) {
                         $locationMatch = ($validated['job_location_id'] == $job->job_location_id);
+                    } elseif (empty($validated['job_location_id']) && empty($job->job_location_id)) {
+                        $locationMatch = true;
                     }
                     
                     // Check email match
@@ -459,30 +418,30 @@ class JobPostController extends Controller
                         $telephoneMatch = ($this->normalizeContactField($validated['telephone']) == $this->normalizeContactField($job->telephone));
                     }
                     
-                    return ($locationMatch || $emailMatch || $telephoneMatch);
+                    // Duplicate if: title matches, location matches, and (email or phone matches)
+                    return $locationMatch && ($emailMatch || $telephoneMatch);
                 });
             
             if ($existingJob) {
-                $similarity = $this->calculateSimilarity($validated['job_title'], $existingJob->job_title);
-                
                 return $this->error(
-                    "A similar job already exists for this company. " .
-                    "Existing job: '{$existingJob->job_title}' (" . round($similarity, 2) . "% similar). " .
+                    "A duplicate job '{$existingJob->job_title}' already exists for this company " .
+                    "posted {$existingJob->created_at->diffForHumans()}. " .
                     "Please check before posting.",
                     409,
                     [
                         'is_duplicate' => true,
-                        'similarity' => round($similarity, 2),
                         'existing_job' => [
                             'id' => $existingJob->id,
                             'title' => $existingJob->job_title,
                             'slug' => $existingJob->slug,
                             'posted_at' => $existingJob->created_at->format('Y-m-d H:i:s'),
+                            'posted_date' => $existingJob->created_at->diffForHumans(),
                         ]
                     ]
                 );
             }
             
+            // Rest of your store method remains the same...
             // Generate SEO-friendly slug
             $validated['slug'] = $this->generateSlug(
                 $validated['job_title'],
@@ -492,6 +451,12 @@ class JobPostController extends Controller
 
             $location = JobLocation::find($validated['job_location_id']);
             $company = Company::find($validated['company_id']);
+
+            if (empty($validated['currency'])) {
+                $countryCode = strtoupper(trim($location->country ?? ''));
+                $validated['currency'] = \App\Models\Job\JobPost::resolveCurrencyFromCode($countryCode);
+            }
+
             
             // Set default values if not provided
             $validated['is_active'] = $validated['is_active'] ?? true;
@@ -702,75 +667,6 @@ class JobPostController extends Controller
         return implode(', ', $keywords);
     }
 
-    /**
-     * Generate canonical URL
-     */
-    private function generateCanonicalUrl(string $slug): string
-    {
-        return url("/jobs/{$slug}");
-    }
-
-    /**
-     * Generate focus keyphrase for SEO
-     */
-    private function generateFocusKeyphrase(array $validated, $location): string
-    {
-        $keyphrase = $validated['job_title'];
-        
-        if ($location && $location->district) {
-            $keyphrase .= " in {$location->district}";
-        } elseif ($location && $location->country) {
-            $keyphrase .= " in {$location->country}";
-        }
-        
-        if (!empty($validated['employment_type']) && $validated['employment_type'] === 'full-time') {
-            $keyphrase .= " Full Time";
-        }
-        
-        return $keyphrase;
-    }
-
-    /**
-     * Generate SEO synonyms
-     */
-    private function generateSeoSynonyms(array $validated, $company, $location): string
-    {
-        $synonyms = [];
-        
-        // Job title variations
-        $titleWords = explode(' ', $validated['job_title']);
-        if (count($titleWords) > 2) {
-            $synonyms[] = implode(' ', array_slice($titleWords, 0, 2));
-        }
-        
-        // Industry synonyms
-        if (!empty($validated['industry_id'])) {
-            $industry = Industry::find($validated['industry_id']);
-            if ($industry) {
-                $synonyms[] = $industry->name;
-                $synonyms[] = $industry->name . ' industry';
-            }
-        }
-        
-        // Location synonyms
-        if ($location) {
-            if ($location->district) {
-                $synonyms[] = $location->district . ' jobs';
-                $synonyms[] = 'work in ' . $location->district;
-            }
-            if ($location->country) {
-                $synonyms[] = $location->country . ' employment';
-            }
-        }
-        
-        // Company synonyms
-        if ($company && $company->name) {
-            $synonyms[] = $company->name . ' careers';
-            $synonyms[] = 'join ' . $company->name;
-        }
-        
-        return implode(', ', array_slice($synonyms, 0, 10));
-    }
 
     /**
      * GET /api/v1/job-posts/{slug}
@@ -794,7 +690,7 @@ class JobPostController extends Controller
     {
         try {
             $jobPost = JobPost::where('slug', $slug)->firstOrFail();
-            
+
             $allowed = [
                 'job_title', 'job_description', 'responsibilities', 'skills',
                 'qualifications', 'deadline', 'application_procedure', 'email',
@@ -814,13 +710,25 @@ class JobPostController extends Controller
             ];
 
             $data = collect($request->validated())->only($allowed)->toArray();
-            
-            // Update slug if job title changed
-            if (isset($data['job_title']) && $data['job_title'] !== $jobPost->job_title) {
+
+            $location = JobLocation::find($data['job_location_id']);
+            if (empty($data['currency'])) {
+                $countryCode = strtoupper(trim($location->country ?? ''));
+                $data['currency'] = \App\Models\Job\JobPost::resolveCurrencyFromCode($countryCode);
+            }
+
+            // \Log::info($data['currency']);
+
+            // ── Regenerate slug if title/company/location changed ───────────────
+            $titleChanged    = isset($data['job_title'])      && $data['job_title']      !== $jobPost->job_title;
+            $companyChanged  = isset($data['company_id'])     && $data['company_id']     !== $jobPost->company_id;
+            $locationChanged = isset($data['job_location_id'])&& $data['job_location_id']!== $jobPost->job_location_id;
+
+            if ($titleChanged || $companyChanged || $locationChanged) {
                 $data['slug'] = $this->generateSlug(
-                    $data['job_title'],
-                    $data['company_id'] ?? $jobPost->company_id,
-                    $data['job_location_id'] ?? $jobPost->job_location_id
+                    $data['job_title']      ?? $jobPost->job_title,
+                    $data['company_id']     ?? $jobPost->company_id,
+                    $data['job_location_id']?? $jobPost->job_location_id
                 );
             }
 
@@ -828,15 +736,12 @@ class JobPostController extends Controller
                 ->where('id', $jobPost->id)
                 ->update($data + ['updated_at' => now()]);
 
-            // Fetch fresh clean instance
-            $fresh = JobPost::select($this->safeSelect())
+            $fresh     = JobPost::select($this->safeSelect())
                 ->with($this->eagerRelations(true))
                 ->where('id', $jobPost->id)
                 ->first();
 
-            $formatted = $this->formatJobData($fresh, false);
-
-            return $this->success($formatted, 'Job post updated successfully');
+            return $this->success($this->formatJobData($fresh, false), 'Job post updated successfully');
 
         } catch (\Exception $e) {
             Log::error('UPDATE EXCEPTION: ' . $e->getMessage());

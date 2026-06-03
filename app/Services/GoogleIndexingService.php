@@ -12,29 +12,37 @@ use Illuminate\Support\Facades\Mail;
  * GoogleIndexingService
  * ─────────────────────────────────────────────────────────────────
  * PURPOSE : Submit individual job URLs to Google Indexing API.
+ *           Includes both DEFAULT and COUNTRY-SPECIFIC URLs.
  *           Google allows max 200 URL submissions per day.
- *           This service enforces that limit and tracks every
- *           submission in the database.
  *
  * FLOW    : Job is posted
  *           → admin reviews/verifies job
  *           → admin clicks "Index" button on that job's status modal
- *           → URL submitted to Google Indexing API
+ *           → URLS (default + country-specific) submitted to Google Indexing API
  *           → DB updated: submitted_to_indexing=true, indexing_status=*
  *
  * QUOTA   : 200 URLs/day hard limit enforced via cache counter.
  *           Resets at midnight UTC.
- *
- * AUTH    : Google Service Account JSON → JWT → OAuth2 access token
- *           No composer package needed — pure HTTP.
  * ─────────────────────────────────────────────────────────────────
  */
 class GoogleIndexingService
 {
-    private const DAILY_LIMIT    = 200;
+    private const DAILY_LIMIT     = 200;
     private const QUOTA_CACHE_KEY = 'google_indexing_daily_quota';
     private const TOKEN_CACHE_KEY = 'google_indexing_access_token';
-    private const API_ENDPOINT   = 'https://indexing.googleapis.com/v3/urlNotifications:publish';
+    private const API_ENDPOINT    = 'https://indexing.googleapis.com/v3/urlNotifications:publish';
+
+    // Supported countries for URL generation
+    private const SUPPORTED_COUNTRIES = [
+        'ke' => 'KE',
+        'tz' => 'TZ',
+        'rw' => 'RW',
+        'ug' => 'UG',
+        'ng' => 'NG',
+        'za' => 'ZA',
+        'bi' => 'BI',
+        'ss' => 'SS',
+    ];
 
     private string $webUrl;
 
@@ -45,10 +53,11 @@ class GoogleIndexingService
 
     // =========================================================================
     // PUBLIC: Submit a single job by ID (called from status modal button)
+    // ⭐ Now submits multiple URLs (default + country-specific)
     // =========================================================================
     public function submitJob(int $jobId): array
     {
-        $job = JobPost::find($jobId);
+        $job = JobPost::with('jobLocation')->find($jobId);
         if (!$job) {
             return ['success' => false, 'message' => 'Job not found'];
         }
@@ -57,12 +66,95 @@ class GoogleIndexingService
             return ['success' => false, 'message' => 'Job is not active — only active jobs should be indexed'];
         }
 
-        $url = $this->webUrl . '/jobs/' . $job->slug;
-        return $this->submitUrl($url, $job);
+        // Generate ALL URLs for this job
+        $urls = $this->generateJobUrls($job);
+        
+        Log::info("GOOGLE INDEXING: Submitting " . count($urls) . " URLs for job {$jobId}");
+
+        $results = [];
+        $successCount = 0;
+        $quotaUsed = 0;
+
+        foreach ($urls as $url) {
+            // Check quota before each submission
+            if ($this->getRemainingQuota() <= 0) {
+                Log::warning("GOOGLE INDEXING: Quota exhausted, stopping after {$successCount} submissions");
+                break;
+            }
+
+            $result = $this->submitUrl($url, $job);
+            $results[] = $result;
+            
+            if ($result['success']) {
+                $successCount++;
+                $quotaUsed++;
+            }
+        }
+
+        // Update job indexing status if at least one URL was submitted
+        $anySuccess = $successCount > 0;
+        $this->updateJobIndexingStatus($job, ['success' => $anySuccess, 'urls_submitted' => $successCount, 'results' => $results]);
+
+        return [
+            'success' => $anySuccess,
+            'urls_submitted' => $successCount,
+            'total_urls' => count($urls),
+            'quota_used' => $quotaUsed,
+            'results' => $results,
+            'message' => $anySuccess 
+                ? "{$successCount} of " . count($urls) . " URLs submitted to Google index queue"
+                : "Failed to submit any URLs. Check quota and configuration.",
+        ];
+    }
+
+    // =========================================================================
+    // ⭐ GENERATE ALL JOB URLS (default + country-specific)
+    // =========================================================================
+    private function generateJobUrls(JobPost $job): array
+    {
+        $urls = [];
+        $slug = $job->slug;
+        
+        // 1. Default URL (always submit)
+        $urls[] = $this->webUrl . '/jobs/' . $slug;
+        
+        // 2. Country-specific URL based on job location
+        $jobCountry = null;
+        if ($job->jobLocation && $job->jobLocation->country) {
+            $jobCountry = strtolower($job->jobLocation->country);
+        }
+        
+        // Add URL for the job's own country (primary)
+        if ($jobCountry && isset(self::SUPPORTED_COUNTRIES[$jobCountry])) {
+            $suffix = '-' . $jobCountry;
+            $countrySlug = str_ends_with($slug, $suffix) ? $slug : $slug . $suffix;
+            $urls[] = $this->webUrl . '/' . $jobCountry . '/jobs/' . $countrySlug;
+        }
+        
+        // 3. For remote jobs, submit URLs for ALL supported countries
+        $isRemote = $job->location_type === 'remote';
+        if ($isRemote) {
+            foreach (self::SUPPORTED_COUNTRIES as $countryCode => $countryName) {
+                if ($countryCode !== $jobCountry) {
+                    $suffix = '-' . $countryCode;
+                    $countrySlug = str_ends_with($slug, $suffix) ? $slug : $slug . $suffix;
+                    $urls[] = $this->webUrl . '/' . $countryCode . '/jobs/' . $countrySlug;
+                }
+            }
+        }
+        
+        // Remove duplicates and clean
+        $urls = array_unique($urls);
+        sort($urls);
+        
+        Log::debug("Generated URLs for job {$job->id}: " . json_encode($urls));
+        
+        return $urls;
     }
 
     // =========================================================================
     // PUBLIC: Bulk submit from admin (respects daily quota)
+    // ⭐ Now submits ALL URLs for each job
     // =========================================================================
     public function submitBatch(array $jobIds): array
     {
@@ -79,12 +171,15 @@ class GoogleIndexingService
             ];
         }
 
-        // Respect the daily limit
-        $jobIds    = array_slice($jobIds, 0, $remaining);
-        $jobs      = JobPost::whereIn('id', $jobIds)->where('is_active', true)->get();
+        $jobs = JobPost::with('jobLocation')
+            ->whereIn('id', $jobIds)
+            ->where('is_active', true)
+            ->get();
+
         $results   = [];
         $submitted = 0;
         $failed    = 0;
+        $totalUrls = 0;
 
         $token = $this->getAccessToken();
         if (!$token) {
@@ -97,39 +192,59 @@ class GoogleIndexingService
         }
 
         foreach ($jobs as $job) {
-            $url    = $this->webUrl . '/jobs/' . $job->slug;
-            $result = $this->callGoogleApi($url, $token);
-
-            // Update job record
-            $this->updateJobIndexingStatus($job, $result);
-
+            // Generate all URLs for this job
+            $urls = $this->generateJobUrls($job);
+            $totalUrls += count($urls);
+            
+            $jobResults = [];
+            $jobSuccess = false;
+            
+            foreach ($urls as $url) {
+                if ($this->getRemainingQuota() <= 0) {
+                    Log::warning("GOOGLE INDEXING: Quota exhausted during batch");
+                    break 2;
+                }
+                
+                $result = $this->callGoogleApi($url, $token);
+                $jobResults[] = $result;
+                
+                if ($result['success']) {
+                    $submitted++;
+                    $this->incrementQuota();
+                    $jobSuccess = true;
+                } else {
+                    $failed++;
+                }
+                
+                // 200ms between requests — stay within rate limits
+                usleep(200000);
+            }
+            
+            // Update job indexing status
+            $this->updateJobIndexingStatus($job, [
+                'success' => $jobSuccess,
+                'urls_submitted' => count($jobResults),
+                'results' => $jobResults
+            ]);
+            
             $results[] = [
                 'job_id'  => $job->id,
                 'title'   => $job->job_title,
-                'url'     => $url,
-                'success' => $result['success'],
-                'status'  => $result['status'],
-                'message' => $result['message'],
+                'urls'    => $urls,
+                'success' => $jobSuccess,
+                'results' => $jobResults,
             ];
-
-            if ($result['success']) {
-                $submitted++;
-                $this->incrementQuota();
-            } else {
-                $failed++;
-            }
-
-            // 200ms between requests — stay within rate limits
-            usleep(200000);
         }
 
         $report = [
-            'success'    => $submitted > 0,
-            'submitted'  => $submitted,
-            'failed'     => $failed,
-            'quota_used' => $this->getQuotaUsed(),
-            'quota_left' => $this->getRemainingQuota(),
-            'results'    => $results,
+            'success'       => $submitted > 0,
+            'submitted'     => $submitted,
+            'failed'        => $failed,
+            'total_urls'    => $totalUrls,
+            'jobs_processed'=> $jobs->count(),
+            'quota_used'    => $this->getQuotaUsed(),
+            'quota_left'    => $this->getRemainingQuota(),
+            'results'       => $results,
         ];
 
         if ($submitted > 0) {
@@ -140,25 +255,7 @@ class GoogleIndexingService
     }
 
     // =========================================================================
-    // PUBLIC: Stats for admin modal
-    // =========================================================================
-    public function getStats(): array
-    {
-        $base = JobPost::where('is_active', true)->where('deadline', '>=', now());
-
-        return [
-            'quota_used'      => $this->getQuotaUsed(),
-            'quota_remaining' => $this->getRemainingQuota(),
-            'quota_limit'     => self::DAILY_LIMIT,
-            'not_submitted'   => (clone $base)->where('submitted_to_indexing', false)->orWhereNull('submitted_to_indexing')->count(),
-            'submitted'       => (clone $base)->where('submitted_to_indexing', true)->count(),
-            'indexed'         => (clone $base)->where('is_indexed', true)->count(),
-            'api_configured'  => file_exists(storage_path('app/google-service-account.json')),
-        ];
-    }
-
-    // =========================================================================
-    // PRIVATE: Call Google Indexing API
+    // PRIVATE: Submit a single URL to Google
     // =========================================================================
     private function submitUrl(string $url, JobPost $job): array
     {
@@ -175,10 +272,11 @@ class GoogleIndexingService
         }
 
         $result = $this->callGoogleApi($url, $token);
-        $this->updateJobIndexingStatus($job, $result);
-
-        if ($result['success']) $this->incrementQuota();
-
+        
+        if ($result['success']) {
+            $this->incrementQuota();
+        }
+        
         return $result;
     }
 
@@ -228,35 +326,47 @@ class GoogleIndexingService
     private function updateJobIndexingStatus(JobPost $job, array $result): void
     {
         $status = $result['success'] ? 'submitted' : 'failed';
-
-        if ($result['status'] === 403) $status = 'forbidden';
-        if ($result['status'] === 429) $status = 'quota_exceeded';
-        if ($result['status'] === 401) $status = 'unauthorized';
+        $urlsSubmitted = $result['urls_submitted'] ?? 0;
 
         JobPost::where('id', $job->id)->update([
             'submitted_to_indexing' => $result['success'],
             'indexing_submitted_at' => $result['success'] ? now() : $job->indexing_submitted_at,
             'indexing_status'       => $status,
             'indexing_response'     => json_encode([
-                'submitted_at' => now()->toISOString(),
-                'status'       => $result['status'],
-                'message'      => $result['message'],
-                'response'     => $result['response'] ?? [],
+                'submitted_at'     => now()->toISOString(),
+                'urls_submitted'   => $urlsSubmitted,
+                'results'          => $result['results'] ?? [],
             ]),
         ]);
     }
 
     // =========================================================================
-    // PRIVATE: Google JWT auth — no composer package required
+    // PUBLIC: Stats for admin modal
+    // =========================================================================
+    public function getStats(): array
+    {
+        $base = JobPost::where('is_active', true)->where('deadline', '>=', now());
+
+        return [
+            'quota_used'      => $this->getQuotaUsed(),
+            'quota_remaining' => $this->getRemainingQuota(),
+            'quota_limit'     => self::DAILY_LIMIT,
+            'not_submitted'   => (clone $base)->where('submitted_to_indexing', false)->orWhereNull('submitted_to_indexing')->count(),
+            'submitted'       => (clone $base)->where('submitted_to_indexing', true)->count(),
+            'indexed'         => (clone $base)->where('is_indexed', true)->count(),
+            'api_configured'  => file_exists(storage_path('app/google-service-account.json')),
+        ];
+    }
+
+    // =========================================================================
+    // PRIVATE: Google JWT auth
     // =========================================================================
     private function getAccessToken(): ?string
     {
-        // Return cached token if still valid (they last 1 hour)
         if ($cached = Cache::get(self::TOKEN_CACHE_KEY)) {
             return $cached;
         }
 
-        // Check multiple possible locations
         $possiblePaths = [
             storage_path('app/google-service-account.json'),
             storage_path('google-service-account.json'),
@@ -273,11 +383,9 @@ class GoogleIndexingService
         }
         
         if (!$keyPath) {
-            Log::warning('GOOGLE INDEXING: Service account file not found. Tried: ' . implode(', ', $possiblePaths));
+            Log::warning('GOOGLE INDEXING: Service account file not found.');
             return null;
         }
-
-        Log::info('GOOGLE INDEXING: Using service account from: ' . $keyPath);
 
         try {
             $key = json_decode(file_get_contents($keyPath), true);
@@ -303,17 +411,14 @@ class GoogleIndexingService
             ]);
 
             if (!$response->successful()) {
-                Log::error('GOOGLE INDEXING: OAuth token request failed — ' . $response->body());
+                Log::error('GOOGLE INDEXING: OAuth token request failed');
                 return null;
             }
 
             $token     = $response->json('access_token');
             $expiresIn = $response->json('expires_in', 3500);
 
-            // Cache for slightly less than expiry
             Cache::put(self::TOKEN_CACHE_KEY, $token, now()->addSeconds($expiresIn - 60));
-
-            Log::info('GOOGLE INDEXING: Access token obtained successfully.');
             return $token;
 
         } catch (\Exception $e) {
@@ -328,7 +433,7 @@ class GoogleIndexingService
     }
 
     // =========================================================================
-    // PRIVATE: Quota management (resets midnight UTC)
+    // PRIVATE: Quota management
     // =========================================================================
     private function getQuotaUsed(): int
     {
@@ -361,62 +466,43 @@ class GoogleIndexingService
         );
         if (empty($adminEmails)) return;
 
-        $icon    = $report['submitted'] > 0 ? '✅' : '❌';
-        $subject = "{$icon} Google Indexing — {$report['submitted']} submitted — quota {$report['quota_used']}/200 — " . now()->format('d M Y H:i');
+        $icon = $report['submitted'] > 0 ? '✅' : '❌';
+        $subject = "{$icon} Google Indexing — {$report['submitted']} URLs submitted — quota {$report['quota_used']}/200 — " . now()->format('d M Y H:i');
 
-        $html  = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>';
-        $html .= 'body{font-family:-apple-system,sans-serif;max-width:600px;margin:0 auto;padding:0;background:#f3f4f6;color:#1f2937}';
-        $html .= '.hd{background:linear-gradient(135deg,#ea4335,#4285f4);color:#fff;padding:28px;text-align:center;border-radius:12px 12px 0 0}';
+        $html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>';
+        $html .= 'body{font-family:-apple-system,sans-serif;max-width:650px;margin:0 auto;background:#f3f4f6;color:#1f2937}';
+        $html .= '.hd{background:linear-gradient(135deg,#ea4335,#4285f4);color:#fff;padding:24px;text-align:center;border-radius:12px 12px 0 0}';
         $html .= '.bd{background:#fff;padding:24px;border-radius:0 0 12px 12px}';
-        $html .= '.stats{display:flex;gap:12px;margin:16px 0}';
-        $html .= '.s{flex:1;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:14px;text-align:center}';
-        $html .= '.s .n{font-size:26px;font-weight:800} .s .l{font-size:11px;color:#6b7280;margin-top:3px}';
-        $html .= '.quota{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px;margin:16px 0;font-size:13px}';
+        $html .= '.stats{display:flex;gap:12px;margin:16px 0;flex-wrap:wrap}';
+        $html .= '.s{flex:1;min-width:100px;background:#f9fafb;border-radius:8px;padding:14px;text-align:center}';
+        $html .= '.s .n{font-size:24px;font-weight:800}';
+        $html .= '.quota{background:#fffbeb;border-radius:8px;padding:14px;margin:16px 0}';
         $html .= '.qbar{background:#e5e7eb;border-radius:99px;height:10px;margin:8px 0}';
         $html .= '.qfill{background:linear-gradient(90deg,#10b981,#3b82f6);border-radius:99px;height:10px}';
-        $html .= 'table{width:100%;border-collapse:collapse;font-size:13px}';
-        $html .= 'th{background:#f9fafb;padding:9px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#6b7280;border-bottom:2px solid #e5e7eb}';
-        $html .= 'td{padding:9px 12px;border-bottom:1px solid #f3f4f6}';
-        $html .= '.ok{color:#10b981;font-weight:600} .fail{color:#ef4444;font-weight:600}';
+        $html .= '.note{background:#e8f0fe;border-left:3px solid #3b82f6;padding:12px;border-radius:4px;margin:16px 0;font-size:13px}';
         $html .= '.ft{text-align:center;padding:16px;font-size:12px;color:#9ca3af;border-top:1px solid #e5e7eb;margin-top:20px}';
         $html .= '</style></head><body>';
 
-        $html .= '<div class="hd"><h2 style="margin:0">🔍 Google Indexing Report</h2>';
-        $html .= '<p style="margin:6px 0 0;opacity:.85;font-size:13px">' . now()->format('l, F j, Y g:i A T') . '</p></div>';
+        $html .= '<div class="hd"><h2 style="margin:0">🌍 Google Indexing Report</h2>';
+        $html .= '<p style="margin:6px 0 0;opacity:.85">' . now()->format('l, F j, Y g:i A T') . '</p></div>';
         $html .= '<div class="bd">';
 
         $html .= '<div class="stats">';
-        $html .= '<div class="s"><div class="n ok">' . $report['submitted'] . '</div><div class="l">Submitted</div></div>';
+        $html .= '<div class="s"><div class="n ok">' . $report['submitted'] . '</div><div class="l">URLs Submitted</div></div>';
         $html .= '<div class="s"><div class="n fail">' . $report['failed'] . '</div><div class="l">Failed</div></div>';
-        $html .= '<div class="s"><div class="n">' . $report['quota_used'] . '/200</div><div class="l">Daily Quota</div></div>';
-        $html .= '<div class="s"><div class="n">' . $report['quota_left'] . '</div><div class="l">URLs Remaining</div></div>';
+        $html .= '<div class="s"><div class="n">' . $report['total_urls'] . '</div><div class="l">Total URLs</div></div>';
         $html .= '</div>';
 
-        // Quota bar
-        $pct  = round(($report['quota_used'] / self::DAILY_LIMIT) * 100);
+        $pct = round(($report['quota_used'] / self::DAILY_LIMIT) * 100);
         $html .= '<div class="quota">';
-        $html .= '<strong>Daily Quota: ' . $report['quota_used'] . ' / ' . self::DAILY_LIMIT . ' URLs used (' . $pct . '%)</strong>';
+        $html .= '<strong>Daily Quota: ' . $report['quota_used'] . ' / ' . self::DAILY_LIMIT . ' (' . $pct . '%)</strong>';
         $html .= '<div class="qbar"><div class="qfill" style="width:' . $pct . '%"></div></div>';
-        $html .= '<small style="color:#6b7280">Quota resets at midnight UTC. Only submit high-priority jobs.</small>';
         $html .= '</div>';
 
-        // Results table
-        $html .= '<h3 style="margin-top:0">📋 Submission Results</h3>';
-        $html .= '<table><tr><th>Job</th><th>Result</th><th>Detail</th></tr>';
-        foreach ($report['results'] as $r) {
-            $s = $r['success']
-                ? '<span class="ok">✅ Submitted</span>'
-                : '<span class="fail">❌ Failed</span>';
-            $html .= '<tr><td><strong>' . htmlspecialchars($r['title']) . '</strong><br>';
-            $html .= '<a href="' . $r['url'] . '" style="color:#4285f4;font-size:12px">' . basename($r['url']) . '</a></td>';
-            $html .= '<td>' . $s . '</td>';
-            $html .= '<td style="font-size:12px;color:#6b7280">' . htmlspecialchars($r['message']) . '</td>';
-            $html .= '</tr>';
-        }
-        $html .= '</table>';
-
-        $html .= '<div style="text-align:center;margin:20px 0">';
-        $html .= '<a href="https://search.google.com/search-console" style="display:inline-block;background:#4285f4;color:#fff;padding:9px 20px;text-decoration:none;border-radius:7px;font-size:13px;font-weight:600;margin:4px">Open Search Console</a>';
+        $html .= '<div class="note">';
+        $html .= '<strong>🌍 Country-Specific URLs Submitted</strong><br>';
+        $html .= 'Each job may submit multiple URLs: default URL + country-prefixed URLs.<br>';
+        $html .= 'Example: <code>/ke/jobs/...-ke</code>, <code>/ug/jobs/...-ug</code>';
         $html .= '</div>';
 
         $html .= '<div class="ft">Stardena Works — Google Indexing API • Max 200 URLs/day</div>';
@@ -430,7 +516,7 @@ class GoogleIndexingService
                     ->from(env('MAIL_FROM_ADDRESS', 'noreply@stardenaworks.com'), 'Stardena Works SEO')
                 );
             } catch (\Exception $e) {
-                Log::error("Indexing report email failed for {$email}: " . $e->getMessage());
+                Log::error("Indexing report email failed: " . $e->getMessage());
             }
         }
     }
