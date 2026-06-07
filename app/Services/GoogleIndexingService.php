@@ -12,17 +12,11 @@ use Illuminate\Support\Facades\Mail;
  * GoogleIndexingService
  * ─────────────────────────────────────────────────────────────────
  * PURPOSE : Submit individual job URLs to Google Indexing API.
- *           Includes both DEFAULT and COUNTRY-SPECIFIC URLs.
+ *           SUBMITS ONLY THE COUNTRY-SPECIFIC URL (not duplicate).
  *           Google allows max 200 URL submissions per day.
  *
- * FLOW    : Job is posted
- *           → admin reviews/verifies job
- *           → admin clicks "Index" button on that job's status modal
- *           → URLS (default + country-specific) submitted to Google Indexing API
- *           → DB updated: submitted_to_indexing=true, indexing_status=*
- *
- * QUOTA   : 200 URLs/day hard limit enforced via cache counter.
- *           Resets at midnight UTC.
+ * OPTIMIZATION: Only submits the country-prefixed URL, NOT the default.
+ *               This prevents duplicate submissions (33 jobs = 33 URLs, not 66).
  * ─────────────────────────────────────────────────────────────────
  */
 class GoogleIndexingService
@@ -35,13 +29,13 @@ class GoogleIndexingService
     // Supported countries for URL generation
     private const SUPPORTED_COUNTRIES = [
         'ke' => 'KE',
-        'tz' => 'TZ',
-        'rw' => 'RW',
+        // 'tz' => 'TZ',
+        // 'rw' => 'RW',
         'ug' => 'UG',
         'ng' => 'NG',
-        'za' => 'ZA',
-        'bi' => 'BI',
-        'ss' => 'SS',
+        // 'za' => 'ZA',
+        // 'bi' => 'BI',
+        // 'ss' => 'SS',
     ];
 
     private string $webUrl;
@@ -52,8 +46,8 @@ class GoogleIndexingService
     }
 
     // =========================================================================
-    // PUBLIC: Submit a single job by ID (called from status modal button)
-    // ⭐ Now submits multiple URLs (default + country-specific)
+    // PUBLIC: Submit a single job by ID
+    // ⭐ Now submits ONLY the country-specific URL (no duplicate)
     // =========================================================================
     public function submitJob(int $jobId): array
     {
@@ -66,95 +60,65 @@ class GoogleIndexingService
             return ['success' => false, 'message' => 'Job is not active — only active jobs should be indexed'];
         }
 
-        // Generate ALL URLs for this job
-        $urls = $this->generateJobUrls($job);
+        // Generate ONLY the primary country-specific URL for this job
+        $primaryUrl = $this->getPrimaryJobUrl($job);
         
-        Log::info("GOOGLE INDEXING: Submitting " . count($urls) . " URLs for job {$jobId}");
+        if (!$primaryUrl) {
+            return ['success' => false, 'message' => 'Could not generate URL for this job'];
+        }
+        
+        Log::info("GOOGLE INDEXING: Submitting 1 URL for job {$jobId}: {$primaryUrl}");
 
-        $results = [];
-        $successCount = 0;
-        $quotaUsed = 0;
-
-        foreach ($urls as $url) {
-            // Check quota before each submission
-            if ($this->getRemainingQuota() <= 0) {
-                Log::warning("GOOGLE INDEXING: Quota exhausted, stopping after {$successCount} submissions");
-                break;
-            }
-
-            $result = $this->submitUrl($url, $job);
-            $results[] = $result;
-            
-            if ($result['success']) {
-                $successCount++;
-                $quotaUsed++;
-            }
+        // Check quota before submission
+        if ($this->getRemainingQuota() <= 0) {
+            return [
+                'success' => false,
+                'message' => 'Daily quota of ' . self::DAILY_LIMIT . ' reached. Resets at midnight UTC.',
+            ];
         }
 
-        // Update job indexing status if at least one URL was submitted
-        $anySuccess = $successCount > 0;
-        $this->updateJobIndexingStatus($job, ['success' => $anySuccess, 'urls_submitted' => $successCount, 'results' => $results]);
+        $result = $this->submitUrl($primaryUrl, $job);
+
+        // Update job indexing status
+        $this->updateJobIndexingStatus($job, ['success' => $result['success'], 'submitted_url' => $primaryUrl]);
 
         return [
-            'success' => $anySuccess,
-            'urls_submitted' => $successCount,
-            'total_urls' => count($urls),
-            'quota_used' => $quotaUsed,
-            'results' => $results,
-            'message' => $anySuccess 
-                ? "{$successCount} of " . count($urls) . " URLs submitted to Google index queue"
-                : "Failed to submit any URLs. Check quota and configuration.",
+            'success' => $result['success'],
+            'url_submitted' => $primaryUrl,
+            'quota_used' => $result['success'] ? 1 : 0,
+            'message' => $result['message'],
         ];
     }
 
     // =========================================================================
-    // ⭐ GENERATE ALL JOB URLS (default + country-specific)
+    // ⭐ GET PRIMARY JOB URL (country-specific only, no duplicate)
     // =========================================================================
-    private function generateJobUrls(JobPost $job): array
+    private function getPrimaryJobUrl(JobPost $job): ?string
     {
-        $urls = [];
         $slug = $job->slug;
         
-        // 1. Default URL (always submit)
-        $urls[] = $this->webUrl . '/jobs/' . $slug;
-        
-        // 2. Country-specific URL based on job location
+        // Get job's country from location
         $jobCountry = null;
         if ($job->jobLocation && $job->jobLocation->country) {
             $jobCountry = strtolower($job->jobLocation->country);
         }
         
-        // Add URL for the job's own country (primary)
-        if ($jobCountry && isset(self::SUPPORTED_COUNTRIES[$jobCountry])) {
-            $suffix = '-' . $jobCountry;
-            $countrySlug = str_ends_with($slug, $suffix) ? $slug : $slug . $suffix;
-            $urls[] = $this->webUrl . '/' . $jobCountry . '/jobs/' . $countrySlug;
+        // Default to Uganda if no country specified
+        if (!$jobCountry || !isset(self::SUPPORTED_COUNTRIES[$jobCountry])) {
+            $jobCountry = 'ug';
         }
         
-        // 3. For remote jobs, submit URLs for ALL supported countries
-        $isRemote = $job->location_type === 'remote';
-        if ($isRemote) {
-            foreach (self::SUPPORTED_COUNTRIES as $countryCode => $countryName) {
-                if ($countryCode !== $jobCountry) {
-                    $suffix = '-' . $countryCode;
-                    $countrySlug = str_ends_with($slug, $suffix) ? $slug : $slug . $suffix;
-                    $urls[] = $this->webUrl . '/' . $countryCode . '/jobs/' . $countrySlug;
-                }
-            }
-        }
+        // Ensure slug has country suffix
+        $suffix = '-' . $jobCountry;
+        $countrySlug = str_ends_with($slug, $suffix) ? $slug : $slug . $suffix;
         
-        // Remove duplicates and clean
-        $urls = array_unique($urls);
-        sort($urls);
-        
-        Log::debug("Generated URLs for job {$job->id}: " . json_encode($urls));
-        
-        return $urls;
+        // Return country-specific URL
+        return $this->webUrl . '/' . $jobCountry . '/jobs/' . $countrySlug;
     }
 
     // =========================================================================
     // PUBLIC: Bulk submit from admin (respects daily quota)
-    // ⭐ Now submits ALL URLs for each job
+    // ⭐ Now submits ONLY ONE URL per job (no duplicates)
     // =========================================================================
     public function submitBatch(array $jobIds): array
     {
@@ -171,6 +135,9 @@ class GoogleIndexingService
             ];
         }
 
+        // Respect the daily limit
+        $jobIds = array_slice($jobIds, 0, $remaining);
+        
         $jobs = JobPost::with('jobLocation')
             ->whereIn('id', $jobIds)
             ->where('is_active', true)
@@ -179,7 +146,6 @@ class GoogleIndexingService
         $results   = [];
         $submitted = 0;
         $failed    = 0;
-        $totalUrls = 0;
 
         $token = $this->getAccessToken();
         if (!$token) {
@@ -192,56 +158,50 @@ class GoogleIndexingService
         }
 
         foreach ($jobs as $job) {
-            // Generate all URLs for this job
-            $urls = $this->generateJobUrls($job);
-            $totalUrls += count($urls);
+            // Generate ONLY the primary country-specific URL
+            $url = $this->getPrimaryJobUrl($job);
             
-            $jobResults = [];
-            $jobSuccess = false;
+            if (!$url) {
+                $failed++;
+                $results[] = [
+                    'job_id'  => $job->id,
+                    'title'   => $job->job_title,
+                    'success' => false,
+                    'message' => 'Could not generate URL',
+                ];
+                continue;
+            }
             
-            foreach ($urls as $url) {
-                if ($this->getRemainingQuota() <= 0) {
-                    Log::warning("GOOGLE INDEXING: Quota exhausted during batch");
-                    break 2;
-                }
-                
-                $result = $this->callGoogleApi($url, $token);
-                $jobResults[] = $result;
-                
-                if ($result['success']) {
-                    $submitted++;
-                    $this->incrementQuota();
-                    $jobSuccess = true;
-                } else {
-                    $failed++;
-                }
-                
-                // 200ms between requests — stay within rate limits
-                usleep(200000);
+            $result = $this->callGoogleApi($url, $token);
+            
+            if ($result['success']) {
+                $submitted++;
+                $this->incrementQuota();
+            } else {
+                $failed++;
             }
             
             // Update job indexing status
-            $this->updateJobIndexingStatus($job, [
-                'success' => $jobSuccess,
-                'urls_submitted' => count($jobResults),
-                'results' => $jobResults
-            ]);
-            
+            $this->updateJobIndexingStatus($job, ['success' => $result['success'], 'submitted_url' => $url]);
+
             $results[] = [
                 'job_id'  => $job->id,
                 'title'   => $job->job_title,
-                'urls'    => $urls,
-                'success' => $jobSuccess,
-                'results' => $jobResults,
+                'url'     => $url,
+                'success' => $result['success'],
+                'status'  => $result['status'],
+                'message' => $result['message'],
             ];
+
+            // 200ms between requests — stay within rate limits
+            usleep(200000);
         }
 
         $report = [
             'success'       => $submitted > 0,
             'submitted'     => $submitted,
             'failed'        => $failed,
-            'total_urls'    => $totalUrls,
-            'jobs_processed'=> $jobs->count(),
+            'total_jobs'    => $jobs->count(),
             'quota_used'    => $this->getQuotaUsed(),
             'quota_left'    => $this->getRemainingQuota(),
             'results'       => $results,
@@ -326,16 +286,14 @@ class GoogleIndexingService
     private function updateJobIndexingStatus(JobPost $job, array $result): void
     {
         $status = $result['success'] ? 'submitted' : 'failed';
-        $urlsSubmitted = $result['urls_submitted'] ?? 0;
 
         JobPost::where('id', $job->id)->update([
             'submitted_to_indexing' => $result['success'],
             'indexing_submitted_at' => $result['success'] ? now() : $job->indexing_submitted_at,
             'indexing_status'       => $status,
             'indexing_response'     => json_encode([
-                'submitted_at'     => now()->toISOString(),
-                'urls_submitted'   => $urlsSubmitted,
-                'results'          => $result['results'] ?? [],
+                'submitted_at' => now()->toISOString(),
+                'url'          => $result['submitted_url'] ?? null,
             ]),
         ]);
     }
@@ -467,7 +425,7 @@ class GoogleIndexingService
         if (empty($adminEmails)) return;
 
         $icon = $report['submitted'] > 0 ? '✅' : '❌';
-        $subject = "{$icon} Google Indexing — {$report['submitted']} URLs submitted — quota {$report['quota_used']}/200 — " . now()->format('d M Y H:i');
+        $subject = "{$icon} Google Indexing — {$report['submitted']} jobs submitted — quota {$report['quota_used']}/200 — " . now()->format('d M Y H:i');
 
         $html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>';
         $html .= 'body{font-family:-apple-system,sans-serif;max-width:650px;margin:0 auto;background:#f3f4f6;color:#1f2937}';
@@ -488,9 +446,9 @@ class GoogleIndexingService
         $html .= '<div class="bd">';
 
         $html .= '<div class="stats">';
-        $html .= '<div class="s"><div class="n ok">' . $report['submitted'] . '</div><div class="l">URLs Submitted</div></div>';
+        $html .= '<div class="s"><div class="n ok">' . $report['submitted'] . '</div><div class="l">Jobs Submitted</div></div>';
         $html .= '<div class="s"><div class="n fail">' . $report['failed'] . '</div><div class="l">Failed</div></div>';
-        $html .= '<div class="s"><div class="n">' . $report['total_urls'] . '</div><div class="l">Total URLs</div></div>';
+        $html .= '<div class="s"><div class="n">' . $report['total_jobs'] . '</div><div class="l">Total Jobs</div></div>';
         $html .= '</div>';
 
         $pct = round(($report['quota_used'] / self::DAILY_LIMIT) * 100);
@@ -500,9 +458,8 @@ class GoogleIndexingService
         $html .= '</div>';
 
         $html .= '<div class="note">';
-        $html .= '<strong>🌍 Country-Specific URLs Submitted</strong><br>';
-        $html .= 'Each job may submit multiple URLs: default URL + country-prefixed URLs.<br>';
-        $html .= 'Example: <code>/ke/jobs/...-ke</code>, <code>/ug/jobs/...-ug</code>';
+        $html .= '<strong>🌍 Country-Specific URLs Only</strong><br>';
+        $html .= 'Each job submits ONE country-prefixed URL (e.g., <code>/ke/jobs/...-ke</code>) to avoid duplicates.';
         $html .= '</div>';
 
         $html .= '<div class="ft">Stardena Works — Google Indexing API • Max 200 URLs/day</div>';

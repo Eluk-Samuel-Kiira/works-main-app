@@ -372,11 +372,35 @@
             }
             formData.append('name', name);
             
+            // Industry - NOW REQUIRED
             const industryId = document.getElementById('quickCompanyIndustryId').value;
-            if (industryId) formData.append('industry_id', industryId);
+            if (!industryId || industryId === '') {
+                if (typeof toast === 'function') {
+                    toast('Please select an industry', 'error');
+                } else {
+                    alert('Please select an industry');
+                }
+                btn.disabled = false;
+                spinner.classList.add('d-none');
+                btnText.innerHTML = originalText;
+                return;
+            }
+            formData.append('industry_id', industryId);
             
+            // Location - NOW REQUIRED
             const locationId = document.getElementById('quickCompanyLocationId').value;
-            if (locationId) formData.append('location_id', locationId);
+            if (!locationId || locationId === '') {
+                if (typeof toast === 'function') {
+                    toast('Please select a location', 'error');
+                } else {
+                    alert('Please select a location');
+                }
+                btn.disabled = false;
+                spinner.classList.add('d-none');
+                btnText.innerHTML = originalText;
+                return;
+            }
+            formData.append('location_id', locationId);
             
             const description = document.getElementById('quickCompanyDescription').value.trim();
             if (description) formData.append('description', description);

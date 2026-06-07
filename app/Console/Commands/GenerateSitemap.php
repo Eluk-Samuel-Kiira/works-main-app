@@ -3,6 +3,7 @@ namespace App\Console\Commands;
 
 use App\Models\Job\JobPost;
 use App\Models\Job\JobLocation;
+use App\Models\Job\JobCategory;
 use Illuminate\Console\Command;
 
 class GenerateSitemap extends Command
@@ -10,16 +11,40 @@ class GenerateSitemap extends Command
     protected $signature   = 'sitemap:generate';
     protected $description = 'Generate XML sitemap for all active job posts';
 
-    // Country codes and their suffixes
+    // Country codes and their suffixes for job slugs
     private const COUNTRY_SUFFIXES = [
         'ke' => '-ke',
-        // 'tz' => '-tz',
-        // 'rw' => '-rw',
+        'tz' => '-tz',
+        'rw' => '-rw',
         'ug' => '-ug',
         'ng' => '-ng',
-        // 'za' => '-za',
-        // 'bi' => '-bi',
-        // 'ss' => '-ss',
+        'za' => '-za',
+        'bi' => '-bi',
+        'ss' => '-ss',
+    ];
+
+    // Country mapping for location slugs (from database seeder)
+    private const LOCATION_COUNTRY_MAPPING = [
+        'ke' => 'KE',
+        'ug' => 'UG',
+        'ng' => 'NG',
+        'tz' => 'TZ',
+        'rw' => 'RW',
+        'bi' => 'BI',
+        'ss' => 'SS',
+        'za' => 'ZA',
+    ];
+
+    // All supported countries
+    private const ALL_COUNTRIES = [
+        'ke' => ['name' => 'Kenya', 'country_code' => 'KE', 'enabled' => true],
+        'tz' => ['name' => 'Tanzania', 'country_code' => 'TZ', 'enabled' => true],
+        'rw' => ['name' => 'Rwanda', 'country_code' => 'RW', 'enabled' => true],
+        'ug' => ['name' => 'Uganda', 'country_code' => 'UG', 'enabled' => true],
+        'ng' => ['name' => 'Nigeria', 'country_code' => 'NG', 'enabled' => true],
+        'za' => ['name' => 'South Africa', 'country_code' => 'ZA', 'enabled' => true],
+        'bi' => ['name' => 'Burundi', 'country_code' => 'BI', 'enabled' => true],
+        'ss' => ['name' => 'South Sudan', 'country_code' => 'SS', 'enabled' => true],
     ];
 
     public function handle(): void
@@ -30,7 +55,7 @@ class GenerateSitemap extends Command
         // Generate original sitemap.xml (ONLY jobs WITHOUT country suffixes)
         $this->generateOriginalSitemap($webUrl);
         
-        // Generate country-specific sitemaps (ONLY jobs WITH matching suffixes)
+        // Generate country-specific sitemaps
         $this->generateCountrySitemaps($webUrl);
         
         // Generate sitemap index
@@ -40,14 +65,13 @@ class GenerateSitemap extends Command
     }
 
     /**
-     * Generate ORIGINAL sitemap.xml - ONLY jobs WITHOUT country suffixes
-     * These are the old URLs that are already indexed by Google
+     * Generate ORIGINAL sitemap.xml
      */
     private function generateOriginalSitemap(string $webUrl): void
     {
         $urls = [];
 
-        // ── Static pages ──────────────────────────────────────────────────────
+        // Static pages
         $urls[] = $this->makeUrl($webUrl, 'daily', '1.0');
         $urls[] = $this->makeUrl($webUrl . '/jobs', 'hourly', '0.9');
         $urls[] = $this->makeUrl($webUrl . '/cv-builder', 'weekly', '0.9');
@@ -56,8 +80,8 @@ class GenerateSitemap extends Command
         $urls[] = $this->makeUrl($webUrl . '/contact', 'monthly', '0.4');
         $urls[] = $this->makeUrl($webUrl . '/privacy-policy', 'monthly', '0.3');
 
-        // ── Category pages ────────────────────────────────────────────────────
-        $categories = \App\Models\Job\JobCategory::where('is_active', true)
+        // Category pages
+        $categories = JobCategory::where('is_active', true)
             ->withCount(['jobPosts' => fn($q) => $q->where('is_active', true)->where('deadline', '>=', now())])
             ->get()
             ->filter(fn($cat) => $cat->job_posts_count > 0 && !empty($cat->slug));
@@ -71,7 +95,7 @@ class GenerateSitemap extends Command
             );
         }
 
-        // ── Company pages ─────────────────────────────────────────────────────
+        // Company pages
         $companies = \App\Models\Job\Company::where('is_active', true)
             ->withCount(['jobPosts' => fn($q) => $q->where('is_active', true)->where('deadline', '>=', now())])
             ->get()
@@ -79,15 +103,14 @@ class GenerateSitemap extends Command
 
         foreach ($companies as $company) {
             $urls[] = $this->makeUrl(
-                $webUrl . '/jobs?company=' . $company->slug,
+                $webUrl . '/company/' . $company->slug,
                 'weekly',
                 '0.7',
                 $company->updated_at?->toAtomString()
             );
         }
 
-        // ── Individual job posts ──────────────────────────────────────────────
-        // ⭐ ONLY include jobs whose slugs do NOT end with any country suffix
+        // Individual job posts (without country suffix)
         $jobs = JobPost::where('is_active', true)
             ->where('deadline', '>=', now())
             ->whereNotNull('slug')
@@ -98,7 +121,6 @@ class GenerateSitemap extends Command
             $slug = $job->slug;
             $hasCountrySuffix = false;
             
-            // Check if slug ends with any country suffix
             foreach (self::COUNTRY_SUFFIXES as $suffix) {
                 if (str_ends_with($slug, $suffix)) {
                     $hasCountrySuffix = true;
@@ -106,7 +128,6 @@ class GenerateSitemap extends Command
                 }
             }
             
-            // ⭐ ONLY include if NO country suffix found
             if (!$hasCountrySuffix) {
                 $urls[] = $this->makeUrl(
                     $webUrl . '/jobs/' . $slug,
@@ -117,7 +138,7 @@ class GenerateSitemap extends Command
             }
         }
 
-        // ── Build XML ─────────────────────────────────────────────────────────
+        // Build XML
         $urls = array_filter($urls);
         $total = count($urls);
 
@@ -128,53 +149,84 @@ class GenerateSitemap extends Command
 
         file_put_contents(public_path('sitemap.xml'), $xml);
 
-        $this->info("✓ Original sitemap.xml generated: {$total} URLs (ONLY jobs WITHOUT country codes)");
+        $this->info("✓ Original sitemap.xml generated: {$total} URLs");
     }
 
     /**
      * Generate country-specific sitemaps
-     * Each sitemap ONLY contains jobs whose slugs end with that country's suffix
      */
     private function generateCountrySitemaps(string $webUrl): void
     {
-        $countryConfigs = [
-            'ke' => ['name' => 'Kenya', 'suffix' => '-ke', 'country_code' => 'KE'],
-            'tz' => ['name' => 'Tanzania', 'suffix' => '-tz', 'country_code' => 'TZ'],
-            'rw' => ['name' => 'Rwanda', 'suffix' => '-rw', 'country_code' => 'RW'],
-            'ug' => ['name' => 'Uganda', 'suffix' => '-ug', 'country_code' => 'UG'],
-            'ng' => ['name' => 'Nigeria', 'suffix' => '-ng', 'country_code' => 'NG'],
-            'za' => ['name' => 'South Africa', 'suffix' => '-za', 'country_code' => 'ZA'],
-            'bi' => ['name' => 'Burundi', 'suffix' => '-bi', 'country_code' => 'BI'],
-            'ss' => ['name' => 'South Sudan', 'suffix' => '-ss', 'country_code' => 'SS'],
-        ];
-
-        foreach ($countryConfigs as $code => $config) {
+        foreach (self::ALL_COUNTRIES as $code => $config) {
+            if (!$config['enabled']) {
+                continue;
+            }
+            
             $this->info("Generating sitemap for {$config['name']}...");
             $urls = [];
             
-            // Country-specific static pages
-            $urls[] = $this->makeUrl(
-                $webUrl . '/' . $code,
-                'daily',
-                '0.9',
-                now()->toAtomString()
-            );
+            // 1. Country-specific static pages
+            $urls[] = $this->makeUrl($webUrl . '/' . $code, 'daily', '0.9', now()->toAtomString());
+            $urls[] = $this->makeUrl($webUrl . '/' . $code . '/jobs', 'hourly', '0.8', now()->toAtomString());
+            $urls[] = $this->makeUrl($webUrl . '/' . $code . '/companies', 'daily', '0.75', now()->toAtomString());
             
-            $urls[] = $this->makeUrl(
-                $webUrl . '/' . $code . '/jobs',
-                'hourly',
-                '0.8',
-                now()->toAtomString()
-            );
+            // 2. Country-specific company pages
+            $companiesInCountry = \App\Models\Job\Company::where('is_active', true)
+                ->whereHas('jobPosts', function($q) use ($config) {
+                    $q->where('is_active', true)
+                      ->where('deadline', '>=', now())
+                      ->whereHas('jobLocation', function($locQ) use ($config) {
+                          $locQ->where('country', $config['country_code']);
+                      });
+                })
+                ->get();
             
-            // Location pages for this country
+            foreach ($companiesInCountry as $company) {
+                $urls[] = $this->makeUrl(
+                    $webUrl . '/' . $code . '/jobs/company/' . $company->slug,
+                    'weekly',
+                    '0.7',
+                    $company->updated_at?->toAtomString()
+                );
+            }
+            $this->info("  ✓ Added " . $companiesInCountry->count() . " company pages");
+            
+            // 3. Country-specific category pages
+            $categoriesWithJobs = JobCategory::where('is_active', true)
+                ->withCount([
+                    'jobPosts' => function($q) use ($config) {
+                        $q->where('is_active', true)
+                          ->where('deadline', '>=', now())
+                          ->whereHas('jobLocation', function($locQ) use ($config) {
+                              $locQ->where('country', $config['country_code']);
+                          });
+                    }
+                ])
+                ->having('job_posts_count', '>', 0)
+                ->get();
+            
+            foreach ($categoriesWithJobs as $category) {
+                $urls[] = $this->makeUrl(
+                    $webUrl . '/' . $code . '/jobs/category/' . $category->slug,
+                    'daily',
+                    '0.75',
+                    $category->updated_at?->toAtomString()
+                );
+            }
+            $this->info("  ✓ Added " . $categoriesWithJobs->count() . " category pages");
+            
+            // 4. ⭐ Location pages - Using slugs directly from database
+            // The slugs are stored as: "kampala-jobs-uganda", "nairobi-jobs-ke", etc.
             $locations = JobLocation::where('country', $config['country_code'])
                 ->where('is_active', true)
-                ->withCount('jobPosts')
-                ->get()
-                ->filter(fn($loc) => $loc->job_posts_count > 0);
+                ->withCount(['jobPosts' => function($q) {
+                    $q->where('is_active', true)->where('deadline', '>=', now());
+                }])
+                ->having('job_posts_count', '>', 0)
+                ->get();
             
             foreach ($locations as $location) {
+                // Use the slug exactly as stored in the database
                 $urls[] = $this->makeUrl(
                     $webUrl . '/' . $code . '/jobs/location/' . $location->slug,
                     'weekly',
@@ -182,17 +234,26 @@ class GenerateSitemap extends Command
                     $location->updated_at?->toAtomString()
                 );
             }
+            $this->info("  ✓ Added " . $locations->count() . " location pages (using DB slugs)");
             
-            // ⭐ ONLY include jobs whose slugs end with this country's suffix
+            // 5. Job detail pages with country suffix
+            $suffix = self::COUNTRY_SUFFIXES[$code] ?? '-' . $code;
             $jobs = JobPost::where('is_active', true)
                 ->where('deadline', '>=', now())
                 ->whereNotNull('slug')
                 ->where('slug', '!=', '')
-                ->where('slug', 'like', '%' . $config['suffix']) // Ends with -ke, -ug, etc.
-                ->get(['slug', 'updated_at', 'is_featured']);
+                ->where('slug', 'like', '%' . $suffix)
+                ->with(['jobLocation'])
+                ->get(['slug', 'updated_at', 'is_featured', 'job_location_id']);
             
-            foreach ($jobs as $job) {
-                // Country-prefixed URL: /ke/jobs/{slug}
+            $filteredJobs = $jobs->filter(function($job) use ($config) {
+                if ($job->jobLocation) {
+                    return $job->jobLocation->country === $config['country_code'];
+                }
+                return true;
+            });
+            
+            foreach ($filteredJobs as $job) {
                 $urls[] = $this->makeUrl(
                     $webUrl . '/' . $code . '/jobs/' . $job->slug,
                     'weekly',
@@ -200,6 +261,7 @@ class GenerateSitemap extends Command
                     $job->updated_at?->toAtomString()
                 );
             }
+            $this->info("  ✓ Added " . $filteredJobs->count() . " job detail pages");
             
             // Build country sitemap
             $urls = array_filter($urls);
@@ -214,9 +276,11 @@ class GenerateSitemap extends Command
                 $filename = "sitemap_{$code}.xml";
                 file_put_contents(public_path($filename), $xml);
                 
-                $this->info("  ✓ Generated {$total} URLs for {$config['name']}");
+                $this->info("  ✓ Generated {$total} total URLs for {$config['name']}");
+                $this->info("");
             } else {
-                $this->info("  ✓ No URLs found for {$config['name']}");
+                $this->info("  ⚠ No URLs found for {$config['name']}");
+                $this->info("");
             }
         }
     }
@@ -233,20 +297,27 @@ class GenerateSitemap extends Command
         $xml .= $this->makeSitemapEntry($webUrl . '/sitemap.xml', now()->toAtomString());
         
         // Add country sitemaps if they have content
-        $countryCodes = ['ke', 'tz', 'rw', 'ug', 'ng', 'za', 'bi', 'ss'];
-        foreach ($countryCodes as $code) {
+        foreach (self::ALL_COUNTRIES as $code => $config) {
+            if (!$config['enabled']) {
+                continue;
+            }
+            
             $filePath = public_path("sitemap_{$code}.xml");
-            if (file_exists($filePath) && filesize($filePath) > 100) { // Has actual content
+            if (file_exists($filePath) && filesize($filePath) > 500) {
                 $xml .= $this->makeSitemapEntry($webUrl . "/sitemap_{$code}.xml", now()->toAtomString());
+                $this->info("  ✓ Added sitemap_{$code}.xml to index");
             }
         }
         
         $xml .= '</sitemapindex>';
         file_put_contents(public_path('sitemap_index.xml'), $xml);
         
-        $this->info("✓ Sitemap index created");
+        $this->info("✓ Sitemap index created at: sitemap_index.xml");
     }
 
+    /**
+     * Generate a single URL entry for sitemap
+     */
     private function makeUrl(string $loc, string $changefreq, string $priority, ?string $lastmod = null): string
     {
         if (empty(trim($loc)) || !filter_var($loc, FILTER_VALIDATE_URL)) {
@@ -264,10 +335,13 @@ class GenerateSitemap extends Command
         return $tag;
     }
     
+    /**
+     * Generate sitemap index entry
+     */
     private function makeSitemapEntry(string $loc, string $lastmod): string
     {
         return "  <sitemap>\n" .
-               "    <loc>{$loc}</loc>\n" .
+               "    <loc>" . htmlspecialchars($loc) . "</loc>\n" .
                "    <lastmod>{$lastmod}</lastmod>\n" .
                "  </sitemap>\n";
     }
