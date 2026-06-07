@@ -166,6 +166,133 @@ class JobsController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Get jobs filtered by country
+     * Endpoint: /v2/jobs-by-country
+     */
+    public function jobsByCountry(Request $request)
+    {
+        try {
+            $country = $request->get('country'); // KE, UG, NG
+            $page = $request->get('page', 1);
+            
+            $query = JobPost::with([
+                'company',
+                'jobCategory',
+                'industry',
+                'jobLocation',
+                'jobType',
+                'experienceLevel',
+                'educationLevel',
+                'salaryRange'
+            ])
+            ->where('is_active', true)
+            ->whereNotNull('published_at')
+            ->where('published_at', '<=', now());
+            
+            // Filter by country using job_location relationship
+            if ($country) {
+                $query->whereHas('jobLocation', function($q) use ($country) {
+                    $q->where('country', $country);
+                });
+            }
+            
+            // Apply other filters (keyword, location, category, etc.)
+            if ($request->has('keyword') && !empty($request->keyword)) {
+                $keyword = $request->keyword;
+                $query->where(function($q) use ($keyword) {
+                    $q->where('job_title', 'LIKE', "%{$keyword}%")
+                    ->orWhere('job_description', 'LIKE', "%{$keyword}%");
+                });
+            }
+            
+            if ($request->has('location') && !empty($request->location)) {
+                $location = $request->location;
+                $query->where(function($q) use ($location) {
+                    $q->where('duty_station', 'LIKE', "%{$location}%")
+                    ->orWhereHas('jobLocation', function($locQ) use ($location) {
+                        $locQ->where('district', 'LIKE', "%{$location}%");
+                    });
+                });
+            }
+            
+            // Apply sorting
+            $sort = $request->get('sort', 'newest');
+            switch ($sort) {
+                case 'oldest':
+                    $query->orderBy('published_at', 'asc');
+                    break;
+                case 'salary_high':
+                    $query->orderBy('salary_amount', 'desc');
+                    break;
+                case 'salary_low':
+                    $query->orderBy('salary_amount', 'asc');
+                    break;
+                default:
+                    $query->orderBy('published_at', 'desc');
+            }
+            
+            // Filter by featured
+            if ($request->has('featured') && $request->featured) {
+                $query->where('is_featured', true);
+            }
+            
+            // Paginate
+            $jobs = $query->paginate(18);
+            
+            // Format response
+            $formattedJobs = $jobs->getCollection()->map(function($job) {
+                return $this->formatJobData($job);
+            });
+            
+            return response()->json([
+                'data' => $formattedJobs,
+                'total' => $jobs->total(),
+                'current_page' => $jobs->currentPage(),
+                'last_page' => $jobs->lastPage(),
+                'per_page' => $jobs->perPage(),
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error fetching jobs by country: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch jobs'], 500);
+        }
+    }
+
+    /**
+     * Get featured jobs (optionally filtered by country)
+     * Endpoint: /v2/featured-jobs
+     */
+    public function featuredJobs(Request $request)
+    {
+        try {
+            $country = $request->get('country');
+            
+            $query = JobPost::with(['company', 'jobLocation', 'jobType'])
+                ->where('is_active', true)
+                ->where('is_featured', true);
+            
+            if ($country) {
+                $query->whereHas('jobLocation', function($q) use ($country) {
+                    $q->where('country', $country);
+                });
+            }
+            
+            $jobs = $query->latest('published_at')
+                ->limit(6)
+                ->get()
+                ->map(function($job) {
+                    return $this->formatJobData($job);
+                });
+            
+            return response()->json($jobs);
+            
+        } catch (\Exception $e) {
+            Log::error('Error fetching featured jobs: ' . $e->getMessage());
+            return response()->json([]);
+        }
+    }
     
     /**
      * Get featured jobs
@@ -199,7 +326,7 @@ class JobsController extends Controller
             ], 500);
         }
     }
-    
+        
     
     /**
      * Format job data for API response - FIXED VERSION
@@ -467,14 +594,43 @@ class JobsController extends Controller
             return response()->json(['Remote', 'Full Stack', 'Manager', 'Developer', 'Engineer', 'Analyst']); // Fallback
         }
     }
-        
+
+    /**
+     * Get job categories (optionally filtered by country)
+     * Endpoint: GET /v2/job-categories?country=KE
+     */
+
     public function jobCategory(Request $request)
     {
+        $country = $request->get('country');
+        
+        // Debug logging
+        // \Log::info('JobCategory API called', [
+        //     'raw_country' => $country,
+        //     'country_after_trim' => $country ? trim($country) : null
+        // ]);
+        
+        // Normalize country code to uppercase for consistent comparison
+        $countryCode = $country ? strtoupper(trim($country)) : null;
+        
+        // \Log::info('JobCategory normalized', [
+        //     'original' => $country,
+        //     'normalized' => $countryCode
+        // ]);
+        
         $categories = JobCategory::where('is_active', true)
             ->withCount([
-                'jobPosts' => fn($q) => $q  // ← now matches the relationship name
-                    ->where('is_active', true)
-                    ->where('deadline', '>=', now())
+                'jobPosts' => function($q) use ($countryCode) {
+                    $q->where('is_active', true)
+                    ->where('deadline', '>=', now());
+                    
+                    if ($countryCode) {
+                        $q->whereHas('jobLocation', function($locQ) use ($countryCode) {
+                            // Case-insensitive comparison
+                            $locQ->whereRaw('UPPER(country) = ?', [$countryCode]);
+                        });
+                    }
+                }
             ])
             ->orderBy('sort_order')
             ->get()
@@ -483,11 +639,105 @@ class JobsController extends Controller
                 'name'       => $cat->name,
                 'slug'       => $cat->slug,
                 'icon'       => $cat->icon,
-                'jobs_count' => $cat->job_posts_count,
+                'jobs_count' => (int) $cat->job_posts_count,
             ]);
-
+        
+        // Debug: Log the total jobs for this country
+        $totalJobs = collect($categories)->sum('jobs_count');
+        \Log::info('JobCategory response', [
+            'country' => $countryCode,
+            'total_jobs_in_country' => $totalJobs,
+            'categories_with_jobs' => $categories->where('jobs_count', '>', 0)->count(),
+            'sample_category' => $categories->first()
+        ]);
+        
         return response()->json($categories);
     }
+
+    /**
+     * Get jobs filtered by category AND country
+     * Endpoint: /v2/jobs-by-category-country
+     */
+    public function jobsByCategoryAndCountry(Request $request)
+    {
+        try {
+            $country = $request->get('country'); // KE, UG, NG, etc.
+            $categorySlug = $request->get('category');
+            $page = $request->get('page', 1);
+            $sort = $request->get('sort', 'newest');
+            
+            // Get category by slug
+            $category = JobCategory::where('slug', $categorySlug)
+                ->where('is_active', true)
+                ->first();
+            
+            if (!$category) {
+                return response()->json(['error' => 'Category not found'], 404);
+            }
+            
+            // Build query
+            $query = JobPost::with([
+                'company', 'jobCategory', 'industry', 'jobLocation', 
+                'jobType', 'experienceLevel', 'educationLevel', 'salaryRange'
+            ])
+            ->where('is_active', true)
+            ->whereNotNull('published_at')
+            ->where('published_at', '<=', now())
+            ->where('job_category_id', $category->id);
+            
+            // Filter by country
+            if ($country) {
+                $query->whereHas('jobLocation', function($q) use ($country) {
+                    $q->where('country', $country);
+                });
+            }
+            
+            // Apply sorting
+            switch ($sort) {
+                case 'oldest':
+                    $query->orderBy('published_at', 'asc');
+                    break;
+                case 'salary_high':
+                    $query->orderBy('salary_amount', 'desc');
+                    break;
+                case 'salary_low':
+                    $query->orderBy('salary_amount', 'asc');
+                    break;
+                default:
+                    $query->orderBy('published_at', 'desc');
+            }
+            
+            $jobs = $query->paginate(18);
+            
+            $formattedJobs = $jobs->getCollection()->map(function($job) {
+                return $this->formatJobData($job);
+            });
+            
+            return response()->json([
+                'category' => [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                    'slug' => $category->slug,
+                    'icon' => $category->icon ?? 'bi-briefcase',
+                    'description' => $category->description,
+                ],
+                'jobs' => [
+                    'data' => $formattedJobs,
+                    'pagination' => [
+                        'current_page' => $jobs->currentPage(),
+                        'last_page' => $jobs->lastPage(),
+                        'per_page' => $jobs->perPage(),
+                        'total' => $jobs->total(),
+                    ],
+                ],
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error fetching jobs by category and country: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch jobs'], 500);
+        }
+    }
+
     
     /**
      * Get a single job by slug - COMPLETE WORKING VERSION
@@ -913,9 +1163,6 @@ class JobsController extends Controller
             ], 500);
         }
     }
-
-
-
 
 
     

@@ -42,6 +42,18 @@ Route::prefix('v2')->name('api.v1.')->group(function () {
     Route::post('/jobs/{job}/increment-application', [JobsController::class, 'incrementApplication'])->name('jobs.increment.application');
 
     Route::get('/social-media', [SocialMediaController::class, 'indexPublic']);
+    
+    Route::get('/jobs-by-country', [JobsController::class, 'jobsByCountry']);
+    Route::get('/featured-jobs', [JobsController::class, 'featuredJobs']);
+
+    
+    Route::get('/jobs-by-category-country', [JobsController::class, 'jobsByCategoryAndCountry']);
+    Route::get('/job-categories', [JobsController::class, 'jobCategory']);
+
+    Route::get('/company-jobs-by-country', [JobsCategoryController::class, 'companyJobsByCountry']);
+    Route::get('/company/{slug}', [JobsCategoryController::class, 'companyDetails']);
+    Route::get('/jobs-by-location/{slug}', [JobsCategoryController::class, 'jobsByLocation']);
+    Route::get('/locations-by-country', [JobsCategoryController::class, 'locationsByCountry']);
 });
 
 

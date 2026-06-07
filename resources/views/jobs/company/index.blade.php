@@ -136,16 +136,20 @@
                             <input type="text" class="form-control" id="formName" required>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">Industry</label>
-                            <select class="form-select" id="formIndustryId">
-                                <option value="">— Select Industry —</option>
-                            </select>
+                            <label class="form-label">Industry <span class="text-danger">*</span></label>
+                            <div class="position-relative">
+                                <input type="text" id="formIndustryInput" class="form-control" placeholder="Type to search industry..." autocomplete="off">
+                                <input type="hidden" id="formIndustryId">
+                                <ul class="dropdown-menu w-100" id="formIndustryList" style="max-height: 200px; overflow-y: auto;"></ul>
+                            </div>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">Location</label>
-                            <select class="form-select" id="formLocationId">
-                                <option value="">— Select Location —</option>
-                            </select>
+                            <label class="form-label">Location <span class="text-danger">*</span></label>
+                            <div class="position-relative">
+                                <input type="text" id="formLocationInput" class="form-control" placeholder="Type to search location..." autocomplete="off">
+                                <input type="hidden" id="formLocationId">
+                                <ul class="dropdown-menu w-100" id="formLocationList" style="max-height: 200px; overflow-y: auto;"></ul>
+                            </div>
                         </div>
                         <div class="col-12">
                             <label class="form-label">Description</label>
@@ -156,7 +160,7 @@
                             <input type="url" class="form-control" id="formWebsite" placeholder="https://example.com">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Company Logo</label>
+                            <label class="form-label">Company Logo <span class="text-danger">*</span></label>
                             <div class="input-group">
                                 <input type="file" id="formLogoFile" class="form-control" accept="image/jpeg,image/png,image/gif,image/webp" onchange="previewLogo()">
                                 <button class="btn btn-outline-secondary" type="button" onclick="clearLogo()">Clear</button>

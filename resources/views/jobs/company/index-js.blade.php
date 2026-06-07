@@ -1,5 +1,4 @@
 <script>
-
     const API_BASE      = '/api/v1/companies';
     const INDUSTRY_API  = '/api/v1/industries';
     const LOCATIONS_API = '/api/v1/job-locations';
@@ -7,17 +6,138 @@
     let currentPage      = 1;
     let currentId        = null;
     let debounceTimer    = null;
+    
+    // Typable dropdown instances
+    let formIndustryDropdown = null;
+    let formLocationDropdown = null;
+    let formIndustryItems = [];
+    let formLocationItems = [];
 
+    // ============================================================
+    // TYPABLE DROPDOWN CLASS (same as quick modal)
+    // ============================================================
+    class TypableDropdown {
+        constructor(config) {
+            this.inputEl = document.getElementById(config.inputId);
+            this.hiddenEl = document.getElementById(config.hiddenId);
+            this.listEl = document.getElementById(config.listId);
+            this.items = [];
+            this.displayKey = config.displayKey || 'name';
+            this.valueKey = config.valueKey || 'id';
+            this.formatItem = config.formatItem || null;
+            this.onSelect = config.onSelect || null;
+            this.init();
+        }
+        
+        init() {
+            if (!this.listEl) return;
+            this.listEl.classList.add('show');
+            this.listEl.style.display = 'none';
+            this.inputEl.addEventListener('input', () => this.filter());
+            this.inputEl.addEventListener('focus', () => this.show());
+            this.inputEl.addEventListener('blur', () => setTimeout(() => this.hide(), 200));
+            document.addEventListener('click', (e) => {
+                if (!this.inputEl.contains(e.target) && !this.listEl.contains(e.target)) this.hide();
+            });
+        }
+        
+        setItems(items) { 
+            this.items = items; 
+            this.render();
+        }
+        
+        filter() {
+            const term = this.inputEl.value.toLowerCase();
+            const filtered = this.items.filter(i => this.getText(i).toLowerCase().includes(term));
+            this.render(filtered);
+            this.show();
+        }
+        
+        getText(item) {
+            if (this.formatItem) return this.formatItem(item);
+            if (typeof this.displayKey === 'function') return this.displayKey(item);
+            return item[this.displayKey] || '';
+        }
+        
+        render(items = null) {
+            if (!this.listEl) return;
+            const list = items || this.items;
+            this.listEl.innerHTML = '';
+            if (!list.length) {
+                const li = document.createElement('li');
+                li.className = 'dropdown-item text-muted';
+                li.textContent = 'No results found';
+                li.style.cursor = 'default';
+                this.listEl.appendChild(li);
+            } else {
+                list.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'dropdown-item';
+                    li.textContent = this.getText(item);
+                    li.style.cursor = 'pointer';
+                    li.addEventListener('click', () => this.select(item));
+                    this.listEl.appendChild(li);
+                });
+            }
+        }
+        
+        select(item) {
+            this.inputEl.value = this.getText(item);
+            this.hiddenEl.value = item[this.valueKey];
+            this.hide();
+            if (this.onSelect) this.onSelect(item);
+            this.hiddenEl.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        
+        show() { 
+            if (this.listEl && this.items.length > 0) { 
+                this.listEl.style.display = 'block'; 
+                this.listEl.classList.add('show'); 
+            } 
+        }
+        
+        hide() { 
+            if (this.listEl) {
+                this.listEl.style.display = 'none'; 
+                this.listEl.classList.remove('show'); 
+            }
+        }
+        
+        reset() {
+            this.inputEl.value = '';
+            this.hiddenEl.value = '';
+            this.render();
+            this.hide();
+        }
+        
+        setValue(id, label = null) {
+            const found = this.items.find(i => String(i[this.valueKey]) === String(id));
+            if (found) this.select(found);
+            else if (label) { this.inputEl.value = label; this.hiddenEl.value = id; }
+        }
+    }
+
+    // ============================================================
+    // ESCAPE FUNCTION
+    // ============================================================
     function esc(str) {
         if (str == null) return '';
         return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
+    
     function formatDate(d) {
         if (!d) return '—';
         return new Date(d).toLocaleDateString('en-UG', { year:'numeric', month:'short', day:'numeric' });
     }
-    function toast(msg, type = 'success') { if (typeof showToast === 'function') showToast(type, msg); }
-    function bsModal(id) { return bootstrap.Modal.getOrCreateInstance(document.getElementById(id)); }
+    
+    function toast(msg, type = 'success') { 
+        if (typeof showToast === 'function') showToast(type, msg);
+        else alert(msg);
+    }
+    
+    function bsModal(id) { 
+        return bootstrap.Modal.getOrCreateInstance(document.getElementById(id)); 
+    }
 
     async function apiFetch(url, options = {}) {
         const res = await fetch(url, {
@@ -30,25 +150,50 @@
     }
 
     // ============================================================
-    // LOAD INDUSTRIES FOR DROPDOWNS
+    // LOAD DROPDOWNS FOR FORM MODAL
     // ============================================================
-    async function loadIndustries() {
+    async function loadFormIndustries() {
         try {
-            const res = await apiFetch(`${INDUSTRY_API}?per_page=100&is_active=1`);
-            const items = res.data ?? [];
-            const options = items.map(i => `<option value="${i.id}">${esc(i.name)}</option>`).join('');
-            document.getElementById('filterIndustry').innerHTML = '<option value="">All Industries</option>' + options;
-            document.getElementById('formIndustryId').innerHTML = '<option value="">— Select Industry —</option>' + options;
+            const res = await apiFetch(`${INDUSTRY_API}?per_page=200&is_active=1`);
+            formIndustryItems = res.data ?? [];
+            if (formIndustryDropdown) {
+                formIndustryDropdown.setItems(formIndustryItems);
+            }
+            // Also load filter dropdown
+            const filterOptions = formIndustryItems.map(i => `<option value="${i.id}">${esc(i.name)}</option>`).join('');
+            document.getElementById('filterIndustry').innerHTML = '<option value="">All Industries</option>' + filterOptions;
         } catch (e) { /* silent */ }
     }
 
-    async function loadLocations() {
+    async function loadFormLocations() {
         try {
-            const res = await apiFetch(`${LOCATIONS_API}?per_page=100&is_active=1`);
-            const items = res.data ?? [];
-            const options = items.map(i => `<option value="${i.id}">${esc(i.country)} - ${esc(i.district)}</option>`).join('');
-            document.getElementById('formLocationId').innerHTML = '<option value="">— Select Location —</option>' + options;
+            const res = await apiFetch(`${LOCATIONS_API}?per_page=200&is_active=1`);
+            formLocationItems = res.data ?? [];
+            if (formLocationDropdown) {
+                formLocationDropdown.setItems(formLocationItems);
+            }
         } catch (e) { /* silent */ }
+    }
+
+    // Initialize typable dropdowns for main form
+    function initFormTypableDropdowns() {
+        formIndustryDropdown = new TypableDropdown({
+            inputId: 'formIndustryInput',
+            hiddenId: 'formIndustryId',
+            listId: 'formIndustryList',
+            displayKey: 'name',
+            valueKey: 'id'
+        });
+        formIndustryDropdown.setItems(formIndustryItems);
+        
+        formLocationDropdown = new TypableDropdown({
+            inputId: 'formLocationInput',
+            hiddenId: 'formLocationId',
+            listId: 'formLocationList',
+            displayKey: (item) => `${item.country} - ${item.district}`,
+            valueKey: 'id'
+        });
+        formLocationDropdown.setItems(formLocationItems);
     }
 
     // ============================================================
@@ -88,14 +233,14 @@
             renderTable(res.data);
             renderPagination(res.meta ?? {});
         } catch (e) {
-            tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-3"><i class="ti ti-alert-circle me-1"></i>Failed to load companies.</td></tr>`;
+            tbody.innerHTML = `<td><td colspan="8" class="text-center text-danger py-3"><i class="ti ti-alert-circle me-1"></i>Failed to load companies.</td></tr>`;
         }
     }
 
     function renderTable(items) {
         const tbody = document.getElementById('tableBody');
         if (!items || items.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-muted">No companies found.</td></tr>`;
+            tbody.innerHTML = `<td><td colspan="8" class="text-center py-4 text-muted">No companies found.</td></tr>`;
             return;
         }
         tbody.innerHTML = items.map((item, i) => `
@@ -195,8 +340,8 @@
         document.getElementById('formModalTitle').innerHTML = '<i class="ti ti-plus me-2"></i>Add Company';
         document.getElementById('formId').value = '';
         document.getElementById('formName').value = '';
-        document.getElementById('formIndustryId').value = '';
-        document.getElementById('formLocationId').value = '';
+        if (formIndustryDropdown) formIndustryDropdown.reset();
+        if (formLocationDropdown) formLocationDropdown.reset();
         document.getElementById('formDescription').value = '';
         document.getElementById('formWebsite').value = '';
         document.getElementById('formLogoFile').value = '';
@@ -222,8 +367,8 @@
             const item = res.data ?? res;
             document.getElementById('formId').value = item.id;
             document.getElementById('formName').value = item.name ?? '';
-            document.getElementById('formIndustryId').value = item.industry_id ?? '';
-            document.getElementById('formLocationId').value = item.location_id ?? '';
+            if (formIndustryDropdown) formIndustryDropdown.setValue(item.industry_id, item.industry?.name);
+            if (formLocationDropdown) formLocationDropdown.setValue(item.location_id);
             document.getElementById('formDescription').value = item.description ?? '';
             document.getElementById('formWebsite').value = item.website ?? '';
             document.getElementById('formLogoFile').value = '';
@@ -248,16 +393,35 @@
 
         try {
             const formData = new FormData();
+            const isCreating = !currentId;
             
-            // Text fields
             const name = document.getElementById('formName').value.trim();
-            if (name) formData.append('name', name);
+            if (!name) {
+                toast('Company name is required', 'error');
+                btn.disabled = false; spinner.classList.add('d-none');
+                return;
+            }
+            formData.append('name', name);
             
             const industryId = document.getElementById('formIndustryId').value;
-            if (industryId) formData.append('industry_id', industryId);
+            if (isCreating && (!industryId || industryId === '')) {
+                toast('Please select an industry', 'error');
+                btn.disabled = false; spinner.classList.add('d-none');
+                return;
+            }
+            if (industryId && industryId !== '') {
+                formData.append('industry_id', industryId);
+            }
             
             const locationId = document.getElementById('formLocationId').value;
-            if (locationId) formData.append('location_id', locationId);
+            if (isCreating && (!locationId || locationId === '')) {
+                toast('Please select a location', 'error');
+                btn.disabled = false; spinner.classList.add('d-none');
+                return;
+            }
+            if (locationId && locationId !== '') {
+                formData.append('location_id', locationId);
+            }
             
             const description = document.getElementById('formDescription').value.trim();
             if (description) formData.append('description', description);
@@ -280,36 +444,44 @@
             const companySize = document.getElementById('formCompanySize').value.trim();
             if (companySize) formData.append('company_size', companySize);
             
-            // Boolean fields
             const isActive = document.getElementById('formIsActive').checked;
             const isVerified = document.getElementById('formIsVerified').checked;
             
             formData.append('is_active', isActive ? '1' : '0');
             formData.append('is_verified', isVerified ? '1' : '0');
             
-            // Logo file - ONLY if a new file is selected
             const logoFile = document.getElementById('formLogoFile').files[0];
+            if (isCreating && !logoFile) {
+                toast('Company logo is required', 'error');
+                btn.disabled = false; spinner.classList.add('d-none');
+                return;
+            }
             if (logoFile) {
+                const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+                if (!allowedTypes.includes(logoFile.type)) {
+                    toast('Please upload a valid image (JPG, PNG, GIF, or WebP)', 'error');
+                    btn.disabled = false; spinner.classList.add('d-none');
+                    return;
+                }
+                if (logoFile.size > 2 * 1024 * 1024) {
+                    toast('Logo must be less than 2MB', 'error');
+                    btn.disabled = false; spinner.classList.add('d-none');
+                    return;
+                }
                 formData.append('logo', logoFile);
             }
 
-            const method = currentId ? 'PATCH' : 'POST';
             const url = currentId ? `${API_BASE}/${currentId}` : API_BASE;
 
-            // For PATCH requests, Laravel needs _method field when using POST
-            // Or use the correct HTTP method directly
-            const fetchOptions = {
-                method: currentId ? 'POST' : 'POST', // Always use POST with _method for file uploads
-                body: formData,
-                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN },
-            };
-            
-            // Add _method for PATCH/PUT
             if (currentId) {
                 formData.append('_method', 'PATCH');
             }
 
-            const res = await fetch(url, fetchOptions);
+            const res = await fetch(url, {
+                method: 'POST',
+                body: formData,
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN },
+            });
             
             const data = await res.json();
             if (!res.ok) throw data;
@@ -326,9 +498,20 @@
         }
     }
 
+    function previewLogo() {
+        const file = document.getElementById('formLogoFile').files[0];
+        const preview = document.getElementById('logoPreview');
+        if (!file) { preview.innerHTML = ''; return; }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            preview.innerHTML = `<img src="${e.target.result}" class="img-thumbnail" style="max-height:100px" alt="Logo Preview">`;
+        };
+        reader.readAsDataURL(file);
+    }
+
     function clearLogo() {
-        const fileInput = document.getElementById('formLogoFile');
-        fileInput.value = '';
+        document.getElementById('formLogoFile').value = '';
         document.getElementById('logoPreview').innerHTML = '';
     }
 
@@ -354,32 +537,12 @@
     }
 
     // ============================================================
-    // LOGO PREVIEW HELPERS
-    // ============================================================
-    function previewLogo() {
-        const file = document.getElementById('formLogoFile').files[0];
-        const preview = document.getElementById('logoPreview');
-        if (!file) { preview.innerHTML = ''; return; }
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            preview.innerHTML = `<img src="${e.target.result}" class="img-thumbnail" style="max-height:100px" alt="Logo Preview">`;
-        };
-        reader.readAsDataURL(file);
-    }
-
-    function clearLogo() {
-        document.getElementById('formLogoFile').value = '';
-        document.getElementById('logoPreview').innerHTML = '';
-    }
-
-    // ============================================================
     // INIT
     // ============================================================
-    document.addEventListener('DOMContentLoaded', () => {
-        loadIndustries();
-        loadLocations();
+    document.addEventListener('DOMContentLoaded', async () => {
+        await loadFormIndustries();
+        await loadFormLocations();
+        initFormTypableDropdowns();
         loadItems(1);
     });
-
 </script>
