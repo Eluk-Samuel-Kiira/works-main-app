@@ -47,7 +47,7 @@ class JobLocationRequest extends FormRequest
                     'max:255',
                     Rule::unique('job_locations', 'district')
                         ->where('country', $this->country)
-                        ->ignore($locationId)  // ✅ Correct way to ignore current record
+                        ->ignore($locationId) 
                 ]
                 : [
                     'required',
