@@ -72,6 +72,15 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::apiResource('job-categories',   JobCategoryController::class);
     Route::apiResource('job-types',        JobTypeController::class);
     Route::apiResource('job-locations',    JobLocationController::class);
+    
+    Route::post('job-locations/import', [
+        \App\Http\Controllers\Api\Jobs\JobLocationImportController::class, 'import'
+    ])->name('job-locations.import');
+    
+    Route::apiResource('job-locations', \App\Http\Controllers\Api\Jobs\JobLocationController::class);
+
+
+
     Route::apiResource('experience-levels', ExperienceLevelController::class);
     Route::apiResource('education-levels', EducationLevelController::class);
     Route::apiResource('salary-ranges',    SalaryRangeController::class);

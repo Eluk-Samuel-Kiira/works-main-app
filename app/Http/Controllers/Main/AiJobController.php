@@ -217,9 +217,9 @@ PROMPT;
         }
 
         // 5. Currency → UGX
-        if (empty($data['currency'])) {
-            $data['currency'] = 'UGX';
-        }
+        // if (empty($data['currency'])) {
+        //     // $data['currency'] = 'UGX';
+        // }
 
         // 6. Location type → on-site
         if (empty($data['location_type'])) {
@@ -534,7 +534,6 @@ SMART DEFAULTS (apply when field is missing):
 - deadline: "{$twoWeeksAhead}"
 - experience_level_name: "entry level"
 - education_level_name: "Certificate"
-- currency: "UGX"
 - location_type: "on-site"
 - is_telephone_call: true (if telephone is present but WhatsApp is not explicitly mentioned)
 - is_whatsapp_contact: false (unless WhatsApp is explicitly mentioned)
@@ -555,7 +554,6 @@ FIELDS TO EXTRACT:
   "location_type": "remote|hybrid|on-site",
   "employment_type": "full-time|part-time|contract|internship|volunteer|temporary",
   "salary_amount": "numeric salary amount or null",
-  "currency": "UGX|USD|EUR|KES",
   "payment_period": "monthly|yearly|weekly|daily|hourly or null",
   "meta_description": "155-character SEO description — must mention job title and location",
   "keywords": "comma-separated SEO keywords — include job title variations and Uganda/East Africa terms",
