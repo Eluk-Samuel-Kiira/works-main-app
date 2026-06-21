@@ -21,9 +21,6 @@
                         </nav>
                     </div>
                     <div class="d-flex gap-2">
-                        <button class="btn btn-outline-primary d-flex align-items-center gap-2" onclick="openImportModal()">
-                            <i class="ti ti-file-spreadsheet fs-4"></i> Import from Excel
-                        </button>
                         <button class="btn btn-primary d-flex align-items-center gap-2" onclick="openCreateModal()">
                             <i class="ti ti-plus fs-4"></i> Add Location
                         </button>
@@ -100,77 +97,6 @@
             </div>
         </div>
 
-    </div>
-</div>
-
-<div class="modal fade" id="importModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="ti ti-file-spreadsheet me-2"></i>Import Job Locations from Excel</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-info py-2 px-3 mb-3">
-                    <small>
-                        Upload an <code>.xlsx</code> file with <strong>country</strong> and <strong>district</strong> columns
-                        (optionally: city, description, meta_title, meta_description, sort_order, is_active).
-                        Use the Kenya or Nigeria templates to get started.
-                    </small>
-                </div>
- 
-                <form id="importForm" onsubmit="return false;">
-                    <div class="row g-3">
-                        <div class="col-md-7">
-                            <label class="form-label">Excel File <span class="text-danger">*</span></label>
-                            <input type="file" class="form-control" id="importFile" accept=".xlsx,.xls,.csv" required>
-                        </div>
-                        <div class="col-md-5">
-                            <label class="form-label">Force Country (optional)</label>
-                            <select class="form-select" id="importCountryOverride">
-                                <option value="">Use country column from file</option>
-                                <option value="UG">Uganda (UG)</option>
-                                <option value="KE">Kenya (KE)</option>
-                                <option value="NG">Nigeria (NG)</option>
-                                <option value="TZ">Tanzania (TZ)</option>
-                                <option value="ZA">South Africa (ZA)</option>
-                                <option value="GH">Ghana (GH)</option>
-                                <option value="RW">Rwanda (RW)</option>
-                                <option value="SS">South Sudan (SS)</option>
-                                <option value="CD">DR Congo (CD)</option>
-                                <option value="ET">Ethiopia (ET)</option>
-                            </select>
-                            <small class="form-text text-muted">Overrides whatever is in the file's country column.</small>
-                        </div>
-                        <div class="col-12">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="importSkipDuplicates" checked>
-                                <label class="form-check-label" for="importSkipDuplicates">
-                                    Skip rows that already exist (instead of failing them)
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </form>
- 
-                <div id="importResults" class="mt-4 d-none">
-                    <hr>
-                    <div class="d-flex gap-4 mb-3">
-                        <div><span class="badge bg-success fs-6" id="importCreatedCount">0</span> Created</div>
-                        <div><span class="badge bg-secondary fs-6" id="importSkippedCount">0</span> Skipped</div>
-                        <div><span class="badge bg-danger fs-6" id="importFailedCount">0</span> Failed</div>
-                    </div>
-                    <div id="importFailedList" class="small text-danger"></div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button class="btn btn-primary" id="importSubmitBtn" onclick="submitImport()">
-                    <span id="importBtnText">Upload &amp; Import</span>
-                    <span id="importBtnSpinner" class="spinner-border spinner-border-sm ms-1 d-none"></span>
-                </button>
-            </div>
-        </div>
     </div>
 </div>
 

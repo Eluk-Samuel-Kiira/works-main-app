@@ -26,6 +26,7 @@ class ArtisanCommandController extends Controller
         'migrate'              => 'Run database migrations',
         'migrate:status'       => 'Show migration status',
         'sitemap:generate'       => 'Generate Site Map',
+        'import:job-locations' => 'For new locations of various countries',
         // 'pesapal:register-ipn'       => 'Pesapal IPN',
         // 'db:seed --class=PaymentPlanWebSeeder'              => 'Seed the database',
         // 'db:seed --class=UpdateJobLocationsCoordinatesSeeder'              => 'Seed the database',
