@@ -18,6 +18,8 @@ use PhpOffice\PhpWord\SimpleType\Jc;
 use PhpOffice\PhpWord\Style\Paragraph;
 use App\Models\Notification;
 use App\Mail\ContactNotification;
+use Smalot\PdfParser\Parser;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 
 class CVEnhancementController extends Controller
@@ -339,7 +341,7 @@ class CVEnhancementController extends Controller
 
     /**
      * GET /api/v1/cv-enhancement/download/{id}
-     * Supports format: word, text, html
+     * Supports format: word, text, html, pdf
      */
     public function download(Request $request, int $id): \Symfony\Component\HttpFoundation\BinaryFileResponse|JsonResponse|\Illuminate\Http\Response
     {
@@ -358,7 +360,9 @@ class CVEnhancementController extends Controller
             
             switch ($format) {
                 case 'word':
-                    return $this->downloadAsWord($content, $filename);
+                    return $this->downloadAsWord($content, $filename); // ✅ This method exists
+                case 'pdf':
+                    return $this->downloadAsPdf($content, $filename);
                 case 'html':
                     return $this->downloadAsHtml($content, $filename);
                 case 'text':
@@ -370,6 +374,306 @@ class CVEnhancementController extends Controller
             Log::error('[CVEnhancement] Download failed', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Download failed: ' . $e->getMessage()], 500);
         }
+    }
+
+
+    /**
+     * Download cover letter (supports PDF, Text, Word)
+     */
+    public function downloadCoverLetter(Request $request, int $id): \Symfony\Component\HttpFoundation\BinaryFileResponse|JsonResponse|\Illuminate\Http\Response
+    {
+        try {
+            $letter = CoverLetter::where('user_id', $request->user()->id)
+                ->where('id', $id)
+                ->first();
+
+            if (!$letter || !$letter->generated_letter) {
+                return response()->json(['error' => 'Cover letter not found'], 404);
+            }
+
+            $content = $letter->generated_letter;
+            $filename = 'cover_letter_' . $request->user()->id . '_' . time();
+            $format = $request->get('format', 'pdf');
+            
+            switch ($format) {
+                case 'pdf':
+                    return $this->downloadLetterAsPdf($content, $filename);
+                case 'word':
+                    return $this->downloadLetterAsWord($content, $filename);
+                case 'text':
+                default:
+                    return $this->downloadLetterAsText($content, $filename);
+            }
+            
+        } catch (\Exception $e) {
+            Log::error('[CVEnhancement] Cover letter download failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Download failed: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Download cover letter as PDF
+     */
+    private function downloadLetterAsPdf(string $content, string $filename): \Symfony\Component\HttpFoundation\BinaryFileResponse|\Illuminate\Http\Response
+    {
+        $bodyHtml = nl2br(e($content));
+        
+        $html = view('pdf.cv-document', [
+            'bodyHtml' => $bodyHtml,
+        ])->render();
+
+        $pdf = Pdf::loadHTML($html)->setPaper('a4');
+
+        return response($pdf->output(), 200)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '.pdf"');
+    }
+
+    /**
+     * Download cover letter as Word document
+     */
+    private function downloadLetterAsWord(string $content, string $filename): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        $phpWord = new PhpWord();
+        
+        $phpWord->getDocumentProperties()
+            ->setCreator('Stardena Works')
+            ->setTitle('Cover Letter')
+            ->setSubject('Professional Cover Letter');
+        
+        $section = $phpWord->addSection([
+            'margin' => ['top' => 720, 'right' => 720, 'bottom' => 720, 'left' => 720]
+        ]);
+        
+        // Parse and format content
+        $lines = explode("\n", $content);
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (empty($line)) {
+                $section->addTextBreak();
+                continue;
+            }
+            
+            // Detect if it's a heading (Dear..., Sincerely, etc)
+            $isHeading = preg_match('/^(Dear|Sincerely|Yours|Best|Regards|Thank)/i', $line);
+            
+            if ($isHeading) {
+                $section->addText($line, ['bold' => true, 'size' => 12], ['spaceAfter' => 120]);
+            } else {
+                $section->addText($line, ['size' => 12], ['spaceAfter' => 60]);
+            }
+        }
+        
+        $tempFile = tempnam(sys_get_temp_dir(), 'cl_');
+        $objWriter = IOFactory::createWriter($phpWord, 'Word2007');
+        $objWriter->save($tempFile);
+        
+        return response()->download($tempFile, $filename . '.docx')->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Download cover letter as plain text
+     */
+    private function downloadLetterAsText(string $content, string $filename): \Illuminate\Http\Response
+    {
+        return response($content, 200)
+            ->header('Content-Type', 'text/plain')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '.txt"');
+    }
+
+    /**
+     * Download as HTML (can be opened in browser)
+     */
+    private function downloadAsHtml(string $content, string $filename): \Illuminate\Http\Response
+    {
+        $html = $this->convertToHtml($content);
+        
+        return response($html, 200)
+            ->header('Content-Type', 'text/html')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '.html"');
+    }
+
+    /**
+     * Download as plain text
+     */
+    private function downloadAsText(string $content, string $filename): \Illuminate\Http\Response
+    {
+        // Remove markdown bold markers
+        $plainText = preg_replace('/\*\*(.*?)\*\*/', '$1', $content);
+        
+        return response($plainText, 200)
+            ->header('Content-Type', 'text/plain')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '.txt"');
+    }
+
+    /**
+     * Strip all markdown formatting from text (for plain text downloads)
+     */
+    private function stripMarkdown(string $text): string
+    {
+        // Remove **bold** markers
+        $text = preg_replace('/\*\*(.*?)\*\*/', '$1', $text);
+        
+        // Remove *italic* markers
+        $text = preg_replace('/\*(.*?)\*/', '$1', $text);
+        
+        // Remove markdown links [text](url) - keep just the text
+        $text = preg_replace('/\[(.*?)\]\(.*?\)/', '$1', $text);
+        
+        // Remove code blocks
+        $text = preg_replace('/```.*?```/s', '', $text);
+        
+        // Remove inline code
+        $text = preg_replace('/`(.*?)`/', '$1', $text);
+        
+        // Remove markdown headers (# Header)
+        $text = preg_replace('/^#+\s+(.*?)$/m', '$1', $text);
+        
+        // Remove horizontal rules
+        $text = preg_replace('/^---+$/m', '', $text);
+        
+        return $text;
+    }
+
+
+    /**
+     * Convert plain text to HTML for PDF and email
+     * This removes markdown formatting and converts it to HTML
+     */
+    private function convertToHtml(string $text): string
+    {
+        // First, handle bold text - convert **text** to <strong>text</strong>
+        $text = preg_replace('/\*\*(.*?)\*\*/', '<strong>$1</strong>', $text);
+        
+        // Handle italic text - convert *text* to <em>text</em>
+        $text = preg_replace('/\*(.*?)\*/', '<em>$1</em>', $text);
+        
+        // Convert bullet points with • or - to list items
+        $text = preg_replace('/^[•\-]\s+(.*?)$/m', '<li>$1</li>', $text);
+        $text = preg_replace('/(<li>.*?<\/li>\n?)+/s', '<ul style="margin:8px 0;padding-left:20px;">$0</ul>', $text);
+        
+        // Convert numbered lists
+        $text = preg_replace('/^\d+\.\s+(.*?)$/m', '<li>$1</li>', $text);
+        $text = preg_replace('/(<li>.*?<\/li>\n?)+/s', '<ol style="margin:8px 0;padding-left:20px;">$0</ol>', $text);
+        
+        // Convert email addresses to mailto links
+        $text = preg_replace('/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/', '<a href="mailto:$1">$1</a>', $text);
+        
+        // Convert phone numbers (East African format)
+        $text = preg_replace('/(\+256\s?\d{3}\s?\d{3}\s?\d{4})/', '<a href="tel:$1">$1</a>', $text);
+        
+        // Convert line breaks to <br>
+        $text = nl2br($text);
+        
+        // Detect and style headings (all caps lines)
+        $headings = ['PROFILE SUMMARY', 'CORE COMPETENCIES', 'PROFESSIONAL EXPERIENCE', 'EDUCATION', 'CERTIFICATIONS', 'TECHNICAL SKILLS', 'PROJECTS', 'REFERENCES', 'LANGUAGES'];
+        foreach ($headings as $heading) {
+            $text = preg_replace('/' . $heading . '/', '<strong style="color:#1e3a8a; font-size:14px;">' . $heading . '</strong>', $text);
+        }
+        
+        return $text;
+    }
+
+    /**
+     * Clean CV content by removing footers
+     */
+    private function cleanCVContent(string $content): string
+    {
+        // Remove anything after "---"
+        $parts = preg_split('/\n---\s*\n/', $content);
+        $content = $parts[0];
+        
+        // Remove footer phrases
+        $footerPhrases = [
+            '/This CV is tailored for.*$/i',
+            '/The structure adheres to.*$/i',
+            '/---$/m',
+            '/^\s*---\s*$/m',
+            '/This resume is.*$/i',
+        ];
+        
+        foreach ($footerPhrases as $pattern) {
+            $content = preg_replace($pattern, '', $content);
+        }
+        
+        return trim($content);
+    }
+
+
+    private function downloadAsPdf(string $content, string $filename): \Symfony\Component\HttpFoundation\BinaryFileResponse|\Illuminate\Http\Response
+    {
+        $bodyHtml = $this->convertToHtml($content); // reuse existing converter
+        // Strip the <!DOCTYPE>/<html>/<head> wrapper convertToHtml() adds,
+        // since we supply our own template with the branded footer below.
+        if (preg_match('/<body[^>]*>(.*)<\/body>/is', $bodyHtml, $m)) {
+            $bodyHtml = $m[1];
+        }
+    
+        $html = view('pdf.cv-document', [
+            'bodyHtml' => $bodyHtml,
+        ])->render();
+    
+        $pdf = Pdf::loadHTML($html)->setPaper('a4');
+    
+        return response($pdf->output(), 200)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '.pdf"');
+    }
+
+    /**
+     * Download review report
+     */
+    public function downloadReview(Request $request, int $id): \Symfony\Component\HttpFoundation\BinaryFileResponse|JsonResponse|\Illuminate\Http\Response  
+    {
+        try {
+            $enhancement = CvEnhancement::where('user_id', $request->user()->id)
+                ->where('id', $id)
+                ->where('type', 'review')
+                ->first();
+
+            if (!$enhancement || !$enhancement->review_feedback) {
+                return response()->json(['error' => 'Review report not found'], 404);
+            }
+
+            $format = $request->get('format', 'pdf');
+            $feedback = $enhancement->review_feedback;
+            $content = $this->formatReviewForPDF($feedback, $enhancement);
+            $filename = 'cv_review_' . $request->user()->id . '_' . time();
+            
+            switch ($format) {
+                case 'pdf':
+                    return $this->downloadReviewAsPdf($content, $filename);
+                case 'word':
+                    return $this->downloadReviewAsWord($content, $filename);
+                case 'text':
+                default:
+                    return response($content, 200)
+                        ->header('Content-Type', 'text/plain')
+                        ->header('Content-Disposition', 'attachment; filename="' . $filename . '.txt"');
+            }
+            
+        } catch (\Exception $e) {
+            Log::error('[CVEnhancement] Review download failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Download failed: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Download review as PDF
+     */
+    private function downloadReviewAsPdf(string $content, string $filename): \Symfony\Component\HttpFoundation\BinaryFileResponse|\Illuminate\Http\Response
+    {
+        $bodyHtml = nl2br(e($content));
+        
+        $html = view('pdf.cv-document', [
+            'bodyHtml' => $bodyHtml,
+        ])->render();
+
+        $pdf = Pdf::loadHTML($html)->setPaper('a4');
+
+        return response($pdf->output(), 200)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '.pdf"');
     }
 
     /**
@@ -445,126 +749,6 @@ class CVEnhancementController extends Controller
         
         return response()->download($tempFile, $filename . '.docx')->deleteFileAfterSend(true);
     }
-
-    /**
-     * Download as HTML (can be opened in browser)
-     */
-    private function downloadAsHtml(string $content, string $filename): \Illuminate\Http\Response
-    {
-        $html = $this->convertToHtml($content);
-        
-        return response($html, 200)
-            ->header('Content-Type', 'text/html')
-            ->header('Content-Disposition', 'attachment; filename="' . $filename . '.html"');
-    }
-
-    /**
-     * Download as plain text
-     */
-    private function downloadAsText(string $content, string $filename): \Illuminate\Http\Response
-    {
-        // Remove markdown bold markers
-        $plainText = preg_replace('/\*\*(.*?)\*\*/', '$1', $content);
-        
-        return response($plainText, 200)
-            ->header('Content-Type', 'text/plain')
-            ->header('Content-Disposition', 'attachment; filename="' . $filename . '.txt"');
-    }
-
-    /**
-     * Convert plain text to HTML for email and preview
-     */
-    private function convertToHtml(string $text): string
-    {
-        // Convert markdown bold
-        $text = preg_replace('/\*\*(.*?)\*\*/', '<strong>$1</strong>', $text);
-        
-        // Convert bullet points with • or -
-        $text = preg_replace('/^[•\-]\s+(.*?)$/m', '<li>$1</li>', $text);
-        $text = preg_replace('/(<li>.*?<\/li>\n?)+/s', '<ul>$0</ul>', $text);
-        
-        // Convert email addresses to mailto links
-        $text = preg_replace('/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/', '<a href="mailto:$1">$1</a>', $text);
-        
-        // Convert phone numbers
-        $text = preg_replace('/(\+256\s?\d{3}\s?\d{3}\s?\d{4})/', '<a href="tel:$1">$1</a>', $text);
-        
-        // Convert line breaks
-        $text = nl2br($text);
-        
-        // Detect headings
-        $headings = ['PROFILE SUMMARY', 'CORE COMPETENCIES', 'PROFESSIONAL EXPERIENCE', 'EDUCATION', 'CERTIFICATIONS', 'TECHNICAL SKILLS', 'PROJECTS', 'REFERENCES', 'LANGUAGES'];
-        foreach ($headings as $heading) {
-            $text = preg_replace('/' . $heading . '/', '<strong style="color:#1e3a8a; font-size:14px;">' . $heading . '</strong>', $text);
-        }
-        
-        return '<!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>CV</title>
-            <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    font-size: 12px;
-                    line-height: 1.5;
-                    margin: 40px;
-                    color: #1a202c;
-                }
-                strong {
-                    color: #1e3a8a;
-                    font-weight: 700;
-                }
-                ul {
-                    margin: 8px 0;
-                    padding-left: 20px;
-                }
-                li {
-                    margin: 4px 0;
-                }
-                a {
-                    color: #2563eb;
-                    text-decoration: none;
-                }
-                .header {
-                    text-align: center;
-                    margin-bottom: 20px;
-                }
-            </style>
-        </head>
-        <body>
-            ' . $text . '
-        </body>
-        </html>';
-    }
-
-    /**
-     * Clean CV content by removing footers
-     */
-    private function cleanCVContent(string $content): string
-    {
-        // Remove anything after "---"
-        $parts = preg_split('/\n---\s*\n/', $content);
-        $content = $parts[0];
-        
-        // Remove footer phrases
-        $footerPhrases = [
-            '/This CV is tailored for.*$/i',
-            '/The structure adheres to.*$/i',
-            '/---$/m',
-            '/^\s*---\s*$/m',
-            '/This resume is.*$/i',
-        ];
-        
-        foreach ($footerPhrases as $pattern) {
-            $content = preg_replace($pattern, '', $content);
-        }
-        
-        return trim($content);
-    }
-
-
-
 
 
     public function store(Request $request)
@@ -648,4 +832,5 @@ class CVEnhancementController extends Controller
             ], 500);
         }
     }
+
 }

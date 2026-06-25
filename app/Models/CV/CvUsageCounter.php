@@ -1,43 +1,75 @@
 <?php
-// MAIN APP: app/Models/CV/CvUsageCounter.php
+// app/Models/CV/CvUsageCounter.php
 
 namespace App\Models\CV;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Auth\User;
 
 class CvUsageCounter extends Model
 {
-    use HasFactory;
-
-    protected $table = 'cv_usage_counters';
-
     protected $fillable = [
-        'user_id', 'cv_reviews_count', 'cv_rewrites_count',
-        'cover_letters_count', 'period_start'
+        'user_id',
+        'cv_reviews_count',
+        'cv_rewrites_count',
+        'cover_letters_count',
+        'period_start',
     ];
 
     protected $casts = [
         'period_start' => 'datetime',
-        'cv_reviews_count' => 'integer',
-        'cv_rewrites_count' => 'integer',
-        'cover_letters_count' => 'integer'
     ];
 
-    public function user()
+    /**
+     * Reset usage counters if period has changed (monthly reset)
+     */
+    public static function resetIfNewPeriod(int $userId): void
     {
-        return $this->belongsTo(User::class);
+        $counter = self::firstOrCreate(
+            ['user_id' => $userId],
+            [
+                'cv_reviews_count' => 0,
+                'cv_rewrites_count' => 0,
+                'cover_letters_count' => 0,
+                'period_start' => now()->startOfMonth(),
+            ]
+        );
+
+        // If period_start is not this month, reset counters
+        if ($counter->period_start->startOfMonth() < now()->startOfMonth()) {
+            $counter->update([
+                'cv_reviews_count' => 0,
+                'cv_rewrites_count' => 0,
+                'cover_letters_count' => 0,
+                'period_start' => now()->startOfMonth(),
+            ]);
+        }
     }
 
     /**
-     * Increment a specific counter field
-     * Using a custom method name to avoid conflict with Laravel's increment
+     * Increment usage for a specific type
      */
-    public function incrementCounter(string $field): void
+    public static function incrementUsage(int $userId, string $type): void
     {
-        if (in_array($field, ['cv_reviews_count', 'cv_rewrites_count', 'cover_letters_count'])) {
-            $this->increment($field);
-        }
+        // Reset if new period
+        self::resetIfNewPeriod($userId);
+        
+        $counter = self::firstOrCreate(
+            ['user_id' => $userId],
+            [
+                'cv_reviews_count' => 0,
+                'cv_rewrites_count' => 0,
+                'cover_letters_count' => 0,
+                'period_start' => now()->startOfMonth(),
+            ]
+        );
+
+        $field = match($type) {
+            'review' => 'cv_reviews_count',
+            'rewrite' => 'cv_rewrites_count',
+            'cover_letter' => 'cover_letters_count',
+            default => 'cv_reviews_count',
+        };
+
+        $counter->increment($field);
     }
 }

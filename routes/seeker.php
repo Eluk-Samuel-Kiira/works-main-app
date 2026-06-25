@@ -34,12 +34,21 @@ Route::prefix('v1/payments')->group(function () {
 
 Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
+    // ── Trial routes ─────────────────────────────────────────────────────
+    Route::post('/payment/activate-trial', [PaymentController::class, 'activateTrial']);
+    Route::get('/payment/trial-status', [PaymentController::class, 'trialStatus']);
+
+    // ── Subscription status ─────────────────────────────────────────────
+    Route::get('/subscription/status', [PaymentPlanWebController::class, 'status']);
+    
     Route::prefix('payments')->group(function () {
         Route::post('/initiate',             [PaymentController::class, 'initiate']);
         Route::get('/callback',              [PaymentController::class, 'callback']);
         Route::get('/status/{reference}',    [PaymentController::class, 'status']);
     });
 });
+
+
 
 Route::get('/v1/public/transaction/status/{reference}', [PaymentController::class, 'publicStatus']);
 
@@ -62,8 +71,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1/cv-enhancement')->group(function
     Route::post('/cover-letter', [CVEnhancementController::class, 'coverLetter']);
     Route::get('/history', [CVEnhancementController::class, 'history']);
     Route::get('/download/{id}', [CVEnhancementController::class, 'download']);
+    Route::get('/cover-letter/download/{id}', [CVEnhancementController::class, 'downloadCoverLetter']);
+    Route::get('/review/download/{id}', [CVEnhancementController::class, 'downloadReview']);
 });
-
 
 use App\Http\Controllers\Api\Payments\PaymentPlanWebController;
 Route::prefix('v1')->group(function () {

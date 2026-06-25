@@ -56,6 +56,33 @@ class PaymentPlanWebSeeder extends Seeder
         return [
             [
                 'audience' => 'seeker',
+                'name' => 'seeker_trial',
+                'display_name' => 'Free Trial',
+                'description' => 'Try all features free for 7 days',
+                'price_usd' => 0.00,
+                'billing_period' => 'monthly',
+                'is_popular' => false,
+                'badge_text' => '🎉 7-DAY FREE TRIAL',
+                'sort_order' => 0,
+                'features' => [
+                    '3 CV reviews',
+                    '3 CV rewrites',
+                    '6 cover letters',
+                    'Full ATS score analysis',
+                    'Keyword matching',
+                    'Email delivery',
+                    'No credit card required',
+                    'Cancel anytime',
+                ],
+                'local_prices' => [
+                    'UGX' => 0, 'KES' => 0, 'TZS' => 0,
+                    'RWF' => 0, 'NGN' => 0, 'ZAR' => 0,
+                    'GBP' => 0, 'EUR' => 0,
+                ],
+            ],
+            // Existing plans
+            [
+                'audience' => 'seeker',
                 'name' => 'seeker_basic',
                 'display_name' => 'Basic',
                 'description' => 'Perfect for job seekers starting out',
@@ -66,6 +93,7 @@ class PaymentPlanWebSeeder extends Seeder
                 'sort_order' => 1,
                 'features' => [
                     '5 CV reviews per month',
+                    '5 CV rewrites per month',
                     'Advanced ATS score check',
                     '10 cover letters per month',
                     'Missing keyword analysis',

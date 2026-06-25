@@ -13,6 +13,7 @@ use Illuminate\Http\UploadedFile;
 use App\Mail\CVEnhancementMail;
 use Smalot\PdfParser\Parser;
 use PhpOffice\PhpWord\IOFactory;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class CVEnhancementService
 {
@@ -57,20 +58,29 @@ class CVEnhancementService
         try {
             $start = microtime(true);
             $prompt = $this->buildReviewPrompt($cvText, $targetRole);
-            $response = $this->callCohere($prompt, 3000);
+            $response = $this->callCohere($prompt, 3000, false, true);
             $feedback = $this->parseJsonResponse($response);
-
+            
+            if (!isset($feedback['ats_score']) || !is_numeric($feedback['ats_score'])) {
+                Log::warning('[CVEnhancement] Review response missing ats_score', [
+                    'user_id' => $userId,
+                    'feedback_keys' => array_keys($feedback),
+                ]);
+                throw new \Exception('AI review did not return a valid score. Please try again.');
+            }
+            
             $enhancement->update([
-                'status'            => 'completed',
-                'review_feedback'   => $feedback,
-                'ats_score'         => $feedback['ats_score'] ?? null,
-                'keyword_gaps'      => $feedback['keyword_gaps'] ?? [],
-                'improvement_areas' => $feedback['improvement_areas'] ?? [],
-                'strengths'         => $feedback['strengths'] ?? [],
-                'recommended_actions'=> $feedback['recommended_actions'] ?? [],
-                'ai_model'          => 'cohere-command-a-03-2025',
-                'processing_ms'     => (int)((microtime(true) - $start) * 1000),
+                'status'              => 'completed',
+                'review_feedback'     => $feedback,
+                'ats_score'           => (int) $feedback['ats_score'],
+                'keyword_gaps'        => $feedback['keyword_gaps'] ?? [],
+                'improvement_areas'   => $feedback['improvement_areas'] ?? [],
+                'strengths'           => $feedback['strengths'] ?? [],
+                'recommended_actions' => $feedback['recommended_actions'] ?? [],
+                'ai_model'            => 'cohere-command-a-03-2025',
+                'processing_ms'       => (int)((microtime(true) - $start) * 1000),
             ]);
+
 
             $this->incrementCounter($userId, 'cv_reviews_count');
             $this->sendReviewEmail($userId, $enhancement);
@@ -324,63 +334,6 @@ class CVEnhancementService
         return implode("\n", $lines);
     }
 
-    /**
-     * Rewrite CV to professional standards
-     */
-    public function rewriteCV(int $userId, ?UploadedFile $file = null, ?string $targetRole = null): array
-    {
-        // Get CV content
-        $cvResult = $this->getCVContent($userId, $file);
-        
-        if (!$cvResult['content']) {
-            return [
-                'success' => false,
-                'error' => $cvResult['error'],
-                'enhancement' => null
-            ];
-        }
-
-        $cvText = $cvResult['content'];
-
-        $enhancement = CvEnhancement::create([
-            'user_id'        => $userId,
-            'type'           => 'rewrite',
-            'status'         => 'processing',
-            'extracted_text' => substr($cvText, 0, 15000),
-        ]);
-
-        try {
-            $start = microtime(true);
-            $prompt = $this->buildRewritePrompt($cvText, $targetRole);
-            $rewrittenText = $this->callCohere($prompt, 4000, true);
-
-            $enhancement->update([
-                'status'            => 'completed',
-                'rewritten_cv_text' => $rewrittenText,
-                'ai_model'          => 'cohere-command-a-03-2025',
-                'processing_ms'     => (int)((microtime(true) - $start) * 1000),
-            ]);
-
-            $this->incrementCounter($userId, 'cv_rewrites_count');
-            $this->sendRewriteEmail($userId, $enhancement);
-
-            return [
-                'success' => true,
-                'error' => null,
-                'enhancement' => $enhancement->fresh()
-            ];
-
-        } catch (\Exception $e) {
-            Log::error('[CVEnhancement] Rewrite failed', ['user_id' => $userId, 'error' => $e->getMessage()]);
-            $enhancement->update(['status' => 'failed', 'error_message' => $e->getMessage()]);
-            
-            return [
-                'success' => false,
-                'error' => 'AI processing failed: ' . $e->getMessage(),
-                'enhancement' => $enhancement
-            ];
-        }
-    }
 
     /**
      * Generate cover letter for a specific job
@@ -424,13 +377,15 @@ class CVEnhancementService
             $start = microtime(true);
 
             $matchPrompt = $this->buildMatchPrompt($cvText, $jobDescription, $requiredSkills);
-            $matchData = $this->parseJsonResponse($this->callCohere($matchPrompt, 1000));
+            $matchData = $this->parseJsonResponse($this->callCohere($matchPrompt, 1000, false, true));
 
             $letterPrompt = $this->buildCoverLetterPrompt(
                 $cvText, $jobTitle, $jobDescription, $responsibilities,
                 $requiredSkills, $companyName, $hiringManager, $matchData
             );
             $generatedLetter = $this->callCohere($letterPrompt, 1500, true);
+            // Clean the generated letter to remove markdown before storing
+            $generatedLetter = $this->cleanMarkdown($generatedLetter);
 
             $letter->update([
                 'status'           => 'completed',
@@ -458,6 +413,93 @@ class CVEnhancementService
                 'success' => false,
                 'error' => 'AI processing failed: ' . $e->getMessage(),
                 'letter' => $letter
+            ];
+        }
+    }
+
+    /**
+     * Clean markdown formatting from AI responses
+     */
+    private function cleanMarkdown(string $text): string
+    {
+        // Remove **bold** markers but keep the text
+        $text = preg_replace('/\*\*(.*?)\*\*/', '$1', $text);
+        
+        // Remove *italic* markers but keep the text
+        $text = preg_replace('/\*(.*?)\*/', '$1', $text);
+        
+        // Remove markdown links [text](url) - keep just the text
+        $text = preg_replace('/\[(.*?)\]\(.*?\)/', '$1', $text);
+        
+        // Remove code blocks
+        $text = preg_replace('/```.*?```/s', '', $text);
+        
+        // Remove inline code
+        $text = preg_replace('/`(.*?)`/', '$1', $text);
+        
+        // Remove extra whitespace
+        $text = preg_replace('/\n{3,}/', "\n\n", $text);
+        
+        return trim($text);
+    }
+
+    /**
+     * Rewrite CV to professional standards
+     */
+    public function rewriteCV(int $userId, ?UploadedFile $file = null, ?string $targetRole = null): array
+    {
+        // Get CV content
+        $cvResult = $this->getCVContent($userId, $file);
+        
+        if (!$cvResult['content']) {
+            return [
+                'success' => false,
+                'error' => $cvResult['error'],
+                'enhancement' => null
+            ];
+        }
+
+        $cvText = $cvResult['content'];
+
+        $enhancement = CvEnhancement::create([
+            'user_id'        => $userId,
+            'type'           => 'rewrite',
+            'status'         => 'processing',
+            'extracted_text' => substr($cvText, 0, 15000),
+        ]);
+
+        try {
+            $start = microtime(true);
+            $prompt = $this->buildRewritePrompt($cvText, $targetRole);
+            $rewrittenText = $this->callCohere($prompt, 4000, true);
+
+            // 🔥 CLEAN THE MARKDOWN BEFORE STORING
+            $rewrittenText = $this->cleanMarkdown($rewrittenText);
+
+            $enhancement->update([
+                'status'            => 'completed',
+                'rewritten_cv_text' => $rewrittenText,
+                'ai_model'          => 'cohere-command-a-03-2025',
+                'processing_ms'     => (int)((microtime(true) - $start) * 1000),
+            ]);
+
+            $this->incrementCounter($userId, 'cv_rewrites_count');
+            $this->sendRewriteEmail($userId, $enhancement);
+
+            return [
+                'success' => true,
+                'error' => null,
+                'enhancement' => $enhancement->fresh()
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('[CVEnhancement] Rewrite failed', ['user_id' => $userId, 'error' => $e->getMessage()]);
+            $enhancement->update(['status' => 'failed', 'error_message' => $e->getMessage()]);
+            
+            return [
+                'success' => false,
+                'error' => 'AI processing failed: ' . $e->getMessage(),
+                'enhancement' => $enhancement
             ];
         }
     }
@@ -613,12 +655,12 @@ class CVEnhancementService
     /**
      * Call Cohere API and clean the response
      */
-    private function callCohere(string $prompt, int $maxTokens = 2000, bool $rawText = false): string
+    private function callCohere(string $prompt, int $maxTokens = 2000, bool $rawText = false, bool $expectJson = false): string
     {
         if (empty($this->cohereKey)) {
             throw new \Exception('Cohere API key not configured');
         }
-
+    
         $response = Http::withHeaders([
             'Authorization' => 'Bearer ' . $this->cohereKey,
             'Content-Type' => 'application/json',
@@ -630,21 +672,30 @@ class CVEnhancementService
             'temperature' => 0.2,
             'messages' => [['role' => 'user', 'content' => $prompt]],
         ]);
-
+    
         if (!$response->successful()) {
             throw new \Exception('Cohere API error: ' . $response->body());
         }
-
+    
         $text = $response->json('message.content.0.text') ?? '';
         if (empty($text)) {
             throw new \Exception('Empty response from Cohere');
         }
-
-        // Clean the response
+    
+        if ($expectJson) {
+            // JSON path: ONLY strip markdown code fences. Do NOT run the
+            // prose footer-stripper — it can corrupt JSON string values.
+            $text = preg_replace('/^```(?:json)?\s*/i', '', trim($text));
+            $text = preg_replace('/\s*```\s*$/i', '', $text);
+            return trim($text);
+        }
+    
+        // Prose path (rewrite / cover letter): existing behaviour unchanged.
         $text = $this->cleanAIResponse($text);
-        
+    
         return $rawText ? trim($text) : $text;
     }
+
 
     /**
      * Clean AI response by removing markdown, footers, and extra content
@@ -691,10 +742,20 @@ class CVEnhancementService
         $clean = preg_replace('/^```(?:json)?\s*/i', '', trim($raw));
         $clean = preg_replace('/\s*```\s*$/i', '', $clean);
         $clean = trim($clean);
-        
+    
         $decoded = json_decode($clean, true);
-        return is_array($decoded) ? $decoded : [];
+    
+        if (!is_array($decoded)) {
+            Log::error('[CVEnhancement] Failed to parse AI JSON response', [
+                'json_error' => json_last_error_msg(),
+                'raw_snippet' => substr($raw, 0, 500),
+            ]);
+            throw new \Exception('AI returned an unreadable response. Please try again.');
+        }
+    
+        return $decoded;
     }
+
 
     /**
      * Increment usage counter
@@ -716,26 +777,171 @@ class CVEnhancementService
     }
 
     /**
-     * Check user limits
+     * Check user limits based on their subscription plan from transactions table
      */
     public function checkLimit(int $userId, string $type): array
     {
+        // Get user's active subscription from transactions table
+        $subscription = $this->getUserSubscription($userId);
+        
+        // Default limits (for users with no subscription or expired)
         $limits = [
-            'review' => 5,
-            'rewrite' => 2,
-            'cover_letter' => 10,
+            'review' => 0,
+            'rewrite' => 0,
+            'cover_letter' => 0,
         ];
+        
+        // If user has an active subscription, set limits based on plan
+        if ($subscription) {
+            $plan = $subscription->subscription_plan;
+            
+            if ($plan === 'seeker_trial') {
+                $limits = [
+                    'review' => 3,
+                    'rewrite' => 3,
+                    'cover_letter' => 6,
+                ];
+            } elseif ($plan === 'seeker_basic') {
+                $limits = [
+                    'review' => 5,
+                    'rewrite' => 5,
+                    'cover_letter' => 10,
+                ];
+            } elseif (in_array($plan, ['seeker_pro', 'seeker_elite'])) {
+                // Unlimited for Pro and Elite plans
+                return ['allowed' => true, 'used' => 0, 'limit' => PHP_INT_MAX];
+            }
+        } else {
+            // No active subscription - no usage allowed
+            return ['allowed' => false, 'used' => 0, 'limit' => 0, 'message' => 'Please subscribe to continue using CV enhancement features.'];
+        }
 
-        $counter = CvUsageCounter::firstOrCreate(['user_id' => $userId]);
-        $field = $type === 'review' ? 'cv_reviews_count' : ($type === 'rewrite' ? 'cv_rewrites_count' : 'cover_letters_count');
+        // Get the user's usage counter
+        $counter = CvUsageCounter::firstOrCreate(
+            ['user_id' => $userId],
+            [
+                'cv_reviews_count' => 0,
+                'cv_rewrites_count' => 0,
+                'cover_letters_count' => 0,
+                'period_start' => now()->startOfMonth(),
+            ]
+        );
+        
+        // Map the type to the correct field
+        $field = match($type) {
+            'review' => 'cv_reviews_count',
+            'rewrite' => 'cv_rewrites_count',
+            'cover_letter' => 'cover_letters_count',
+            default => 'cv_reviews_count',
+        };
+        
         $used = $counter->$field ?? 0;
-        $limit = $limits[$type] ?? 5;
+        $limit = $limits[$type] ?? 0;
 
-        return ['allowed' => $used < $limit, 'used' => $used, 'limit' => $limit];
+        return [
+            'allowed' => $used < $limit,
+            'used' => $used,
+            'limit' => $limit,
+            'remaining' => max(0, $limit - $used),
+            'plan' => $subscription ? $subscription->subscription_plan : null,
+        ];
     }
 
     /**
-     * Send review email
+     * Get user's active subscription from transactions table
+     */
+    private function getUserSubscription(int $userId)
+    {
+        // First, check for an active subscription (successful status)
+        $subscription = \App\Models\Payments\Transaction::where('user_id', $userId)
+            ->where('transaction_type', 'subscription')
+            ->where('status', 'successful')
+            ->where(function($query) {
+                $query->whereNull('confirmed_at')
+                    ->orWhere('confirmed_at', '<=', now());
+            })
+            ->orderByDesc('confirmed_at')
+            ->first();
+        
+        // If found, check if it's still valid (within 30 days of confirmed_at)
+        // For monthly subscriptions, they last 30 days from confirmation
+        if ($subscription && $subscription->confirmed_at) {
+            $expiryDate = $subscription->confirmed_at->addDays(30);
+            if ($expiryDate->isPast()) {
+                // Subscription expired - return null so user sees no active subscription
+                return null;
+            }
+        }
+        
+        return $subscription;
+    }
+
+    /**
+     * Get user's current plan with details
+     */
+    public function getUserPlanDetails(int $userId): array
+    {
+        $subscription = $this->getUserSubscription($userId);
+        
+        if (!$subscription) {
+            return [
+                'has_active_subscription' => false,
+                'plan' => null,
+                'plan_display_name' => null,
+                'expiry_date' => null,
+                'limits' => [
+                    'review' => 0,
+                    'rewrite' => 0,
+                    'cover_letter' => 0,
+                ],
+                'usage' => [
+                    'review' => 0,
+                    'rewrite' => 0,
+                    'cover_letter' => 0,
+                ],
+            ];
+        }
+        
+        // Get usage counts
+        $counter = CvUsageCounter::firstOrCreate(['user_id' => $userId]);
+        
+        // Get limits based on plan
+        $limits = match($subscription->subscription_plan) {
+            'seeker_trial' => ['review' => 3, 'rewrite' => 3, 'cover_letter' => 6],
+            'seeker_basic' => ['review' => 5, 'rewrite' => 5, 'cover_letter' => 10],
+            'seeker_pro', 'seeker_elite' => ['review' => PHP_INT_MAX, 'rewrite' => PHP_INT_MAX, 'cover_letter' => PHP_INT_MAX],
+            default => ['review' => 0, 'rewrite' => 0, 'cover_letter' => 0],
+        };
+        
+        // Plan display names
+        $planNames = [
+            'seeker_trial' => 'Free Trial',
+            'seeker_basic' => 'Basic',
+            'seeker_pro' => 'Pro',
+            'seeker_elite' => 'Elite',
+        ];
+        
+        return [
+            'has_active_subscription' => true,
+            'plan' => $subscription->subscription_plan,
+            'plan_display_name' => $planNames[$subscription->subscription_plan] ?? ucfirst($subscription->subscription_plan),
+            'expiry_date' => $subscription->confirmed_at ? $subscription->confirmed_at->addDays(30)->toIso8601String() : null,
+            'limits' => $limits,
+            'usage' => [
+                'review' => (int) $counter->cv_reviews_count,
+                'rewrite' => (int) $counter->cv_rewrites_count,
+                'cover_letter' => (int) $counter->cover_letters_count,
+            ],
+            'remaining' => [
+                'review' => max(0, $limits['review'] - (int) $counter->cv_reviews_count),
+                'rewrite' => max(0, $limits['rewrite'] - (int) $counter->cv_rewrites_count),
+                'cover_letter' => max(0, $limits['cover_letter'] - (int) $counter->cover_letters_count),
+            ],
+        ];
+    }
+
+    /**
+     * Send review email with PDF attachment
      */
     private function sendReviewEmail(int $userId, CvEnhancement $enhancement): void
     {
@@ -743,6 +949,13 @@ class CVEnhancementService
         if (!$user) return;
 
         $feedback = $enhancement->review_feedback ?? [];
+        
+        // Generate PDF content from review feedback
+        $pdfContent = $this->generatePDF(
+            $this->formatReviewForPDF($feedback, $enhancement),
+            'review',
+            'cv-review.pdf'
+        );
         
         Mail::to($user->email)->send(new CVEnhancementMail(
             user: ['id' => $user->id, 'email' => $user->email, 'first_name' => $user->first_name, 'full_name' => $user->full_name],
@@ -752,36 +965,52 @@ class CVEnhancementService
             strengths: $feedback['strengths'] ?? [],
             criticalIssues: $feedback['critical_issues'] ?? [],
             keywordGaps: $enhancement->keyword_gaps ?? [],
-            recommendedActions: $feedback['recommended_actions'] ?? []
+            recommendedActions: $feedback['recommended_actions'] ?? [],
+            pdfContent: $pdfContent,
+            pdfFilename: 'cv-review-report.pdf'
         ));
 
         $enhancement->update(['email_sent' => true, 'email_sent_at' => now()]);
     }
 
     /**
-     * Send rewrite email
+     * Send rewrite email with PDF attachment
      */
     private function sendRewriteEmail(int $userId, CvEnhancement $enhancement): void
     {
         $user = User::find($userId);
         if (!$user) return;
 
+        // Generate PDF from rewritten CV text
+        $pdfContent = $this->generatePDF(
+            $enhancement->rewritten_cv_text ?? '',
+            'cv'
+        );
+
         Mail::to($user->email)->send(new CVEnhancementMail(
             user: ['id' => $user->id, 'email' => $user->email, 'first_name' => $user->first_name, 'full_name' => $user->full_name],
             type: 'rewrite',
-            content: $enhancement->rewritten_cv_text ?? ''
+            content: $enhancement->rewritten_cv_text ?? '',
+            pdfContent: $pdfContent,
+            pdfFilename: 'rewritten-cv.pdf'
         ));
 
         $enhancement->update(['email_sent' => true, 'email_sent_at' => now()]);
     }
 
     /**
-     * Send cover letter email
+     * Send cover letter email with PDF attachment
      */
     private function sendCoverLetterEmail(int $userId, CoverLetter $letter): void
     {
         $user = User::find($userId);
         if (!$user) return;
+
+        // Generate PDF from cover letter
+        $pdfContent = $this->generatePDF(
+            $letter->generated_letter ?? '',
+            'cover_letter'
+        );
 
         Mail::to($user->email)->send(new CVEnhancementMail(
             user: ['id' => $user->id, 'email' => $user->email, 'first_name' => $user->first_name, 'full_name' => $user->full_name],
@@ -789,10 +1018,201 @@ class CVEnhancementService
             content: $letter->generated_letter ?? '',
             matchScore: $letter->match_score,
             matchedSkills: $letter->matched_skills ?? [],
-            missingSkills: $letter->missing_skills ?? []
+            missingSkills: $letter->missing_skills ?? [],
+            pdfContent: $pdfContent,
+            pdfFilename: 'cover-letter.pdf'
         ));
 
         $letter->update(['email_sent' => true, 'email_sent_at' => now()]);
+    }
+
+    /**
+     * Format review feedback for PDF
+     */
+    private function formatReviewForPDF(array $feedback, CvEnhancement $enhancement): string
+    {
+        $lines = [];
+        
+        $lines[] = 'CV REVIEW REPORT';
+        $lines[] = '================';
+        $lines[] = '';
+        $lines[] = "ATS Score: {$enhancement->ats_score}%";
+        $lines[] = '';
+        
+        if (!empty($feedback['overall_impression'])) {
+            $lines[] = 'OVERALL IMPRESSION';
+            $lines[] = '-----------------';
+            $lines[] = $feedback['overall_impression'];
+            $lines[] = '';
+        }
+        
+        if (!empty($feedback['strengths']) && is_array($feedback['strengths'])) {
+            $lines[] = 'STRENGTHS';
+            $lines[] = '---------';
+            foreach ($feedback['strengths'] as $strength) {
+                $lines[] = "• {$strength}";
+            }
+            $lines[] = '';
+        }
+        
+        // Handle critical_issues properly - it's an array of objects with 'section', 'issue', 'fix'
+        if (!empty($feedback['critical_issues']) && is_array($feedback['critical_issues'])) {
+            $lines[] = 'CRITICAL ISSUES';
+            $lines[] = '--------------';
+            foreach ($feedback['critical_issues'] as $issue) {
+                if (is_array($issue)) {
+                    // Handle the structure: ['section' => 'Work Experience', 'issue' => '...', 'fix' => '...']
+                    $section = $issue['section'] ?? '';
+                    $issueText = $issue['issue'] ?? '';
+                    $fix = $issue['fix'] ?? '';
+                    
+                    if ($section) {
+                        $lines[] = "• [{$section}] {$issueText}";
+                    } else {
+                        $lines[] = "• {$issueText}";
+                    }
+                    
+                    if ($fix) {
+                        $lines[] = "  ✓ Fix: {$fix}";
+                    }
+                } else {
+                    // If it's just a string
+                    $lines[] = "• {$issue}";
+                }
+                $lines[] = '';
+            }
+        }
+        
+        // Handle improvement_areas if present
+        if (!empty($feedback['improvement_areas']) && is_array($feedback['improvement_areas'])) {
+            $lines[] = 'IMPROVEMENT AREAS';
+            $lines[] = '-----------------';
+            
+            // Check if it's an associative array with keys like 'formatting', 'content', 'language'
+            if (isset($feedback['improvement_areas']['formatting']) || 
+                isset($feedback['improvement_areas']['content']) || 
+                isset($feedback['improvement_areas']['language'])) {
+                
+                foreach ($feedback['improvement_areas'] as $area => $items) {
+                    if (!empty($items) && is_array($items)) {
+                        $lines[] = ucfirst($area) . ':';
+                        foreach ($items as $item) {
+                            $lines[] = "  • {$item}";
+                        }
+                    }
+                }
+            } else {
+                // If it's a simple array
+                foreach ($feedback['improvement_areas'] as $area) {
+                    if (is_string($area)) {
+                        $lines[] = "• {$area}";
+                    }
+                }
+            }
+            $lines[] = '';
+        }
+        
+        if (!empty($enhancement->keyword_gaps) && is_array($enhancement->keyword_gaps)) {
+            $lines[] = 'KEYWORD GAPS';
+            $lines[] = '------------';
+            foreach ($enhancement->keyword_gaps as $keyword) {
+                $lines[] = "• {$keyword}";
+            }
+            $lines[] = '';
+        }
+        
+        if (!empty($feedback['recommended_actions']) && is_array($feedback['recommended_actions'])) {
+            $lines[] = 'RECOMMENDED ACTIONS';
+            $lines[] = '------------------';
+            foreach ($feedback['recommended_actions'] as $action) {
+                $lines[] = "• {$action}";
+            }
+        }
+        
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Store PDF permanently and return path
+     */
+    private function storePDF(string $content, int $userId, string $type): ?string
+    {
+        try {
+            $pdfContent = $this->generatePDF($content, $type);
+            
+            if (!$pdfContent) {
+                return null;
+            }
+            
+            $path = "cv_enhancements/user_{$userId}/" . date('Y/m/d') . "/{$type}_" . time() . ".pdf";
+            
+            Storage::disk('public')->put($path, $pdfContent);
+            
+            return $path;
+            
+        } catch (\Exception $e) {
+            Log::error('[CVEnhancement] PDF storage failed', ['error' => $e->getMessage()]);
+            return null;
+        }
+    }
+
+    /**
+     * Generate PDF for rewritten CV or cover letter
+     */
+        private function generatePDF(string $content, string $type = 'cv'): ?string
+    {
+        try {
+            // Convert content to HTML
+            $bodyHtml = $this->convertToHtml($content);
+            
+            // Extract body content if wrapped
+            if (preg_match('/<body[^>]*>(.*)<\/body>/is', $bodyHtml, $m)) {
+                $bodyHtml = $m[1];
+            }
+            
+            // Use the PDF view
+            $html = view('pdf.cv-document', [
+                'bodyHtml' => $bodyHtml,
+            ])->render();
+            
+            // Generate PDF
+            $pdf = Pdf::loadHTML($html)->setPaper('a4');
+            return $pdf->output();
+            
+        } catch (\Exception $e) {
+            Log::error('[CVEnhancement] PDF generation failed', ['error' => $e->getMessage()]);
+            return null;
+        }
+    }
+
+    /**
+     * Convert content to HTML for PDF
+     */
+    private function convertToHtml(string $text): string
+    {
+        // Convert markdown bold
+        $text = preg_replace('/\*\*(.*?)\*\*/', '<strong>$1</strong>', $text);
+        
+        // Convert bullet points with • or -
+        $text = preg_replace('/^[•\-]\s+(.*?)$/m', '<li>$1</li>', $text);
+        $text = preg_replace('/(<li>.*?<\/li>\n?)+/s', '<ul style="margin:8px 0;padding-left:20px;">$0</ul>', $text);
+        
+        // Convert email addresses to mailto links
+        $text = preg_replace('/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/', '<a href="mailto:$1">$1</a>', $text);
+        
+        // Convert phone numbers (East African format)
+        $text = preg_replace('/(\+256\s?\d{3}\s?\d{3}\s?\d{4})/', '<a href="tel:$1">$1</a>', $text);
+        
+        // Convert line breaks
+        $text = nl2br($text);
+        
+        // Detect and style headings
+        $headings = ['PROFILE SUMMARY', 'CORE COMPETENCIES', 'PROFESSIONAL EXPERIENCE', 'EDUCATION', 'CERTIFICATIONS', 'TECHNICAL SKILLS', 'PROJECTS', 'REFERENCES', 'LANGUAGES'];
+        foreach ($headings as $heading) {
+            $text = preg_replace('/' . $heading . '/', '<strong style="color:#1e3a8a; font-size:14px;">' . $heading . '</strong>', $text);
+        }
+        
+        return $text;
     }
 
     /**
