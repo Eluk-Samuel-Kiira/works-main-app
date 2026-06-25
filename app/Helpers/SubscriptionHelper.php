@@ -70,10 +70,10 @@ class SubscriptionHelper
     public static function getPlanLimits($plan): array
     {
         return match($plan) {
-            'basic' => ['cv_reviews' => 5, 'cv_rewrites' => 1, 'cover_letters' => 10],
+            'basic' => ['cv_reviews' => 5, 'cv_rewrites' => 5, 'cover_letters' => 10],
             'pro' => ['cv_reviews' => 999, 'cv_rewrites' => 999, 'cover_letters' => 999],
             'elite' => ['cv_reviews' => 999, 'cv_rewrites' => 999, 'cover_letters' => 999],
-            default => ['cv_reviews' => 0, 'cv_rewrites' => 0, 'cover_letters' => 0],
+            default => ['cv_reviews' => 5, 'cv_rewrites' => 5, 'cover_letters' => 5],
         };
     }
 }

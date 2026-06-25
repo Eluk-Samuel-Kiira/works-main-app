@@ -1,4 +1,5 @@
 {{-- resources/views/emails/cv-enhancement.blade.php --}}
+
 @php
     // Helper function to convert markdown to HTML
     function markdownToHtml($text)
@@ -14,6 +15,9 @@
         // Convert bullet points with • to list items
         $text = preg_replace('/• (.*?)(\n|$)/', '<li>$1</li>', $text);
         
+        // Convert numbered lists
+        $text = preg_replace('/\d+\.\s+(.*?)(\n|$)/', '<li>$1</li>', $text);
+        
         // Wrap consecutive list items in <ul>
         if (strpos($text, '<li>') !== false) {
             $text = '<ul style="margin: 0; padding-left: 20px;">' . $text . '</ul>';
@@ -23,13 +27,6 @@
         $text = nl2br($text);
         
         return $text;
-    }
-    
-    // Helper to format phone numbers
-    function formatPhone($phone)
-    {
-        if (!$phone) return '';
-        return preg_replace('/(\d{3})(\d{3})(\d{4})/', '$1 $2 $3', $phone);
     }
 @endphp
 
@@ -159,6 +156,16 @@
                 
                 <div class="attachment-box">
                     📎 A PDF version is attached to this email.
+                    <br>
+                    <span style="font-size: 11px; color: #64748b;">
+                        @if($type === 'rewrite')
+                            (Your professionally rewritten CV in PDF format)
+                        @elseif($type === 'cover_letter')
+                            (Your custom cover letter in PDF format)
+                        @else
+                            (Your CV review report in PDF format)
+                        @endif
+                    </span>
                 </div>
                 
                 <hr>

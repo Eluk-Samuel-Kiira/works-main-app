@@ -1,5 +1,5 @@
 <?php
-// MAIN APP: app/Mail/CVEnhancementMail.php
+// app/Mail/CVEnhancementMail.php
 
 namespace App\Mail;
 
@@ -23,6 +23,8 @@ class CVEnhancementMail extends Mailable
     public array $matchedSkills;
     public array $missingSkills;
     public array $improvementAreas;
+    public ?string $pdfContent;
+    public ?string $pdfFilename;
 
     public function __construct(
         array $user,
@@ -36,7 +38,9 @@ class CVEnhancementMail extends Mailable
         array $recommendedActions = [],
         array $matchedSkills = [],
         array $missingSkills = [],
-        array $improvementAreas = []
+        array $improvementAreas = [],
+        ?string $pdfContent = null,
+        ?string $pdfFilename = null
     ) {
         $this->user = $user;
         $this->type = $type;
@@ -50,6 +54,8 @@ class CVEnhancementMail extends Mailable
         $this->matchedSkills = $matchedSkills;
         $this->missingSkills = $missingSkills;
         $this->improvementAreas = $improvementAreas;
+        $this->pdfContent = $pdfContent;
+        $this->pdfFilename = $pdfFilename ?? 'cv-enhancement.pdf';
     }
 
     public function build()
@@ -61,7 +67,7 @@ class CVEnhancementMail extends Mailable
             default => 'Your CV Enhancement Results - Stardena Works'
         };
 
-        return $this->subject($subject)
+        $email = $this->subject($subject)
                     ->view('emails.cv-enhancement')
                     ->with([
                         'user' => $this->user,
@@ -78,5 +84,14 @@ class CVEnhancementMail extends Mailable
                         'improvementAreas' => $this->improvementAreas,
                         'subject' => $subject,
                     ]);
+        
+        // Attach PDF if content is provided
+        if ($this->pdfContent) {
+            $email->attachData($this->pdfContent, $this->pdfFilename, [
+                'mime' => 'application/pdf',
+            ]);
+        }
+        
+        return $email;
     }
 }

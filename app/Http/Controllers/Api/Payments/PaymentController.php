@@ -197,41 +197,7 @@ class PaymentController extends Controller
         return response()->json([...$ack, 'status' => 200]);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // GET /api/v1/payments/status/{reference}
-    // ─────────────────────────────────────────────────────────────────────
-    public function status(Request $request, string $reference): JsonResponse
-    {
-        $transaction = Transaction::where('reference', $reference)
-            ->where('user_id', $request->user()->id)
-            ->first();
 
-        if (!$transaction) {
-            return $this->error('Transaction not found', 404);
-        }
-
-        // Re-query Pesapal if still in-flight
-        if (in_array($transaction->status, ['pending', 'processing'])
-            && $transaction->gateway_reference) {
-            try {
-                $statusData = $this->pesapal->getTransactionStatus($transaction->gateway_reference);
-                $this->applyStatus($transaction, $statusData);
-                $transaction->refresh();
-            } catch (\Exception $e) {
-                Log::warning('[Payment] Status re-query failed', ['error' => $e->getMessage()]);
-            }
-        }
-
-        return response()->json([
-            'success'      => true,
-            'status'       => $transaction->status,
-            'amount'       => $transaction->formatted_amount,
-            'reference'    => $transaction->reference,
-            'plan'         => $transaction->subscription_plan,
-            'period'       => $transaction->subscription_period,
-            'confirmed_at' => $transaction->confirmed_at,
-        ]);
-    }
 
     // ─────────────────────────────────────────────────────────────────────
     // Map Pesapal status_code to our status
@@ -259,7 +225,7 @@ class PaymentController extends Controller
 
 
     // public use case
-        /**
+    /**
      * Public endpoint to get transaction status
      * No authentication required - works for both featured jobs and subscriptions
      */
@@ -351,4 +317,270 @@ class PaymentController extends Controller
                 return '📋 SUBSCRIPTION PLAN';
         }
     }
+
+
+    /**
+     * Activate free trial for a user
+     * POST /api/v1/payment/activate-trial
+     */
+    public function activateTrial(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'plan' => 'required|string|in:seeker_trial',
+            'period' => 'required|string|in:monthly',
+        ]);
+
+        $user = $request->user();
+
+        if (!$user) {
+            return $this->error('User not authenticated.', 401);
+        }
+
+        // Check if user already had a trial
+        $existingTrial = Transaction::where('user_id', $user->id)
+            ->where('subscription_plan', 'seeker_trial')
+            ->where('status', 'successful')
+            ->exists();
+
+        if ($existingTrial) {
+            return $this->error('You have already used your free trial.', 400);
+        }
+
+        // Check if user already has an active subscription
+        $activeSubscription = Transaction::where('user_id', $user->id)
+            ->where('status', 'successful')
+            ->where('transaction_type', 'subscription')
+            ->exists();
+
+        if ($activeSubscription) {
+            return $this->error('You already have an active subscription.', 400);
+        }
+
+        try {
+            $trialEndsAt = now()->addDays(7);
+
+            $transaction = Transaction::create([
+                'user_id' => $user->id,
+                'transaction_type' => 'subscription',
+                'subscription_plan' => $validated['plan'],
+                'subscription_period' => 'monthly',
+                'amount' => 0,
+                'currency' => 'USD',
+                'status' => 'successful',
+                'payment_gateway' => 'pesapal',  // ✅ Changed from 'trial' to 'pesapal'
+                'customer_email' => $user->email,
+                'customer_name' => $user->first_name . ' ' . $user->last_name,
+                'metadata' => [
+                    'plan' => $validated['plan'],
+                    'period' => 'monthly',
+                    'trial_days' => 7,
+                    'trial_ends_at' => $trialEndsAt->toIso8601String(),
+                    'is_trial' => true,  // ✅ Add flag to identify trial
+                ],
+                'confirmed_at' => now(),
+            ]);
+
+            return $this->success([
+                'message' => 'Free trial activated successfully! You have 7 days to try all features.',
+                'trial_ends_at' => $trialEndsAt->toIso8601String(),
+                'trial_days_left' => 7,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Trial activation failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return $this->error('Failed to activate trial: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Check if user has used their trial
+     * GET /api/v1/payment/trial-status
+     */
+    public function trialStatus(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return $this->error('User not authenticated.', 401);
+        }
+
+        $hasUsedTrial = Transaction::where('user_id', $user->id)
+            ->where('subscription_plan', 'seeker_trial')
+            ->where('status', 'successful')
+            ->exists();
+
+        $trial = Transaction::where('user_id', $user->id)
+            ->where('subscription_plan', 'seeker_trial')
+            ->where('status', 'successful')
+            ->first();
+
+        $trialEndsAt = null;
+        $trialDaysLeft = 0;
+        $isActive = false;
+
+        if ($trial && isset($trial->metadata['trial_ends_at'])) {
+            $trialEndsAt = \Carbon\Carbon::parse($trial->metadata['trial_ends_at']);
+            $trialDaysLeft = max(0, (int) ceil(now()->diffInDays($trialEndsAt, false)));
+            $isActive = $trialDaysLeft > 0;
+        }
+
+        return $this->success([
+            'has_used_trial' => $hasUsedTrial,
+            'has_active_trial' => $isActive,
+            'trial_days_left' => $trialDaysLeft,
+            'trial_ends_at' => $trialEndsAt ? $trialEndsAt->toIso8601String() : null,
+        ]);
+    }
+
+    /**
+     * GET /api/v1/subscription/status
+     * Returns subscription status with usage stats
+     */
+    public function status(Request $request)
+    {
+        $user = $request->user();
+        
+        // Get usage counters
+        $counter = CvUsageCounter::firstOrCreate(
+            ['user_id' => $user->id],
+            [
+                'cv_reviews_count' => 0,
+                'cv_rewrites_count' => 0,
+                'cover_letters_count' => 0,
+                'period_start' => now()->startOfMonth(),
+            ]
+        );
+        
+        // Check for trial subscription via metadata
+        $trial = Transaction::where('user_id', $user->id)
+            ->where('subscription_plan', 'seeker_trial')
+            ->where('status', 'successful')
+            ->first();
+
+        if ($trial) {
+            // Check if trial has expired via metadata
+            $isExpired = false;
+            $trialDaysLeft = 7;
+            
+            if (isset($trial->metadata['trial_ends_at'])) {
+                $trialEndsAt = \Carbon\Carbon::parse($trial->metadata['trial_ends_at']);
+                $trialDaysLeft = max(0, (int) ceil(now()->diffInDays($trialEndsAt, false)));
+                $isExpired = $trialDaysLeft <= 0;
+            }
+            
+            // If trial is expired, treat as no subscription
+            if ($isExpired) {
+                return $this->success([
+                    'has_active_subscription' => false,
+                    'is_trial' => false,
+                    'usage' => [
+                        'cv_reviews_count' => (int) $counter->cv_reviews_count,
+                        'cv_rewrites_count' => (int) $counter->cv_rewrites_count,
+                        'cover_letters_count' => (int) $counter->cover_letters_count,
+                    ],
+                    'limits' => [
+                        'cv_reviews' => 0,
+                        'cv_rewrites' => 0,
+                        'cover_letters' => 0,
+                    ],
+                ]);
+            }
+            
+            // Trial limits
+            $limits = [
+                'cv_reviews' => 3,
+                'cv_rewrites' => 3,
+                'cover_letters' => 6,
+            ];
+            
+            return $this->success([
+                'has_active_subscription' => true,
+                'plan' => 'seeker_trial',
+                'plan_display_name' => 'Free Trial',
+                'period' => 'monthly',
+                'expiry_date' => $trial->metadata['trial_ends_at'] ?? null,
+                'is_trial' => true,
+                'trial_days_left' => $trialDaysLeft,
+                'amount' => 0,
+                'currency' => 'USD',
+                'usage' => [
+                    'cv_reviews_count' => (int) $counter->cv_reviews_count,
+                    'cv_rewrites_count' => (int) $counter->cv_rewrites_count,
+                    'cover_letters_count' => (int) $counter->cover_letters_count,
+                ],
+                'limits' => $limits,
+                'remaining' => [
+                    'cv_reviews' => max(0, $limits['cv_reviews'] - (int) $counter->cv_reviews_count),
+                    'cv_rewrites' => max(0, $limits['cv_rewrites'] - (int) $counter->cv_rewrites_count),
+                    'cover_letters' => max(0, $limits['cover_letters'] - (int) $counter->cover_letters_count),
+                ],
+            ]);
+        }
+
+        // Check for regular subscription
+        $subscription = Transaction::where('user_id', $user->id)
+            ->where('status', 'successful')
+            ->where('transaction_type', 'subscription')
+            ->where('subscription_plan', '!=', 'seeker_trial')
+            ->first();
+
+        if ($subscription) {
+            // Set limits based on plan
+            $limits = match($subscription->subscription_plan) {
+                'seeker_basic' => ['cv_reviews' => 5, 'cv_rewrites' => 5, 'cover_letters' => 10],
+                'seeker_pro' => ['cv_reviews' => PHP_INT_MAX, 'cv_rewrites' => PHP_INT_MAX, 'cover_letters' => PHP_INT_MAX],
+                'seeker_elite' => ['cv_reviews' => PHP_INT_MAX, 'cv_rewrites' => PHP_INT_MAX, 'cover_letters' => PHP_INT_MAX],
+                default => ['cv_reviews' => 0, 'cv_rewrites' => 0, 'cover_letters' => 0],
+            };
+            
+            $planDisplayNames = [
+                'seeker_basic' => 'Basic',
+                'seeker_pro' => 'Pro',
+                'seeker_elite' => 'Elite',
+            ];
+            
+            return $this->success([
+                'has_active_subscription' => true,
+                'plan' => $subscription->subscription_plan,
+                'plan_display_name' => $planDisplayNames[$subscription->subscription_plan] ?? ucfirst(str_replace('seeker_', '', $subscription->subscription_plan)),
+                'period' => $subscription->subscription_period ?? 'monthly',
+                'expiry_date' => $subscription->confirmed_at ? \Carbon\Carbon::parse($subscription->confirmed_at)->addDays(30)->toIso8601String() : null,
+                'is_trial' => false,
+                'amount' => $subscription->amount,
+                'currency' => $subscription->currency,
+                'usage' => [
+                    'cv_reviews_count' => (int) $counter->cv_reviews_count,
+                    'cv_rewrites_count' => (int) $counter->cv_rewrites_count,
+                    'cover_letters_count' => (int) $counter->cover_letters_count,
+                ],
+                'limits' => $limits,
+                'remaining' => [
+                    'cv_reviews' => $limits['cv_reviews'] === PHP_INT_MAX ? 'Unlimited' : max(0, $limits['cv_reviews'] - (int) $counter->cv_reviews_count),
+                    'cv_rewrites' => $limits['cv_rewrites'] === PHP_INT_MAX ? 'Unlimited' : max(0, $limits['cv_rewrites'] - (int) $counter->cv_rewrites_count),
+                    'cover_letters' => $limits['cover_letters'] === PHP_INT_MAX ? 'Unlimited' : max(0, $limits['cover_letters'] - (int) $counter->cover_letters_count),
+                ],
+            ]);
+        }
+
+        // No active subscription
+        return $this->success([
+            'has_active_subscription' => false,
+            'is_trial' => false,
+            'usage' => [
+                'cv_reviews_count' => (int) $counter->cv_reviews_count,
+                'cv_rewrites_count' => (int) $counter->cv_rewrites_count,
+                'cover_letters_count' => (int) $counter->cover_letters_count,
+            ],
+            'limits' => [
+                'cv_reviews' => 0,
+                'cv_rewrites' => 0,
+                'cover_letters' => 0,
+            ],
+        ]);
+    }
+
 }
